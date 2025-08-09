@@ -229,44 +229,70 @@ app.get('/auth/callback', async (req, res) => {
     
     res.send(`
       <html>
+        <head>
+          <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'; object-src 'none';">
+        </head>
         <body>
           <h2>認証成功！</h2>
           <p>Google Analytics認証が完了しました。</p>
           <p>このウィンドウは自動的に閉じられます。</p>
           <script>
-            try {
-              // 親ウィンドウにトークンを送信（複数の方法を試行）
-              const tokens = ${tokensJSON};
-              
-              // Method 1: postMessage
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({
-                  type: 'auth_success',
-                  tokens: tokens
-                }, window.location.origin);
-                console.log('Tokens sent via postMessage');
-              }
-              
-              // Method 2: localStorage (fallback)
-              localStorage.setItem('ga_auth_tokens_temp', JSON.stringify(tokens));
-              console.log('Tokens saved to localStorage as fallback');
-              
-              // Method 3: URL hash for opener to check
-              if (window.opener && !window.opener.closed) {
-                window.opener.location.hash = 'auth_success';
-              }
-              
-            } catch (error) {
-              console.error('Error sending auth tokens:', error);
-            }
-            
-            setTimeout(() => {
+            (function() {
               try {
-                window.close();
-              } catch (e) {
-                console.log('Could not close window automatically');
+                console.log('Auth callback script starting...');
+                
+                // トークンデータを直接埋め込み（より安全）
+                var tokens = ${tokensJSON};
+                console.log('Tokens prepared:', !!tokens);
+                
+                // Method 1: postMessage
+                if (window.opener && typeof window.opener.postMessage === 'function') {
+                  try {
+                    window.opener.postMessage({
+                      type: 'auth_success',
+                      tokens: tokens
+                    }, '${process.env.NETLIFY_URL || 'https://spectacular-caramel-1892fa.netlify.app'}');
+                    console.log('Tokens sent via postMessage');
+                  } catch (e) {
+                    console.error('postMessage failed:', e);
+                  }
+                }
+                
+                // Method 2: localStorage (fallback)
+                try {
+                  localStorage.setItem('ga_auth_tokens_temp', JSON.stringify(tokens));
+                  console.log('Tokens saved to localStorage as fallback');
+                } catch (e) {
+                  console.error('localStorage failed:', e);
+                }
+                
+                // Method 3: URL hash for opener to check
+                if (window.opener) {
+                  try {
+                    window.opener.location.hash = 'auth_success';
+                    console.log('Hash set in opener window');
+                  } catch (e) {
+                    console.error('Hash setting failed:', e);
+                  }
+                }
+                
+                // 自動クローズ
+                function closeWindow() {
+                  try {
+                    window.close();
+                  } catch (e) {
+                    console.log('Could not close window automatically');
+                    document.body.innerHTML += '<p><button onclick="window.close()">このウィンドウを閉じる</button></p>';
+                  }
+                }
+                
+                setTimeout(closeWindow, 3000);
+                
+              } catch (error) {
+                console.error('Auth callback error:', error);
+                document.body.innerHTML += '<p style="color:red;">エラー: ' + error.message + '</p>';
               }
-            }, 2000);
+            })();
           </script>
         </body>
       </html>
@@ -275,21 +301,34 @@ app.get('/auth/callback', async (req, res) => {
     console.error('Auth error:', error);
     res.send(`
       <html>
+        <head>
+          <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'; object-src 'none';">
+        </head>
         <body>
           <h2>認証エラー</h2>
           <p>エラー: ${error.message}</p>
           <p>このウィンドウは自動的に閉じられます。</p>
           <script>
-            if (window.opener) {
-              window.opener.postMessage({
-                type: 'auth_error',
-                error: '${error.message}'
-              }, '*');
-            }
-            
-            setTimeout(() => {
-              window.close();
-            }, 3000);
+            (function() {
+              try {
+                if (window.opener && typeof window.opener.postMessage === 'function') {
+                  window.opener.postMessage({
+                    type: 'auth_error',
+                    error: '${error.message.replace(/'/g, "\\'")}'
+                  }, '${process.env.NETLIFY_URL || 'https://spectacular-caramel-1892fa.netlify.app'}');
+                }
+                
+                setTimeout(function() {
+                  try {
+                    window.close();
+                  } catch (e) {
+                    console.log('Could not close window automatically');
+                  }
+                }, 3000);
+              } catch (e) {
+                console.error('Error in auth error handler:', e);
+              }
+            })();
           </script>
         </body>
       </html>
