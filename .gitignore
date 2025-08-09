@@ -100,3 +100,6 @@ dist
 .DS_Store
 Thumbs.db
 .vercel
+
+# Local Netlify folder
+.netlify

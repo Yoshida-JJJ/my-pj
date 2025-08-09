@@ -33,8 +33,8 @@ if (process.env.NODE_ENV === 'production' && process.env.BASIC_AUTH_USER && proc
   });
 }
 
-// 静的ファイル配信（Netlifyでは不要だが、互換性のため残す）
-app.use(express.static(path.join(__dirname, '../../public')));
+// Netlify環境では静的ファイル配信は不要
+// app.use(express.static(path.join(__dirname, '../../public')));
 
 const aiAgent = new AIAgent();
 
@@ -401,9 +401,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// SPA用のフォールバック
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/index.html'));
-});
+// SPA用のフォールバック（Netlifyでは不要）
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../../public/index.html'));
+// });
 
 module.exports.handler = serverless(app);
