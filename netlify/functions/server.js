@@ -222,10 +222,14 @@ app.get('/auth/callback', async (req, res) => {
       throw new Error('No tokens received from Google');
     }
     
-    // トークンをクライアント側に送信してlocalStorageに保存
+    // トークンをクライアント側に送信（複数の方法を併用）
     const tokensJSON = JSON.stringify(tokenResponse.tokens);
+    const tokensBase64 = Buffer.from(tokensJSON).toString('base64');
     
     console.log('Authentication successful, sending tokens to client');
+    
+    // Method A: 直接リダイレクトでトークンを渡す（最も確実）
+    const redirectUrl = `${process.env.NETLIFY_URL || 'https://spectacular-caramel-1892fa.netlify.app'}/chat.html?auth_tokens=${encodeURIComponent(tokensBase64)}&auth_success=1`;
     
     res.send(`
       <html>
@@ -235,62 +239,61 @@ app.get('/auth/callback', async (req, res) => {
         <body>
           <h2>認証成功！</h2>
           <p>Google Analytics認証が完了しました。</p>
-          <p>このウィンドウは自動的に閉じられます。</p>
+          <p>メインページにリダイレクトしています...</p>
+          
           <script>
             (function() {
               try {
                 console.log('Auth callback script starting...');
                 
-                // トークンデータを直接埋め込み（より安全）
                 var tokens = ${tokensJSON};
                 console.log('Tokens prepared:', !!tokens);
                 
-                // Method 1: postMessage
+                // Method 1: localStorage（確実な方法）
+                try {
+                  localStorage.setItem('ga_auth_tokens_temp', JSON.stringify(tokens));
+                  console.log('Tokens saved to localStorage');
+                } catch (e) {
+                  console.error('localStorage failed:', e);
+                }
+                
+                // Method 2: postMessage（可能な場合）
                 if (window.opener && typeof window.opener.postMessage === 'function') {
                   try {
                     window.opener.postMessage({
                       type: 'auth_success',
                       tokens: tokens
-                    }, '${process.env.NETLIFY_URL || 'https://spectacular-caramel-1892fa.netlify.app'}');
+                    }, '*');
                     console.log('Tokens sent via postMessage');
                   } catch (e) {
                     console.error('postMessage failed:', e);
                   }
                 }
                 
-                // Method 2: localStorage (fallback)
-                try {
-                  localStorage.setItem('ga_auth_tokens_temp', JSON.stringify(tokens));
-                  console.log('Tokens saved to localStorage as fallback');
-                } catch (e) {
-                  console.error('localStorage failed:', e);
-                }
-                
-                // Method 3: URL hash for opener to check
+                // Method 3: 親ウィンドウを直接リダイレクト
                 if (window.opener) {
                   try {
-                    window.opener.location.hash = 'auth_success';
-                    console.log('Hash set in opener window');
+                    window.opener.location.href = '${redirectUrl}';
+                    console.log('Parent redirected');
                   } catch (e) {
-                    console.error('Hash setting failed:', e);
+                    console.error('Redirect failed:', e);
                   }
                 }
                 
                 // 自動クローズ
-                function closeWindow() {
+                setTimeout(function() {
                   try {
                     window.close();
                   } catch (e) {
-                    console.log('Could not close window automatically');
-                    document.body.innerHTML += '<p><button onclick="window.close()">このウィンドウを閉じる</button></p>';
+                    // 閉じられない場合は手動リダイレクト
+                    window.location.href = '${redirectUrl}';
                   }
-                }
-                
-                setTimeout(closeWindow, 3000);
+                }, 2000);
                 
               } catch (error) {
                 console.error('Auth callback error:', error);
-                document.body.innerHTML += '<p style="color:red;">エラー: ' + error.message + '</p>';
+                // エラーでも安全な場所にリダイレクト
+                window.location.href = '${redirectUrl}';
               }
             })();
           </script>
