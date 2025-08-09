@@ -672,6 +672,9 @@
             // 保存された認証トークンを読み込み
             loadAuthTokens();
             
+            // 認証完了チェック（ページロード時）
+            setTimeout(checkAuthenticationStatus, 1000);
+            
             // URLパラメータからセッションIDを取得（オプション）
             const urlParams = new URLSearchParams(window.location.search);
             const sessionParam = urlParams.get('session');
@@ -684,6 +687,28 @@
             
             document.getElementById('messageInput').focus();
         };
+
+        // 認証状態を定期的にチェック
+        function checkAuthenticationStatus() {
+            // localStorageの一時トークンをチェック
+            const tempTokens = localStorage.getItem('ga_auth_tokens_temp');
+            if (tempTokens && !authTokens) {
+                console.log('Found temp tokens, processing authentication...');
+                try {
+                    const tokens = JSON.parse(tempTokens);
+                    saveAuthTokens(tokens);
+                    localStorage.removeItem('ga_auth_tokens_temp');
+                    addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
+                } catch (error) {
+                    console.error('Error processing temp tokens:', error);
+                }
+            }
+            
+            console.log('=== Auth Status ===');
+            console.log('authTokens:', !!authTokens);
+            console.log('localStorage tokens:', !!localStorage.getItem('ga_auth_tokens'));
+            console.log('temp tokens:', !!localStorage.getItem('ga_auth_tokens_temp'));
+        }
         
         // キーボードショートカット
         document.addEventListener('keydown', function(e) {
@@ -699,7 +724,33 @@
                 e.preventDefault();
                 stopAnalysis();
             }
+            
+            // F5キーで認証状態チェック（デバッグ用）
+            if (e.key === 'F5' && e.ctrlKey) {
+                e.preventDefault();
+                checkAuthenticationStatus();
+                addMessage('assistant', 'デバッグ: 認証状態をチェックしました。Consoleを確認してください。');
+            }
         });
+
+        // 認証チェックボタン（デバッグ用）- Consoleで実行可能
+        window.debugAuth = function() {
+            console.log('=== Full Auth Debug ===');
+            console.log('authTokens variable:', authTokens);
+            console.log('localStorage ga_auth_tokens:', localStorage.getItem('ga_auth_tokens'));
+            console.log('localStorage ga_auth_tokens_temp:', localStorage.getItem('ga_auth_tokens_temp'));
+            console.log('Current hash:', window.location.hash);
+            console.log('Button text:', document.querySelector('.btn-auth').textContent);
+            
+            // 手動でtempトークンをチェック
+            const tempTokens = localStorage.getItem('ga_auth_tokens_temp');
+            if (tempTokens) {
+                console.log('Temp tokens found:', JSON.parse(tempTokens));
+                if (confirm('一時トークンが見つかりました。認証を完了しますか？')) {
+                    checkAuthenticationStatus();
+                }
+            }
+        };
     </script>
 </body>
 </html>
