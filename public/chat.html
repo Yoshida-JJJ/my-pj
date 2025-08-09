@@ -413,7 +413,7 @@
             }
             
             if (event.data && event.data.type === 'auth_success') {
-                console.log('Authentication success received');
+                console.log('Authentication success received via postMessage');
                 console.log('Tokens:', event.data.tokens);
                 saveAuthTokens(event.data.tokens);
                 addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
@@ -422,6 +422,26 @@
                 addMessage('assistant', `❌ 認証エラー: ${event.data.error}`);
             } else {
                 console.log('Unknown message type or missing data:', event.data);
+            }
+        });
+
+        // ハッシュ変更イベントで認証成功を検知（フォールバック）
+        window.addEventListener('hashchange', function() {
+            if (window.location.hash === '#auth_success') {
+                console.log('Authentication success detected via hash change');
+                
+                // localStorageからトークンを取得
+                const tempTokens = localStorage.getItem('ga_auth_tokens_temp');
+                if (tempTokens) {
+                    const tokens = JSON.parse(tempTokens);
+                    console.log('Tokens retrieved from localStorage:', tokens);
+                    saveAuthTokens(tokens);
+                    localStorage.removeItem('ga_auth_tokens_temp');
+                    addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
+                    
+                    // ハッシュをクリア
+                    window.location.hash = '';
+                }
             }
         });
 
@@ -460,13 +480,8 @@
                 return;
             }
             
-            // ポップアップの状態を監視
-            const checkClosed = setInterval(() => {
-                if (popup.closed) {
-                    clearInterval(checkClosed);
-                    console.log('Authentication popup closed');
-                }
-            }, 1000);
+            console.log('Authentication popup opened successfully');
+            addMessage('assistant', '認証ウィンドウが開きました。Google認証を完了してください。');
         }
 
         function autoResize(textarea) {

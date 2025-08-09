@@ -6,6 +6,12 @@
 [build.environment]
   NODE_ENV = "production"
 
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/server/:splat"

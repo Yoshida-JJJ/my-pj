@@ -234,16 +234,38 @@ app.get('/auth/callback', async (req, res) => {
           <p>Google Analytics認証が完了しました。</p>
           <p>このウィンドウは自動的に閉じられます。</p>
           <script>
-            // 親ウィンドウにトークンを送信
-            if (window.opener) {
-              window.opener.postMessage({
-                type: 'auth_success',
-                tokens: ${tokensJSON}
-              }, '*');
+            try {
+              // 親ウィンドウにトークンを送信（複数の方法を試行）
+              const tokens = ${tokensJSON};
+              
+              // Method 1: postMessage
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                  type: 'auth_success',
+                  tokens: tokens
+                }, window.location.origin);
+                console.log('Tokens sent via postMessage');
+              }
+              
+              // Method 2: localStorage (fallback)
+              localStorage.setItem('ga_auth_tokens_temp', JSON.stringify(tokens));
+              console.log('Tokens saved to localStorage as fallback');
+              
+              // Method 3: URL hash for opener to check
+              if (window.opener && !window.opener.closed) {
+                window.opener.location.hash = 'auth_success';
+              }
+              
+            } catch (error) {
+              console.error('Error sending auth tokens:', error);
             }
             
             setTimeout(() => {
-              window.close();
+              try {
+                window.close();
+              } catch (e) {
+                console.log('Could not close window automatically');
+              }
             }, 2000);
           </script>
         </body>
