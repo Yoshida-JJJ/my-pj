@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require('child_process');
+const { google } = require('googleapis');
 const AIAgent = require('../../src/ai-agent');
 require('dotenv').config();
 
@@ -53,62 +54,137 @@ function getOrCreateSession(sessionId) {
   return chatSessions.get(sessionId);
 }
 
-// MCPサーバーとの通信クラス
-class MCPClient {
+// Google Analytics直接統合クラス（MCPサーバーの代替）
+class GAAnalytics {
   constructor() {
-    this.mcpProcess = null;
+    this.auth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    this.analyticsData = google.analyticsdata('v1beta');
   }
 
   async callTool(toolName, params) {
-    return new Promise((resolve, reject) => {
-      const mcpProcess = spawn('node', [path.join(__dirname, '../../src/mcp-server.js')], {
-        stdio: 'pipe'
-      });
+    try {
+      const { authTokens, viewId, startDate, endDate } = params;
+      
+      if (!authTokens) {
+        throw new Error('Google認証が完了していません。🔑Google認証ボタンをクリックしてください。');
+      }
 
-      const request = {
-        jsonrpc: '2.0',
-        id: Date.now(),
-        method: 'tools/call',
-        params: {
-          name: toolName,
-          arguments: params
-        }
+      this.auth.setCredentials(authTokens);
+      
+      // GA4 Property IDの処理
+      let propertyId;
+      if (viewId && viewId.startsWith('G-')) {
+        propertyId = process.env.GA4_PROPERTY_ID || '419224498';
+      } else {
+        propertyId = viewId || process.env.GA4_PROPERTY_ID || '419224498';
+      }
+
+      let response;
+      
+      switch (toolName) {
+        case 'get_top_pages':
+          response = await this.analyticsData.properties.runReport({
+            auth: this.auth,
+            property: `properties/${propertyId}`,
+            requestBody: {
+              dateRanges: [{ startDate, endDate }],
+              metrics: [
+                { name: 'screenPageViews' },
+                { name: 'sessions' },
+                { name: 'averageSessionDuration' }
+              ],
+              dimensions: [
+                { name: 'pagePath' },
+                { name: 'pageTitle' }
+              ],
+              orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+              limit: params.maxResults || 10
+            }
+          });
+          
+          return {
+            content: [{
+              type: 'text',
+              text: `人気ページランキング (${startDate} - ${endDate}):\n\n${
+                response.data.rows?.map((row, index) => 
+                  `${index + 1}. ${row.dimensionValues[1]?.value || 'タイトル不明'}\n   URL: ${row.dimensionValues[0]?.value}\n   PV: ${row.metricValues[0]?.value}, セッション: ${row.metricValues[1]?.value}, 滞在時間: ${Math.round(row.metricValues[2]?.value || 0)}秒\n`
+                ).join('\n') || 'データがありません'
+              }`
+            }]
+          };
+
+        case 'get_traffic_sources':
+          response = await this.analyticsData.properties.runReport({
+            auth: this.auth,
+            property: `properties/${propertyId}`,
+            requestBody: {
+              dateRanges: [{ startDate, endDate }],
+              metrics: [
+                { name: 'sessions' },
+                { name: 'totalUsers' }
+              ],
+              dimensions: [
+                { name: 'source' },
+                { name: 'medium' }
+              ],
+              orderBys: [{ metric: { metricName: 'sessions' }, desc: true }]
+            }
+          });
+          
+          return {
+            content: [{
+              type: 'text',
+              text: `トラフィック源 (${startDate} - ${endDate}):\n\n${
+                response.data.rows?.map(row => 
+                  `${row.dimensionValues[0]?.value}/${row.dimensionValues[1]?.value}: セッション ${row.metricValues[0]?.value}, ユーザー ${row.metricValues[1]?.value}`
+                ).join('\n') || 'データがありません'
+              }`
+            }]
+          };
+
+        case 'get_ga_data':
+        default:
+          response = await this.analyticsData.properties.runReport({
+            auth: this.auth,
+            property: `properties/${propertyId}`,
+            requestBody: {
+              dateRanges: [{ startDate, endDate }],
+              metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'screenPageViews' }],
+              dimensions: [{ name: 'date' }]
+            }
+          });
+          
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                dimensionHeaders: response.data.dimensionHeaders,
+                metricHeaders: response.data.metricHeaders,
+                rows: response.data.rows || [],
+                rowCount: response.data.rowCount
+              }, null, 2)
+            }]
+          };
+      }
+    } catch (error) {
+      console.error(`GA Analytics tool error (${toolName}):`, error);
+      return {
+        content: [{
+          type: 'text',
+          text: `エラー: ${error.message}`
+        }]
       };
-
-      let responseData = '';
-      let errorData = '';
-
-      mcpProcess.stdout.on('data', (data) => {
-        responseData += data.toString();
-      });
-
-      mcpProcess.stderr.on('data', (data) => {
-        errorData += data.toString();
-      });
-
-      mcpProcess.on('close', (code) => {
-        if (code === 0) {
-          try {
-            const response = JSON.parse(responseData);
-            resolve(response);
-          } catch (e) {
-            reject(new Error('Invalid JSON response from MCP server'));
-          }
-        } else {
-          reject(new Error(`MCP server error: ${errorData}`));
-        }
-      });
-
-      mcpProcess.stdin.write(JSON.stringify(request) + '\n');
-      mcpProcess.stdin.end();
-    });
+    }
   }
 }
 
-const mcpClient = new MCPClient();
+const mcpClient = new GAAnalytics();
 
 // Google OAuth認証用の設定
-const { google } = require('googleapis');
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
