@@ -402,13 +402,26 @@
 
         // 認証ポップアップからのメッセージを受信
         window.addEventListener('message', function(event) {
-            if (event.data.type === 'auth_success') {
+            console.log('Received message from popup:', event.data);
+            console.log('Event origin:', event.origin);
+            console.log('Current location origin:', window.location.origin);
+            
+            // オリジンのチェック（セキュリティ）
+            if (event.origin !== window.location.origin) {
+                console.warn('Message from different origin ignored:', event.origin);
+                return;
+            }
+            
+            if (event.data && event.data.type === 'auth_success') {
                 console.log('Authentication success received');
+                console.log('Tokens:', event.data.tokens);
                 saveAuthTokens(event.data.tokens);
                 addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
-            } else if (event.data.type === 'auth_error') {
+            } else if (event.data && event.data.type === 'auth_error') {
                 console.error('Authentication error:', event.data.error);
                 addMessage('assistant', `❌ 認証エラー: ${event.data.error}`);
+            } else {
+                console.log('Unknown message type or missing data:', event.data);
             }
         });
 
@@ -429,7 +442,31 @@
         }
 
         function authenticate() {
-            window.open('/auth/google', '_blank', 'width=600,height=600');
+            // 既に認証済みの場合は再認証を促す
+            if (authTokens) {
+                if (confirm('既に認証済みです。再認証しますか？')) {
+                    clearAuthTokens();
+                } else {
+                    return;
+                }
+            }
+            
+            console.log('Opening authentication popup...');
+            const popup = window.open('/auth/google', 'auth_popup', 'width=600,height=600,scrollbars=yes,resizable=yes');
+            
+            // ポップアップが開かれたかチェック
+            if (!popup) {
+                alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+                return;
+            }
+            
+            // ポップアップの状態を監視
+            const checkClosed = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkClosed);
+                    console.log('Authentication popup closed');
+                }
+            }, 1000);
         }
 
         function autoResize(textarea) {
