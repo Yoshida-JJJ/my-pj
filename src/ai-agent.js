@@ -8,31 +8,22 @@ class AIAgent {
     });
     
     this.systemPrompt = `あなたはGoogle Analyticsデータを分析する専門のAIエージェントです。
-ユーザーの自然言語での質問を受け取り、適切なGoogle Analyticsクエリを生成し、結果を分かりやすく解釈してレポートを作成します。
+効率的で実用的な分析を提供します。
 
 利用可能なツール:
-1. get_ga_data - 基本的なGAデータ取得
-2. get_top_pages - 人気ページランキング
-3. get_traffic_sources - トラフィック源分析
-4. get_demographics - ユーザー属性分析（性別・年齢）
-5. get_interests - アフィニティカテゴリー分析
+1. get_ga_data - 基本GA4データ
+2. get_top_pages - 人気ページ 
+3. get_traffic_sources - トラフィック源
 
-レスポンス形式:
-- 質問の理解
-- 必要なデータの特定
-- MCPツール呼び出し指示
-- データ解釈とインサイト
-- 具体的な推奨アクション
-
-日付形式はYYYY-MM-DD、期間は適切にデフォルト設定してください。`;
+簡潔で実用的なレスポンスを提供してください。`;
   }
 
   async processQuery(userQuery, viewId) {
     try {
       const response = await this.anthropic.messages.create({
         model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1500,
-        temperature: 0.7,
+        max_tokens: 600,
+        temperature: 0.3,
         system: this.systemPrompt,
         messages: [
           { 
@@ -66,54 +57,39 @@ class AIAgent {
     
     const formatDate = (date) => date.toISOString().split('T')[0];
     
-    // キーワードベースでアクションを推定
-    if (aiResponse.includes('属性') || aiResponse.includes('性別') || aiResponse.includes('年齢') || aiResponse.includes('デモグラフィック')) {
-      actions.push({
-        tool: 'get_demographics',
-        params: {
-          viewId,
-          startDate: formatDate(thirtyDaysAgo),
-          endDate: formatDate(today)
-        }
-      });
-    }
+    // 効率的なキーワードマッチング
+    const responseText = aiResponse.toLowerCase();
 
-    if (aiResponse.includes('アフィニティ') || aiResponse.includes('興味') || aiResponse.includes('関心') || aiResponse.includes('カテゴリー')) {
-      actions.push({
-        tool: 'get_interests',
-        params: {
-          viewId,
-          startDate: formatDate(thirtyDaysAgo),
-          endDate: formatDate(today)
+    // マーケティング関連の包括的な分析要求
+    if (responseText.includes('マーケティング') || responseText.includes('戦略') || responseText.includes('プラン')) {
+      actions.push(
+        {
+          tool: 'get_top_pages',
+          params: { viewId, startDate: formatDate(thirtyDaysAgo), endDate: formatDate(today), maxResults: 10 }
+        },
+        {
+          tool: 'get_traffic_sources', 
+          params: { viewId, startDate: formatDate(thirtyDaysAgo), endDate: formatDate(today) }
         }
-      });
+      );
     }
-
-    if (aiResponse.includes('人気ページ') || aiResponse.includes('トップページ') || aiResponse.includes('ページビュー')) {
+    // 人気ページ分析
+    else if (responseText.includes('人気') || responseText.includes('ページ')) {
       actions.push({
         tool: 'get_top_pages',
-        params: {
-          viewId,
-          startDate: formatDate(thirtyDaysAgo),
-          endDate: formatDate(today),
-          maxResults: 10
-        }
+        params: { viewId, startDate: formatDate(thirtyDaysAgo), endDate: formatDate(today), maxResults: 10 }
       });
     }
-
-    if (aiResponse.includes('トラフィック') || aiResponse.includes('流入') || aiResponse.includes('参照元')) {
+    // トラフィック分析
+    else if (responseText.includes('トラフィック') || responseText.includes('流入') || responseText.includes('ソース')) {
       actions.push({
         tool: 'get_traffic_sources',
-        params: {
-          viewId,
-          startDate: formatDate(thirtyDaysAgo),
-          endDate: formatDate(today)
-        }
+        params: { viewId, startDate: formatDate(thirtyDaysAgo), endDate: formatDate(today) }
       });
     }
 
-    // 基本データ取得（セッション、ユーザー数など）
-    if (aiResponse.includes('セッション') || aiResponse.includes('ユーザー') || aiResponse.includes('PV') || actions.length === 0) {
+    // デフォルト：基本データ取得
+    if (actions.length === 0 || responseText.includes('セッション') || responseText.includes('ユーザー') || responseText.includes('pv')) {
       actions.push({
         tool: 'get_ga_data',
         params: {
@@ -131,27 +107,26 @@ class AIAgent {
 
   async generateReport(query, mcpResults, aiAnalysis) {
     try {
-      const reportPrompt = `以下のGoogle Analyticsデータを基に、詳細なレポートを作成してください：
+      // データを要約してプロンプトを軽量化
+      const dataSummary = Object.entries(mcpResults).map(([tool, data]) => {
+        if (data.content && data.content[0] && data.content[0].text) {
+          return `${tool}: ${data.content[0].text.substring(0, 300)}`;
+        }
+        return `${tool}: データなし`;
+      }).join('\n\n');
 
-元の質問: ${query}
-AI分析: ${aiAnalysis}
+      const reportPrompt = `GA分析レポート作成
+質問: ${query}
 
-取得データ:
-${JSON.stringify(mcpResults, null, 2)}
+データ概要:
+${dataSummary}
 
-レポート要件:
-1. データの要約と主要な発見
-2. トレンドや異常値の特定
-3. ビジネスへの影響分析
-4. 具体的な改善提案
-5. 次に取るべきアクション
-
-日本語で分かりやすく、視覚的にも読みやすい形式で作成してください。`;
+実用的なレポートを簡潔に作成してください。`;
 
       const response = await this.anthropic.messages.create({
         model: "claude-3-5-sonnet-20241022",
-        max_tokens: 2000,
-        temperature: 0.5,
+        max_tokens: 1000,
+        temperature: 0.3,
         system: "あなたはGoogle Analyticsのデータアナリストです。データを分析し、実用的なインサイトとレポートを提供します。",
         messages: [
           { role: "user", content: reportPrompt }
@@ -204,28 +179,21 @@ ${JSON.stringify(mcpResults, null, 2)}
 
   async processQueryWithHistory(userQuery, viewId, conversationHistory) {
     try {
-      // 会話履歴をフォーマット
-      const historyContext = conversationHistory.slice(-4).map(msg => {
-        if (msg.role === 'user') {
-          return `ユーザー: ${msg.content}`;
-        } else {
-          return `アシスタント: ${msg.content.substring(0, 200)}...`;
-        }
-      }).join('\n');
+      // 最新の会話のみを簡潔に参照
+      const recentContext = conversationHistory.slice(-2).map(msg => 
+        msg.role === 'user' ? `前回質問: ${msg.content.substring(0, 100)}` : ''
+      ).filter(Boolean).join('\n');
 
-      const contextualPrompt = `Google Analyticsビュー ID: ${viewId}
-現在の質問: ${userQuery}
+      const contextualPrompt = `Google Analytics分析要求: ${userQuery}
+ビューID: ${viewId}
+${recentContext ? `\n前回の文脈: ${recentContext}` : ''}
 
-会話履歴:
-${historyContext}
-
-上記の会話の流れを考慮して、現在の質問に適切なMCPツールを使用してデータを取得し、分析結果を提供してください。
-前回の分析結果を踏まえて、より深い洞察や追加の分析を行ってください。`;
+適切なデータを取得し、簡潔で実用的な分析を提供してください。`;
 
       const response = await this.anthropic.messages.create({
         model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1500,
-        temperature: 0.7,
+        max_tokens: 600,
+        temperature: 0.3,
         system: this.systemPrompt,
         messages: [
           { role: "user", content: contextualPrompt }
@@ -250,39 +218,26 @@ ${historyContext}
 
   async generateReportWithHistory(query, mcpResults, aiAnalysis, conversationHistory) {
     try {
-      // 前回の分析結果を取得
-      const previousResponses = conversationHistory
-        .filter(msg => msg.role === 'assistant')
-        .slice(-2)
-        .map(msg => msg.content.substring(0, 300))
-        .join('\n---\n');
+      // データを要約してプロンプトを軽量化
+      const dataSummary = Object.entries(mcpResults).map(([tool, data]) => {
+        if (data.content && data.content[0] && data.content[0].text) {
+          return `${tool}: ${data.content[0].text.substring(0, 250)}`;
+        }
+        return `${tool}: データなし`;
+      }).join('\n');
 
-      const reportPrompt = `以下のGoogle Analyticsデータを基に、会話の流れを考慮した詳細なレポートを作成してください：
+      const reportPrompt = `GA継続分析レポート
+質問: ${query}
 
-元の質問: ${query}
-AI分析: ${aiAnalysis}
+データ:
+${dataSummary}
 
-前回までの分析:
-${previousResponses}
-
-取得データ:
-${JSON.stringify(mcpResults, null, 2)}
-
-レポート要件:
-1. 前回の分析からの継続性を考慮
-2. データの要約と主要な発見
-3. 前回と比較した新しいインサイト
-4. トレンドや異常値の特定
-5. ビジネスへの影響分析
-6. 具体的な改善提案
-7. 次に分析すべき項目の提案
-
-日本語で分かりやすく、視覚的にも読みやすい形式で作成してください。`;
+継続的な観点から実用的なレポートを作成してください。`;
 
       const response = await this.anthropic.messages.create({
         model: "claude-3-5-sonnet-20241022",
-        max_tokens: 2000,
-        temperature: 0.5,
+        max_tokens: 1000,
+        temperature: 0.3,
         system: "あなたはGoogle Analyticsのデータアナリストです。会話の流れを理解し、継続的で深い洞察を提供します。",
         messages: [
           { role: "user", content: reportPrompt }

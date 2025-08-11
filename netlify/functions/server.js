@@ -234,12 +234,107 @@ app.get('/auth/debug', (req, res) => {
     redirect_uri_env: process.env.GOOGLE_REDIRECT_URI,
     redirect_uri_used: REDIRECT_URI,
     netlify_url: process.env.NETLIFY_URL,
+    ga4_property_id: process.env.GA4_PROPERTY_ID,
+    ga_view_id: process.env.GOOGLE_ANALYTICS_VIEW_ID,
     auth_url: oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: ['https://www.googleapis.com/auth/analytics.readonly'],
       redirect_uri: REDIRECT_URI
     })
   });
+});
+
+// トークンリフレッシュエンドポイント
+app.post('/api/refresh-token', async (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+    
+    if (!refresh_token) {
+      return res.status(400).json({ error: 'Refresh token required' });
+    }
+
+    // OAuth2クライアントでトークンをリフレッシュ
+    const refreshClient = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      REDIRECT_URI
+    );
+
+    refreshClient.setCredentials({
+      refresh_token: refresh_token
+    });
+
+    const newTokens = await refreshClient.refreshAccessToken();
+    
+    console.log('Token refresh successful');
+    
+    res.json({
+      access_token: newTokens.credentials.access_token,
+      expires_in: newTokens.credentials.expiry_date ? 
+        Math.floor((newTokens.credentials.expiry_date - Date.now()) / 1000) : 3600
+    });
+
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({ 
+      error: 'Failed to refresh token',
+      details: error.message 
+    });
+  }
+});
+
+// デバッグ用：GA4テストエンドポイント
+app.post('/api/test-ga4', async (req, res) => {
+  try {
+    const { authTokens } = req.body;
+    
+    if (!authTokens) {
+      return res.status(400).json({ error: 'Auth tokens required' });
+    }
+
+    // 認証設定
+    const testAuth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      REDIRECT_URI
+    );
+    testAuth.setCredentials(authTokens);
+
+    const analyticsData = google.analyticsdata('v1beta');
+    const propertyId = process.env.GA4_PROPERTY_ID || '419224498';
+    
+    console.log(`Testing GA4 access with Property ID: ${propertyId}`);
+
+    // シンプルなテストクエリ
+    const response = await analyticsData.properties.runReport({
+      auth: testAuth,
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+        metrics: [{ name: 'sessions' }],
+        dimensions: [{ name: 'date' }]
+      }
+    });
+
+    res.json({
+      success: true,
+      propertyId: propertyId,
+      rowCount: response.data.rowCount,
+      hasData: response.data.rows ? response.data.rows.length > 0 : false,
+      sampleData: response.data.rows ? response.data.rows.slice(0, 3) : null,
+      metricHeaders: response.data.metricHeaders,
+      dimensionHeaders: response.data.dimensionHeaders
+    });
+
+  } catch (error) {
+    console.error('GA4 Test Error:', error);
+    res.status(500).json({
+      error: error.message,
+      code: error.code,
+      details: error.details || 'No additional details',
+      propertyId: process.env.GA4_PROPERTY_ID || '419224498'
+    });
+  }
 });
 
 app.get('/auth/callback', async (req, res) => {
@@ -307,15 +402,22 @@ app.get('/auth/callback', async (req, res) => {
                     tokens: tokens
                   }, '${baseUrl}');
                   console.log('PostMessage sent to parent');
+                  
+                  // ポップアップウィンドウを閉じるだけ（親ウィンドウはリダイレクトしない）
+                  setTimeout(function() {
+                    window.close();
+                  }, 500);
+                  return; // 新しいウィンドウは開かない
                 }
               } catch (e) {
-                console.log('PostMessage failed (expected in some cases):', e);
+                console.log('PostMessage failed, will redirect current window:', e);
               }
               
-              // すぐにリダイレクト
+              // openerがない場合のみ現在のウィンドウをリダイレクト
+              console.log('No opener found, redirecting current window');
               setTimeout(function() {
                 window.location.href = '${baseUrl}/?auth_success=1';
-              }, 500);
+              }, 1000);
               
             })();
           </script>
@@ -422,15 +524,30 @@ app.post('/api/query', async (req, res) => {
 
 // チャット専用APIエンドポイント
 app.post('/api/chat/:sessionId', async (req, res) => {
+  let timeoutId;
+  
   try {
     const { sessionId } = req.params;
     const { message, viewId, authTokens } = req.body;
     
+    // 29秒でタイムアウト（Netlifyの30秒制限ギリギリ）
+    timeoutId = setTimeout(() => {
+      if (!res.headersSent) {
+        console.log(`[チャット ${sessionId}] タイムアウト発生`);
+        res.status(500).json({ 
+          error: '処理時間が長すぎるためタイムアウトしました。もう一度お試しください。',
+          timeout: true 
+        });
+      }
+    }, 29000);
+    
     if (!message || !viewId) {
+      clearTimeout(timeoutId);
       return res.status(400).json({ error: 'メッセージとビューIDが必要です' });
     }
 
     if (!authTokens) {
+      clearTimeout(timeoutId);
       return res.status(400).json({ error: 'Google認証が完了していません。🔑Google認証ボタンをクリックしてください。' });
     }
 
@@ -443,13 +560,30 @@ app.post('/api/chat/:sessionId', async (req, res) => {
       timestamp: new Date()
     });
 
-    console.log(`[チャット ${sessionId}] AI分析開始...`);
-    const queryAnalysis = await aiAgent.processQueryWithHistory(message, viewId, session.history);
+    console.log(`[チャット ${sessionId}] 処理開始...`);
+    
+    // 直接的なキーワード分析で高速化
+    const messageText = message.toLowerCase();
+    let suggestedActions = [];
+    
+    if (messageText.includes('マーケティング') || messageText.includes('戦略') || messageText.includes('プラン')) {
+      suggestedActions = [
+        { tool: 'get_top_pages', params: { viewId, startDate: '30daysAgo', endDate: 'today', maxResults: 10 } },
+        { tool: 'get_traffic_sources', params: { viewId, startDate: '30daysAgo', endDate: 'today' } }
+      ];
+    } else if (messageText.includes('人気') || messageText.includes('ページ')) {
+      suggestedActions = [{ tool: 'get_top_pages', params: { viewId, startDate: '30daysAgo', endDate: 'today', maxResults: 10 } }];
+    } else if (messageText.includes('トラフィック') || messageText.includes('流入')) {
+      suggestedActions = [{ tool: 'get_traffic_sources', params: { viewId, startDate: '30daysAgo', endDate: 'today' } }];
+    } else {
+      suggestedActions = [{ tool: 'get_ga_data', params: { viewId, startDate: '30daysAgo', endDate: 'today', metrics: ['sessions', 'totalUsers', 'screenPageViews'], dimensions: ['date'] } }];
+    }
     
     console.log(`[チャット ${sessionId}] GA4データ取得開始...`);
     const mcpResults = {};
     
-    for (const action of queryAnalysis.suggestedActions) {
+    // 並列実行で処理時間短縮
+    const toolPromises = suggestedActions.map(async (action) => {
       try {
         console.log(`Calling GA tool: ${action.tool}`, action.params);
         
@@ -458,17 +592,26 @@ app.post('/api/chat/:sessionId', async (req, res) => {
           authTokens: authTokens
         };
         
-        const result = await mcpClient.callTool(action.tool, paramsWithAuth);
-        console.log(`GA tool result (${action.tool}):`, JSON.stringify(result, null, 2));
+        const result = await Promise.race([
+          mcpClient.callTool(action.tool, paramsWithAuth),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 15000))
+        ]);
+        
+        console.log(`GA tool result (${action.tool}): 成功`);
         mcpResults[action.tool] = result;
       } catch (error) {
-        console.error(`GA tool error (${action.tool}):`, error);
+        console.error(`GA tool error (${action.tool}):`, error.message);
         mcpResults[action.tool] = { error: error.message };
       }
-    }
+    });
+    
+    await Promise.allSettled(toolPromises);
 
     console.log(`[チャット ${sessionId}] レポート生成開始...`);
-    const report = await aiAgent.generateReportWithHistory(message, mcpResults, queryAnalysis.aiAnalysis, session.history);
+    const report = await Promise.race([
+      aiAgent.generateReportWithHistory(message, mcpResults, '', session.history),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('レポート生成タイムアウト')), 12000))
+    ]);
     
     session.history.push({
       role: 'assistant',
@@ -477,21 +620,31 @@ app.post('/api/chat/:sessionId', async (req, res) => {
       data: mcpResults
     });
 
-    res.json({
-      success: true,
-      sessionId: sessionId,
-      response: report,
-      analysis: queryAnalysis,
-      data: mcpResults,
-      conversationLength: session.history.length
-    });
+    clearTimeout(timeoutId);
+    
+    if (!res.headersSent) {
+      res.json({
+        success: true,
+        sessionId: sessionId,
+        response: report,
+        data: mcpResults,
+        conversationLength: session.history.length
+      });
+    }
 
   } catch (error) {
-    console.error(`Chat processing error (${sessionId}):`, error);
-    res.status(500).json({ 
-      error: 'チャット処理中にエラーが発生しました',
-      details: error.message 
-    });
+    clearTimeout(timeoutId);
+    console.error(`Chat processing error (${req.params.sessionId}):`, error);
+    
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: error.message.includes('タイムアウト') 
+          ? '処理時間が長すぎました。シンプルな質問で再度お試しください。' 
+          : 'チャット処理中にエラーが発生しました',
+        details: error.message,
+        timeout: error.message.includes('タイムアウト')
+      });
+    }
   }
 });
 

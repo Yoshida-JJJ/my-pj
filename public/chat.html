@@ -338,7 +338,7 @@
             <div class="input-row">
                 <textarea 
                     id="messageInput" 
-                    placeholder="メッセージを入力..."
+                    placeholder="メッセージを入力... (Enter: 改行, Shift+Enter: 送信)"
                     onkeydown="handleKeyDown(event)"
                     rows="1"
                 ></textarea>
@@ -376,9 +376,24 @@
         function loadAuthTokens() {
             const stored = localStorage.getItem('ga_auth_tokens');
             if (stored) {
-                authTokens = JSON.parse(stored);
-                updateAuthStatus(true);
-                return authTokens;
+                try {
+                    const tokens = JSON.parse(stored);
+                    
+                    // トークンの有効期限をチェック
+                    if (tokens.expiry_date && tokens.expiry_date > Date.now()) {
+                        authTokens = tokens;
+                        updateAuthStatus(true);
+                        return authTokens;
+                    } else if (tokens.refresh_token) {
+                        // リフレッシュトークンがある場合は自動更新を試行
+                        console.log('Access token expired, attempting refresh...');
+                        refreshAccessToken(tokens);
+                        return tokens; // 一時的に古いトークンを返す
+                    }
+                } catch (error) {
+                    console.error('Error parsing stored tokens:', error);
+                    localStorage.removeItem('ga_auth_tokens');
+                }
             }
             return null;
         }
@@ -400,6 +415,59 @@
             }
         }
 
+        // トークン自動更新機能
+        async function refreshAccessToken(tokens) {
+            try {
+                console.log('Refreshing access token...');
+                const response = await fetch('/api/refresh-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refresh_token: tokens.refresh_token })
+                });
+
+                if (response.ok) {
+                    const newTokens = await response.json();
+                    console.log('Token refresh successful');
+                    
+                    // 新しいトークンと既存のリフレッシュトークンを組み合わせ
+                    const updatedTokens = {
+                        ...tokens,
+                        ...newTokens,
+                        expiry_date: Date.now() + (newTokens.expires_in * 1000)
+                    };
+                    
+                    saveAuthTokens(updatedTokens);
+                    return updatedTokens;
+                } else {
+                    console.error('Token refresh failed:', response.status);
+                    clearAuthTokens();
+                    return null;
+                }
+            } catch (error) {
+                console.error('Token refresh error:', error);
+                clearAuthTokens();
+                return null;
+            }
+        }
+
+        // ページロード時とAPI呼び出し前に自動でトークンチェック
+        async function ensureValidTokens() {
+            if (!authTokens) {
+                return false;
+            }
+
+            // トークンが期限切れまたは5分以内に期限切れの場合はリフレッシュ
+            if (authTokens.expiry_date && authTokens.expiry_date <= Date.now() + (5 * 60 * 1000)) {
+                console.log('Token expiring soon, refreshing...');
+                const refreshedTokens = await refreshAccessToken(authTokens);
+                return !!refreshedTokens;
+            }
+
+            return true;
+        }
+
         // 認証ポップアップからのメッセージを受信
         window.addEventListener('message', function(event) {
             console.log('Received message from popup:', event.data);
@@ -417,6 +485,11 @@
                 console.log('Tokens:', event.data.tokens);
                 saveAuthTokens(event.data.tokens);
                 addMessage('assistant', '✅ Google認証が完了しました！分析を開始できます。');
+                
+                // 認証成功後のURL変更を防ぐ
+                if (window.location.search.includes('auth_success=1')) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
             } else if (event.data && event.data.type === 'auth_error') {
                 console.error('Authentication error:', event.data.error);
                 addMessage('assistant', `❌ 認証エラー: ${event.data.error}`);
@@ -455,10 +528,12 @@
         }
 
         function handleKeyDown(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
+            if (event.key === 'Enter' && event.shiftKey) {
+                // Shift+Enterで送信
                 event.preventDefault();
                 sendMessage();
             }
+            // Enterキーのみの場合は改行（デフォルト動作を許可）
         }
 
         function authenticate() {
@@ -570,6 +645,13 @@
                 return;
             }
 
+            // トークンの有効性をチェックし、必要に応じて自動更新
+            const tokenValid = await ensureValidTokens();
+            if (!tokenValid) {
+                alert('認証の有効期限が切れました。再認証が必要です。');
+                return;
+            }
+
             // ユーザーメッセージを表示
             addMessage('user', message);
             
@@ -592,7 +674,34 @@
                     signal: currentAbortController.signal
                 });
 
-                const result = await response.json();
+                if (!response.ok) {
+                    // HTTPステータスエラーの場合
+                    let errorMessage = `HTTP Error: ${response.status}`;
+                    try {
+                        const errorData = await response.text();
+                        if (errorData) {
+                            const parsed = JSON.parse(errorData);
+                            errorMessage = parsed.error || errorMessage;
+                        }
+                    } catch (parseError) {
+                        console.log('Could not parse error response as JSON');
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const responseText = await response.text();
+                if (!responseText.trim()) {
+                    throw new Error('サーバーから空の応答が返されました。もう一度お試しください。');
+                }
+
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('JSON Parse Error:', parseError);
+                    console.error('Response text:', responseText);
+                    throw new Error('サーバー応答の解析に失敗しました。もう一度お試しください。');
+                }
 
                 if (result.success) {
                     // AIレスポンスを表示
@@ -608,8 +717,18 @@
                 }
                 
                 console.error('Chat error:', error);
-                showError(`エラー: ${error.message}`);
-                addMessage('assistant', 'すみません、エラーが発生しました。もう一度お試しください。');
+                
+                // タイムアウトエラーの場合の特別処理
+                if (error.message.includes('タイムアウト') || error.message.includes('timeout')) {
+                    showError('処理時間が長すぎました。より短い質問で再度お試しください。');
+                    addMessage('assistant', '⏱️ 処理がタイムアウトしました。\n\n短めの質問（例：「今月のPV数は？」）で再度お試しください。');
+                } else if (error.message.includes('Gateway Timeout') || error.message.includes('504')) {
+                    showError('サーバーが応答しませんでした。少し待ってから再度お試しください。');
+                    addMessage('assistant', '🔧 一時的なサーバーエラーです。\n\n30秒ほど待ってから再度お試しください。');
+                } else {
+                    showError(`エラー: ${error.message}`);
+                    addMessage('assistant', 'すみません、エラーが発生しました。もう一度お試しください。');
+                }
             } finally {
                 currentAbortController = null;
                 hideTyping();
@@ -668,8 +787,24 @@
         }
 
         // ページ読み込み時の処理
-        window.onload = function() {
+        window.onload = async function() {
             console.log('Page loading...');
+            
+            // まず保存された認証トークンを読み込み
+            loadAuthTokens();
+            
+            // トークンがある場合は有効性をチェック
+            if (authTokens) {
+                console.log('Existing tokens found, checking validity...');
+                const isValid = await ensureValidTokens();
+                if (isValid) {
+                    console.log('Authentication is valid and ready');
+                    addMessage('assistant', '✅ 認証済みです。分析を開始できます。');
+                } else {
+                    console.log('Stored tokens are invalid');
+                    addMessage('assistant', '⚠️ 認証の有効期限が切れました。再認証が必要です。');
+                }
+            }
             
             // URLパラメータをチェック（認証完了の場合）
             const urlParams = new URLSearchParams(window.location.search);
@@ -705,9 +840,6 @@
                 // URLパラメーターをクリア
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
-            
-            // 保存された認証トークンを読み込み
-            loadAuthTokens();
             
             // 認証完了チェック（ページロード時）
             setTimeout(checkAuthenticationStatus, 1000);
@@ -785,6 +917,42 @@
                 if (confirm('一時トークンが見つかりました。認証を完了しますか？')) {
                     checkAuthenticationStatus();
                 }
+            }
+        };
+
+        // GA4テスト機能（デバッグ用）
+        window.testGA4 = async function() {
+            if (!authTokens) {
+                console.error('Auth tokens not available. Please authenticate first.');
+                return;
+            }
+
+            try {
+                console.log('Testing GA4 API access...');
+                const response = await fetch('/api/test-ga4', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ authTokens })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('✅ GA4 API Test Successful!');
+                    console.log('Property ID:', result.propertyId);
+                    console.log('Row count:', result.rowCount);
+                    console.log('Has data:', result.hasData);
+                    console.log('Sample data:', result.sampleData);
+                } else {
+                    console.error('❌ GA4 API Test Failed:');
+                    console.error('Error:', result.error);
+                    console.error('Code:', result.code);
+                    console.error('Property ID:', result.propertyId);
+                }
+            } catch (error) {
+                console.error('GA4 test request failed:', error);
             }
         };
     </script>

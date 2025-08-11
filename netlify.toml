@@ -6,6 +6,9 @@
 [build.environment]
   NODE_ENV = "production"
 
+[functions.server]
+  timeout = 30
+
 [[headers]]
   for = "/*"
   [headers.values]
