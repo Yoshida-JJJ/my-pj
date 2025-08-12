@@ -16,10 +16,10 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
             height: 100vh;
             overflow: hidden;
-            color: #e2e8f0;
+            color: #ffffff;
         }
 
         .chat-container {
@@ -28,19 +28,20 @@
             flex-direction: column;
             max-width: 1200px;
             margin: 0 auto;
-            background: linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+            background: linear-gradient(145deg, rgba(0, 0, 0, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
         }
 
         .chat-header {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+            background: linear-gradient(135deg, #000000 0%, #333333 50%, #666666 100%);
             color: white;
             padding: 24px;
             text-align: center;
             position: relative;
             overflow: hidden;
+            border-bottom: 3px solid #ffffff;
         }
 
         .chat-header::before {
@@ -62,13 +63,48 @@
             50% { transform: translateX(100%); }
         }
 
+        .header-brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-logo {
+            width: 48px;
+            height: 48px;
+            position: relative;
+        }
+
+        .logo-triangle {
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+            position: relative;
+        }
+
+        .logo-triangle::after {
+            content: '';
+            position: absolute;
+            top: 30%;
+            left: 30%;
+            width: 40%;
+            height: 40%;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            background: #000000;
+        }
+
         .chat-header h1 {
             font-size: 2rem;
             font-weight: 800;
-            margin-bottom: 8px;
+            margin: 0;
             position: relative;
             z-index: 1;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            letter-spacing: 1px;
         }
 
         .chat-header p {
@@ -81,8 +117,8 @@
 
         .config-section {
             padding: 20px 24px;
-            background: rgba(30, 41, 59, 0.8);
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            background: rgba(26, 26, 26, 0.9);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(10px);
         }
 
@@ -93,7 +129,7 @@
         }
 
         .config-row label {
-            color: #94a3b8;
+            color: #cccccc;
             font-weight: 600;
             font-size: 14px;
             min-width: 80px;
@@ -102,38 +138,39 @@
         .config-row input {
             flex: 1;
             padding: 12px 16px;
-            background: rgba(15, 23, 42, 0.8);
-            border: 2px solid rgba(148, 163, 184, 0.2);
-            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
             font-size: 14px;
-            color: #e2e8f0;
+            color: #ffffff;
             transition: all 0.3s ease;
         }
 
         .config-row input:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            background: rgba(15, 23, 42, 0.95);
+            border-color: #ffffff;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.95);
         }
 
         .config-row input::placeholder {
-            color: #64748b;
+            color: #888888;
         }
 
         .btn-auth {
             padding: 12px 20px;
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            color: #000000;
             border: none;
-            border-radius: 12px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.25);
+            box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.25);
             position: relative;
             overflow: hidden;
+            letter-spacing: 0.5px;
         }
 
         .btn-auth::before {
@@ -153,7 +190,8 @@
 
         .btn-auth:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.35);
+            box-shadow: 0 8px 25px 0 rgba(255, 255, 255, 0.4);
+            background: linear-gradient(135deg, #ffffff, #dddddd);
         }
 
         .chat-messages {
@@ -218,17 +256,18 @@
         }
 
         .message.user .message-content {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
+            background: linear-gradient(135deg, #ffffff, #dddddd);
+            color: #000000;
             border-bottom-right-radius: 8px;
             margin-left: 40px;
+            font-weight: 500;
         }
 
         .message.assistant .message-content {
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             border-bottom-left-radius: 8px;
-            color: #e2e8f0;
+            color: #ffffff;
             margin-right: 40px;
         }
 
@@ -338,10 +377,10 @@
 
         .send-btn {
             padding: 14px;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            color: #000000;
             border: none;
-            border-radius: 50%;
+            border-radius: 12px;
             cursor: pointer;
             width: 52px;
             height: 52px;
@@ -349,7 +388,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25);
+            box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.25);
             position: relative;
             overflow: hidden;
         }
@@ -371,7 +410,7 @@
 
         .send-btn:hover:not(:disabled) {
             transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 8px 25px 0 rgba(16, 185, 129, 0.35);
+            box-shadow: 0 8px 25px 0 rgba(255, 255, 255, 0.4);
         }
 
         .send-btn:disabled {
@@ -433,23 +472,24 @@
 
         .example-btn {
             padding: 8px 16px;
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            border-radius: 20px;
+            background: rgba(26, 26, 26, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
-            color: #94a3b8;
+            color: #cccccc;
             backdrop-filter: blur(10px);
         }
 
         .example-btn:hover {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            color: #000000;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
             border-color: transparent;
+            font-weight: 600;
         }
 
         .error-message {
@@ -482,8 +522,15 @@
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            <h1>🎯 BigLuckGear Analytics</h1>
-            <p>AI-Powered Google Analytics Analysis Platform</p>
+            <div class="header-brand">
+                <div class="brand-logo">
+                    <div class="logo-triangle"></div>
+                </div>
+                <div>
+                    <h1>BigLuckGear Analytics</h1>
+                    <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">AI-Powered Google Analytics Analysis Platform</p>
+                </div>
+            </div>
         </div>
 
         <div class="config-section">
@@ -593,13 +640,15 @@
         function updateAuthStatus(isAuthenticated) {
             const authBtn = document.querySelector('.btn-auth');
             if (isAuthenticated) {
-                authBtn.textContent = '✅ 認証済み';
-                authBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-                authBtn.style.boxShadow = '0 4px 14px 0 rgba(16, 185, 129, 0.25)';
+                authBtn.textContent = '✓ 認証済み';
+                authBtn.style.background = 'linear-gradient(135deg, #00ff88, #00cc66)';
+                authBtn.style.boxShadow = '0 4px 14px 0 rgba(0, 255, 136, 0.25)';
+                authBtn.style.color = '#000000';
             } else {
                 authBtn.textContent = '🔑 Google認証';
-                authBtn.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
-                authBtn.style.boxShadow = '0 4px 14px 0 rgba(59, 130, 246, 0.25)';
+                authBtn.style.background = 'linear-gradient(135deg, #ffffff, #cccccc)';
+                authBtn.style.boxShadow = '0 4px 14px 0 rgba(255, 255, 255, 0.25)';
+                authBtn.style.color = '#000000';
             }
         }
 

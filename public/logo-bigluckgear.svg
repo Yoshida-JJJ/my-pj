@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .logo-text { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 120px; }
+      .logo-symbol { fill: #000; }
+    </style>
+  </defs>
+  
+  <text x="540" y="350" class="logo-text" text-anchor="middle" fill="#000">BIGLUCKGEAR</text>
+  
+  <!-- Triangle Symbol -->
+  <path d="M 540 450 L 720 750 L 360 750 Z" class="logo-symbol"/>
+  <path d="M 540 500 L 600 600 L 480 600 Z" fill="#fff"/>
+  <path d="M 540 520 L 580 580 L 500 580 Z" fill="#000"/>
+</svg>
