@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>BigLuckGear Analytics - AI-Powered Analytics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,12 +18,17 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
             background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height support */
             overflow: hidden;
             color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation; /* Improve touch responsiveness */
         }
 
         .chat-container {
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height support */
             display: flex;
             flex-direction: column;
             max-width: 1200px;
@@ -32,6 +37,32 @@
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        }
+
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+                height: 100vh;
+                height: 100dvh;
+                -webkit-text-size-adjust: 100%; /* Prevent text size adjustment */
+                -ms-text-size-adjust: 100%;
+            }
+            
+            .chat-container {
+                max-width: 100%;
+                border: none;
+                box-shadow: none;
+                border-radius: 0;
+                height: 100vh;
+                height: 100dvh;
+                position: relative;
+                overflow: hidden;
+            }
         }
 
         .chat-header {
@@ -44,24 +75,6 @@
             border-bottom: 3px solid #ffffff;
         }
 
-        .chat-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, 
-                rgba(255,255,255,0.1) 0%, 
-                transparent 50%, 
-                rgba(255,255,255,0.05) 100%);
-            animation: shimmer 3s infinite;
-        }
-
-        @keyframes shimmer {
-            0%, 100% { transform: translateX(-100%); }
-            50% { transform: translateX(100%); }
-        }
 
         .header-brand {
             display: flex;
@@ -69,22 +82,6 @@
             justify-content: center;
             gap: 16px;
             position: relative;
-            z-index: 1;
-        }
-
-        .brand-logo {
-            width: 64px;
-            height: 64px;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .brand-logo svg {
-            width: 64px;
-            height: 64px;
-            object-fit: contain;
         }
 
         .chat-header h1 {
@@ -103,6 +100,24 @@
             font-weight: 500;
             position: relative;
             z-index: 1;
+        }
+
+        /* ヘッダーのモバイル対応 */
+        @media (max-width: 768px) {
+            .chat-header {
+                padding: 12px;
+            }
+            
+            .chat-header h1 {
+                font-size: 1.3rem;
+                letter-spacing: 0.3px;
+                margin: 0;
+            }
+            
+            .chat-header p {
+                font-size: 0.8rem;
+                margin: 2px 0 0 0;
+            }
         }
 
         .config-section {
@@ -147,6 +162,32 @@
             color: #888888;
         }
 
+        /* 設定セクションのモバイル対応 */
+        @media (max-width: 768px) {
+            .config-section {
+                padding: 12px;
+            }
+            
+            .config-row {
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .config-row label {
+                min-width: 60px;
+                font-size: 12px;
+                flex-shrink: 0;
+            }
+            
+            .config-row input {
+                padding: 10px 12px;
+                font-size: 16px; /* iOS zoom prevention - must be 16px or larger */
+                border-radius: 8px;
+                min-height: 44px; /* Apple recommended touch target size */
+            }
+        }
+
         .btn-auth {
             padding: 12px 20px;
             background: linear-gradient(135deg, #ffffff, #cccccc);
@@ -184,6 +225,22 @@
             background: linear-gradient(135deg, #ffffff, #dddddd);
         }
 
+        /* ボタンのモバイル対応 */
+        @media (max-width: 768px) {
+            .btn-auth {
+                padding: 10px 16px;
+                font-size: 16px; /* iOS zoom prevention */
+                border-radius: 8px;
+                width: auto;
+                margin-top: 4px;
+                min-height: 44px; /* Apple recommended touch target size */
+            }
+            
+            .btn-auth:hover {
+                transform: none; /* モバイルではhover効果を無効化 */
+            }
+        }
+
         .chat-messages {
             flex: 1;
             overflow-y: auto;
@@ -208,6 +265,21 @@
 
         .chat-messages::-webkit-scrollbar-thumb:hover {
             background: rgba(148, 163, 184, 0.5);
+        }
+
+        /* チャットメッセージのモバイル対応 */
+        @media (max-width: 768px) {
+            .chat-messages {
+                padding: 16px 12px;
+                padding-bottom: 8px;
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
+            }
+            
+            .chat-messages::-webkit-scrollbar {
+                width: 4px;
+            }
         }
 
         .message {
@@ -266,6 +338,36 @@
             opacity: 0.6;
             margin-top: 8px;
             font-weight: 500;
+        }
+
+        /* メッセージのモバイル対応 */
+        @media (max-width: 768px) {
+            .message {
+                margin-bottom: 16px;
+            }
+            
+            .message-content {
+                max-width: 90%;
+                padding: 14px 16px;
+                border-radius: 16px;
+                font-size: 15px;
+                line-height: 1.5;
+            }
+            
+            .message.user .message-content {
+                margin-left: 20px;
+                border-bottom-right-radius: 6px;
+            }
+            
+            .message.assistant .message-content {
+                margin-right: 20px;
+                border-bottom-left-radius: 6px;
+            }
+            
+            .message-time {
+                font-size: 10px;
+                margin-top: 6px;
+            }
         }
 
         .message.user .message-time {
@@ -365,6 +467,31 @@
             color: #64748b;
         }
 
+        /* 入力エリアのモバイル対応 */
+        @media (max-width: 768px) {
+            .chat-input {
+                padding: 16px 12px;
+                padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); /* iPhone X以降のセーフエリア対応 */
+                position: sticky;
+                bottom: 0;
+                background: rgba(15, 23, 42, 0.95);
+                backdrop-filter: blur(20px);
+                z-index: 1000;
+            }
+            
+            .input-row {
+                gap: 6px;
+            }
+            
+            .input-row textarea {
+                padding: 12px 16px;
+                border-radius: 16px;
+                font-size: 16px; /* iOS zoom prevention - must be 16px or larger */
+                min-height: 44px; /* Apple recommended touch target size */
+                line-height: 1.4;
+            }
+        }
+
         .send-btn {
             padding: 14px;
             background: linear-gradient(135deg, #ffffff, #cccccc);
@@ -453,6 +580,25 @@
             display: flex;
         }
 
+        /* 送信・停止ボタンのモバイル対応 */
+        @media (max-width: 768px) {
+            .send-btn, .stop-btn {
+                width: 44px; /* Apple recommended touch target size */
+                height: 44px;
+                padding: 10px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+            
+            .send-btn span, .stop-btn span {
+                font-size: 18px;
+            }
+            
+            .send-btn:hover, .stop-btn:hover {
+                transform: none; /* モバイルではhover効果を無効化 */
+            }
+        }
+
         .example-questions {
             display: flex;
             gap: 12px;
@@ -482,6 +628,94 @@
             font-weight: 600;
         }
 
+        .example-toggle {
+            background: rgba(26, 26, 26, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #cccccc;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            display: block;
+            width: fit-content;
+        }
+
+        .example-toggle:hover {
+            background: rgba(26, 26, 26, 0.8);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* サンプル質問エリア共通スタイル */
+        .example-questions {
+            gap: 8px;
+            margin-bottom: 12px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        
+        .example-questions.show {
+            max-height: 300px;
+        }
+
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            .example-toggle {
+                padding: 6px 12px;
+                font-size: 12px;
+                border-radius: 6px;
+            }
+            
+            .example-questions {
+                gap: 4px;
+                margin-bottom: 8px;
+            }
+            
+            .example-questions.show {
+                max-height: 200px;
+            }
+            
+            .example-btn {
+                padding: 8px 12px;
+                font-size: 14px; /* Slightly larger for better readability */
+                border-radius: 6px;
+                min-height: 44px; /* Apple recommended touch target size */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                flex: 1;
+                touch-action: manipulation;
+            }
+            
+            .example-btn:hover {
+                transform: none; /* モバイルではhover効果を無効化 */
+            }
+        }
+
+        /* PC版スタイル */
+        @media (min-width: 769px) {
+            .example-questions {
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+            
+            .example-questions.show {
+                max-height: 300px;
+            }
+            
+            .example-btn {
+                padding: 8px 14px;
+                font-size: 12px;
+                flex: 0 1 auto;
+                white-space: nowrap;
+            }
+        }
+
         .error-message {
             background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
             color: #f87171;
@@ -507,24 +741,32 @@
             color: #94a3b8;
             font-weight: 600;
         }
+
+        /* セッション情報のモバイル対応 */
+        @media (max-width: 768px) {
+            .session-info {
+                font-size: 10px;
+                padding: 8px 12px;
+                padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+                position: sticky;
+                bottom: 0;
+                z-index: 999;
+            }
+        }
+
+        /* タイピングインジケーターのモバイル対応 */
+        @media (max-width: 768px) {
+            .typing-indicator {
+                margin: 16px 12px;
+                padding: 12px 16px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
             <div class="header-brand">
-                <div class="brand-logo">
-                    <svg width="64" height="64" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Main triangle with curved indentations based on provided logo -->
-                        <path d="M 200 50 
-                                 C 240 120, 320 180, 350 300 
-                                 L 50 300 
-                                 C 80 180, 160 120, 200 50 Z" 
-                              fill="white"/>
-                        <!-- Central triangle cutout -->
-                        <path d="M 200 150 L 250 250 L 150 250 Z" fill="black"/>
-                    </svg>
-                </div>
                 <div>
                     <h1>BigLuckGear Analytics</h1>
                     <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">AI Analytics</p>
@@ -560,11 +802,43 @@
         </div>
 
         <div class="chat-input">
-            <div class="example-questions">
-                <button class="example-btn" onclick="setQuestion('今月の人気ページを教えて')">人気ページ</button>
-                <button class="example-btn" onclick="setQuestion('ユーザーの属性分析をして')">属性分析</button>
-                <button class="example-btn" onclick="setQuestion('トラフィック源を分析して')">トラフィック源</button>
-                <button class="example-btn" onclick="setQuestion('セッション数の推移は？')">セッション推移</button>
+            <button class="example-toggle" onclick="toggleExamples()">💡 サンプル質問を表示</button>
+            <div class="example-questions" id="exampleQuestions">
+                <!-- 基本分析 -->
+                <button class="example-btn" onclick="setQuestion('過去1ヶ月のサイト全体のパフォーマンス概要を教えて')">📊 月次概要</button>
+                <button class="example-btn" onclick="setQuestion('今日のリアルタイムアクセス状況は？')">⚡ リアルタイム</button>
+                <button class="example-btn" onclick="setQuestion('過去7日間と前週の比較分析をして')">📈 週間比較</button>
+                
+                <!-- ページ分析 -->
+                <button class="example-btn" onclick="setQuestion('人気ページトップ10とその特徴を分析して')">🏆 人気ページ</button>
+                <button class="example-btn" onclick="setQuestion('直帰率が高いページを特定して改善提案をして')">🚪 直帰率分析</button>
+                <button class="example-btn" onclick="setQuestion('ページの滞在時間ランキングと改善点は？')">⏱️ 滞在時間</button>
+                
+                <!-- ユーザー分析 -->
+                <button class="example-btn" onclick="setQuestion('新規ユーザーとリピーターの行動パターン分析')">👥 ユーザー属性</button>
+                <button class="example-btn" onclick="setQuestion('ユーザーの地域別アクセス分析をして')">🌍 地域分析</button>
+                <button class="example-btn" onclick="setQuestion('デバイス別（PC・スマホ・タブレット）の利用傾向は？')">📱 デバイス分析</button>
+                
+                <!-- トラフィック分析 -->
+                <button class="example-btn" onclick="setQuestion('検索エンジンからの流入キーワード分析')">🔍 SEO分析</button>
+                <button class="example-btn" onclick="setQuestion('SNSからの流入とその効果測定')">📱 SNS流入</button>
+                <button class="example-btn" onclick="setQuestion('広告キャンペーンの効果とROI分析')">💰 広告効果</button>
+                
+                <!-- コンバージョン -->
+                <button class="example-btn" onclick="setQuestion('コンバージョン率の推移と改善施策の提案')">🎯 CV率分析</button>
+                <button class="example-btn" onclick="setQuestion('購入までのユーザー行動フローを分析して')">🛒 購入フロー</button>
+                
+                <!-- 詳細分析 -->
+                <button class="example-btn" onclick="setQuestion('サイト速度がユーザー行動に与える影響は？')">⚡ 速度影響</button>
+                <button class="example-btn" onclick="setQuestion('季節トレンドと前年同期比較をして')">🗓️ 季節分析</button>
+                <button class="example-btn" onclick="setQuestion('競合他社との比較ベンチマーク分析')">⚔️ 競合比較</button>
+                
+                <!-- Shopify売上分析 -->
+                <button class="example-btn" onclick="setQuestion('過去1ヶ月のShopify売上実績を分析して')">💰 売上実績</button>
+                <button class="example-btn" onclick="setQuestion('Shopify注文データと人気商品ランキング')">📦 商品分析</button>
+                <button class="example-btn" onclick="setQuestion('GA4とShopify売上の統合分析をして')">🔗 統合分析</button>
+                <button class="example-btn" onclick="setQuestion('ECサイトのコンバージョン率と平均注文額は？')">🛒 EC指標</button>
+                <button class="example-btn" onclick="setQuestion('Webアクセスから購入までの流れを分析して')">📊 購入フロー</button>
             </div>
             
             <div class="input-row">
@@ -761,6 +1035,24 @@
         function setQuestion(question) {
             document.getElementById('messageInput').value = question;
             document.getElementById('messageInput').focus();
+            autoResize(document.getElementById('messageInput'));
+            // 質問選択後に折りたたむ（PC・モバイル共通）
+            document.getElementById('exampleQuestions').classList.remove('show');
+            // ボタンテキストを更新
+            document.querySelector('.example-toggle').textContent = '💡 サンプル質問を表示';
+        }
+
+        function toggleExamples() {
+            const examples = document.getElementById('exampleQuestions');
+            const toggleBtn = document.querySelector('.example-toggle');
+            
+            examples.classList.toggle('show');
+            
+            if (examples.classList.contains('show')) {
+                toggleBtn.textContent = '💡 サンプル質問を隠す';
+            } else {
+                toggleBtn.textContent = '💡 サンプル質問を表示';
+            }
         }
 
         function handleKeyDown(event) {
@@ -824,6 +1116,12 @@
             
             messageCount++;
             document.getElementById('messageCount').textContent = messageCount;
+            
+            // 最初のユーザーメッセージ後にサンプル質問を自動で隠す（PC・モバイル共通）
+            if (role === 'user' && messageCount === 2) {
+                document.getElementById('exampleQuestions').classList.remove('show');
+                document.querySelector('.example-toggle').textContent = '💡 サンプル質問を表示';
+            }
         }
 
         function showTyping() {
@@ -913,15 +1211,43 @@
                 if (!response.ok) {
                     // HTTPステータスエラーの場合
                     let errorMessage = `HTTP Error: ${response.status}`;
+                    let errorDetails = null;
+                    
                     try {
                         const errorData = await response.text();
+                        console.error('❌ Server error response:', errorData);
+                        
                         if (errorData) {
-                            const parsed = JSON.parse(errorData);
-                            errorMessage = parsed.error || errorMessage;
+                            try {
+                                const parsed = JSON.parse(errorData);
+                                errorMessage = parsed.error || errorMessage;
+                                errorDetails = parsed.details || null;
+                                
+                                // サーバーからの詳細エラー情報をログに記録
+                                console.error('❌ Parsed server error:', {
+                                    error: parsed.error,
+                                    details: parsed.details,
+                                    timeout: parsed.timeout,
+                                    mcpError: parsed.mcpError,
+                                    sessionId: parsed.sessionId,
+                                    fallbackFailed: parsed.fallbackFailed
+                                });
+                                
+                                // エラー詳細があれば追加
+                                if (errorDetails) {
+                                    errorMessage += `\n詳細: ${errorDetails}`;
+                                }
+                                
+                            } catch (jsonParseError) {
+                                console.error('❌ Could not parse error JSON:', jsonParseError);
+                                console.error('❌ Raw error data:', errorData);
+                                errorMessage += `\n生データ: ${errorData.substring(0, 200)}`;
+                            }
                         }
-                    } catch (parseError) {
-                        console.log('Could not parse error response as JSON');
+                    } catch (textParseError) {
+                        console.error('❌ Could not read error response as text:', textParseError);
                     }
+                    
                     throw new Error(errorMessage);
                 }
 
@@ -952,7 +1278,12 @@
                     return; // 停止ボタンによる中断なので、エラーメッセージは表示しない
                 }
                 
-                console.error('Chat error:', error);
+                console.error('❌ Chat error:', error);
+                console.error('❌ Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
                 
                 // タイムアウトエラーの場合の特別処理
                 if (error.message.includes('タイムアウト') || error.message.includes('timeout')) {
@@ -963,7 +1294,25 @@
                     addMessage('assistant', '🔧 一時的なサーバーエラーです。\n\n30秒ほど待ってから再度お試しください。');
                 } else {
                     showError(`エラー: ${error.message}`);
-                    addMessage('assistant', 'すみません、エラーが発生しました。もう一度お試しください。');
+                    
+                    // 詳細なデバッグ情報を提供
+                    const debugMessage = `🔍 **詳細エラー情報**
+
+❌ **エラー**: ${error.message}
+
+🛠️ **デバッグ手順**:
+1. ブラウザのコンソール（F12）を開く
+2. \`testChatDebug()\` を実行してデバッグ情報を取得
+3. \`debugAuth()\` で認証状態を確認
+
+📞 **サポート情報**:
+- セッションID: ${currentSessionId}
+- エラー時刻: ${new Date().toISOString()}
+- ユーザーエージェント: ${navigator.userAgent.substring(0, 100)}
+
+もう一度お試しいただくか、デバッグ機能で詳細を確認してください。`;
+                    
+                    addMessage('assistant', debugMessage);
                 }
             } finally {
                 currentAbortController = null;
@@ -1189,6 +1538,35 @@
                 }
             } catch (error) {
                 console.error('GA4 test request failed:', error);
+            }
+        };
+        
+        // デバッグ用関数（コンソールで実行可能）
+        window.debugChat = function() {
+            console.log('🔧 利用可能なデバッグ機能:');
+            console.log('1. testChatDebug() - チャット処理のデバッグ');
+            console.log('2. testSimpleChat() - 簡易チャット処理のテスト');
+            console.log('3. testGA4() - GA4 API接続テスト');
+            console.log('4. debugAuth() - 認証状態の確認');
+        };
+        
+        window.testChatDebug = async function() {
+            const testMessage = '今年の1月からの商品別売上ランキングを出して。';
+            const viewId = document.getElementById('viewId').value.trim();
+            
+            try {
+                console.log('🐛 チャットデバッグ開始...');
+                const response = await fetch('/api/debug/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: testMessage, viewId: viewId || 'test' })
+                });
+                const result = await response.json();
+                console.log('デバッグ結果:', result);
+                return result;
+            } catch (error) {
+                console.error('デバッグエラー:', error);
+                return error;
             }
         };
     </script>
