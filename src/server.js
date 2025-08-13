@@ -433,13 +433,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Shopify接続テスト
+// Shopify接続テスト（軽量版）
 app.get('/api/shopify/test', async (req, res) => {
   try {
     console.log('🧪 Shopify API接続テスト開始...');
     
-    const result = await mcpClient.callTool('get_shopify_sales_ranking', {
-      startDate: '2025-01-01',
+    const result = await mcpClient.callTool('get_shopify_orders', {
+      startDate: '2025-08-01',
       endDate: '2025-08-13',
       maxResults: 5
     });
@@ -467,6 +467,37 @@ app.get('/api/shopify/test', async (req, res) => {
         SHOPIFY_STORE_URL: process.env.SHOPIFY_STORE_URL ? 'あり' : 'なし',
         SHOPIFY_ACCESS_TOKEN: process.env.SHOPIFY_ACCESS_TOKEN ? 'あり' : 'なし'
       }
+    });
+  }
+});
+
+// Shopify売上ランキングテスト
+app.get('/api/shopify/ranking', async (req, res) => {
+  try {
+    console.log('📊 Shopify売上ランキングテスト開始...');
+    
+    const result = await mcpClient.callTool('get_shopify_sales_ranking', {
+      startDate: '2025-01-01',
+      endDate: '2025-08-13',
+      maxResults: 10
+    });
+    
+    res.json({
+      success: true,
+      message: 'Shopify売上ランキングテスト完了',
+      timestamp: new Date().toISOString(),
+      result: result
+    });
+    
+  } catch (error) {
+    console.error('❌ Shopify売上ランキングテストエラー:', error);
+    
+    res.json({
+      success: false,
+      message: 'Shopify売上ランキングテストエラー',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      fallbackUsed: true
     });
   }
 });

@@ -286,8 +286,12 @@ class ShopifyMCPServer {
       let page = 1;
       const limit = 250; // Shopify APIの最大値
       
-      while (allOrders.length < 1000 && page <= 4) { // 最大1000件まで取得
-        console.log(`📥 ページ${page}の注文データを取得中...`);
+      // 最初は少量でテスト
+      const maxPages = 1; // テストのため1ページのみ
+      const testLimit = 50; // テストのため50件のみ
+      
+      while (allOrders.length < 500 && page <= maxPages) { // テスト用に制限
+        console.log(`📥 ページ${page}の注文データを取得中... (テストモード: ${testLimit}件まで)`);
         
         try {
           const response = await axios.get(
@@ -299,12 +303,12 @@ class ShopifyMCPServer {
               },
               params: {
                 status: 'any',
-                limit: limit,
+                limit: testLimit, // テスト用制限
                 created_at_min: startDateFormatted,
                 created_at_max: endDateFormatted,
                 order: 'created_at desc'
               },
-              timeout: 30000 // 30秒のタイムアウト
+              timeout: 15000 // 15秒に短縮
             }
           );
           
@@ -477,17 +481,26 @@ ${JSON.stringify({
         }]
       };
     } catch (error) {
+      console.error('❌ Shopify API エラー - デモデータにフォールバック:', error.message);
+      
+      // APIエラー時はデモデータを表示
+      const demoResult = this.getDemoSalesRanking(params);
+      
       return {
         content: [{
           type: 'text',
-          text: `❌ Shopify売上ランキング取得エラー: ${error.message}
+          text: `⚠️ **Shopify API接続エラー - デモデータを表示しています**
 
-🔧 **トラブルシューティング**:
-1. Shopify API認証情報を確認してください
-2. 指定期間にデータが存在するか確認してください
-3. Shopify APIの利用制限に達していないか確認してください
+🔧 **発生したエラー**: ${error.message}
 
-エラー詳細: ${error.stack || error.message}`
+📊 **対処法**: 
+- Shopify API認証情報を確認
+- ネットワーク接続を確認
+- Shopify APIレート制限の確認
+
+**以下はデモデータによる売上ランキングです：**
+
+${demoResult.content[0].text}`
         }]
       };
     }
