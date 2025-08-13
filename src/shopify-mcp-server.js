@@ -225,12 +225,242 @@ class ShopifyMCPServer {
       ).join('\n') || 'カテゴリー情報なし';
   }
 
+  async getShopifySalesRanking(params) {
+    try {
+      if (!this.shopifyStore || !this.shopifyAccessToken) {
+        throw new Error('Shopify認証情報が設定されていません');
+      }
+
+      // 日付パラメータの準備
+      const startDateFormatted = this.formatShopifyDate(params.startDate || '2025-01-01');
+      const endDateFormatted = this.formatShopifyDate(params.endDate || 'today');
+      const maxResults = params.maxResults || 20;
+      
+      console.log(`📊 Shopify売上ランキング取得期間: ${startDateFormatted} - ${endDateFormatted}`);
+      
+      // より多くの注文を取得（複数ページ対応）
+      let allOrders = [];
+      let page = 1;
+      const limit = 250; // Shopify APIの最大値
+      
+      while (allOrders.length < 1000 && page <= 4) { // 最大1000件まで取得
+        const response = await axios.get(
+          `https://${this.shopifyStore}/admin/api/2024-01/orders.json`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': this.shopifyAccessToken,
+              'Content-Type': 'application/json'
+            },
+            params: {
+              status: 'any',
+              limit: limit,
+              created_at_min: startDateFormatted,
+              created_at_max: endDateFormatted,
+              page: page
+            }
+          }
+        );
+        
+        const orders = response.data.orders || [];
+        allOrders = allOrders.concat(orders);
+        
+        if (orders.length < limit) break; // 最後のページ
+        page++;
+      }
+
+      // 商品別売上集計
+      const productSales = {};
+      let totalRevenue = 0;
+      let totalOrders = allOrders.length;
+      
+      allOrders.forEach(order => {
+        const orderTotal = parseFloat(order.total_price || 0);
+        totalRevenue += orderTotal;
+        
+        order.line_items.forEach(item => {
+          const productName = item.name;
+          const productId = item.product_id;
+          const price = parseFloat(item.price);
+          const quantity = item.quantity;
+          const revenue = price * quantity;
+          
+          if (!productSales[productName]) {
+            productSales[productName] = {
+              id: productId,
+              name: productName,
+              quantity: 0,
+              revenue: 0,
+              orders: new Set(),
+              avgPrice: 0
+            };
+          }
+          
+          productSales[productName].quantity += quantity;
+          productSales[productName].revenue += revenue;
+          productSales[productName].orders.add(order.id);
+          productSales[productName].avgPrice = productSales[productName].revenue / productSales[productName].quantity;
+        });
+      });
+
+      // 売上順にソート
+      const sortedProducts = Object.values(productSales)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, maxResults);
+
+      // 期間表示を動的に生成
+      const startDate = new Date(startDateFormatted);
+      const endDate = new Date(endDateFormatted);
+      const periodDisplay = `${startDate.getFullYear()}年${startDate.getMonth() + 1}月${startDate.getDate()}日 - ${endDate.getFullYear()}年${endDate.getMonth() + 1}月${endDate.getDate()}日`;
+
+      // 売上ランキングのフォーマット
+      const rankingText = sortedProducts.map((product, index) => {
+        const share = ((product.revenue / totalRevenue) * 100).toFixed(1);
+        const orderCount = product.orders.size;
+        
+        return `${index + 1}位. ${product.name}
+   💰 売上: ¥${Math.round(product.revenue).toLocaleString()} (シェア: ${share}%)
+   📦 販売数: ${product.quantity.toLocaleString()}個
+   💱 平均単価: ¥${Math.round(product.avgPrice).toLocaleString()}
+   📋 注文回数: ${orderCount}回`;
+      }).join('\n\n');
+
+      // ABC分析
+      let cumulativeShare = 0;
+      const abcAnalysis = { A: [], B: [], C: [] };
+      
+      sortedProducts.forEach(product => {
+        const share = (product.revenue / totalRevenue) * 100;
+        cumulativeShare += share;
+        
+        if (cumulativeShare <= 80) {
+          abcAnalysis.A.push(product);
+        } else if (cumulativeShare <= 95) {
+          abcAnalysis.B.push(product);
+        } else {
+          abcAnalysis.C.push(product);
+        }
+      });
+
+      // 仕入れ戦略の提案
+      const strategy = this.generatePurchaseStrategy(abcAnalysis, sortedProducts, totalRevenue, totalOrders);
+
+      return {
+        content: [{
+          type: 'text',
+          text: `🏆 商品別売上ランキング & 仕入れ戦略 (${periodDisplay})
+
+📊 **売上サマリー**
+・総売上: ¥${totalRevenue.toLocaleString()}
+・総注文数: ${totalOrders.toLocaleString()}件
+・平均注文額: ¥${Math.round(totalRevenue / totalOrders).toLocaleString()}
+・分析商品数: ${sortedProducts.length}商品
+
+🏆 **売上ランキング TOP${maxResults}**
+
+${rankingText}
+
+📈 **ABC分析**
+・Aランク商品 (上位80%売上): ${abcAnalysis.A.length}商品
+・Bランク商品 (80-95%売上): ${abcAnalysis.B.length}商品  
+・Cランク商品 (残り5%売上): ${abcAnalysis.C.length}商品
+
+${strategy}
+
+📊 **データ詳細**
+${JSON.stringify({
+  period: periodDisplay,
+  totalRevenue: totalRevenue,
+  totalOrders: totalOrders,
+  analyzedProducts: sortedProducts.length,
+  abcAnalysis: {
+    A: abcAnalysis.A.length,
+    B: abcAnalysis.B.length,
+    C: abcAnalysis.C.length
+  },
+  topProducts: sortedProducts.slice(0, 5).map(p => ({
+    name: p.name,
+    revenue: p.revenue,
+    quantity: p.quantity,
+    avgPrice: p.avgPrice
+  }))
+}, null, 2)}`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `❌ Shopify売上ランキング取得エラー: ${error.message}
+
+🔧 **トラブルシューティング**:
+1. Shopify API認証情報を確認してください
+2. 指定期間にデータが存在するか確認してください
+3. Shopify APIの利用制限に達していないか確認してください
+
+エラー詳細: ${error.stack || error.message}`
+        }]
+      };
+    }
+  }
+
+  generatePurchaseStrategy(abcAnalysis, sortedProducts, totalRevenue, totalOrders) {
+    let strategy = `\n🎯 **仕入れ戦略提案**\n\n`;
+    
+    // Aランク商品戦略
+    if (abcAnalysis.A.length > 0) {
+      const topProduct = abcAnalysis.A[0];
+      strategy += `💎 **Aランク商品戦略 (${abcAnalysis.A.length}商品)**
+・売上の80%を占める重要商品群
+・在庫切れ防止が最優先
+・推奨: 安全在庫を1.5-2倍に増量
+・トップ商品「${topProduct.name}」は月間¥${Math.round(topProduct.revenue).toLocaleString()}の売上\n\n`;
+    }
+    
+    // Bランク商品戦略
+    if (abcAnalysis.B.length > 0) {
+      strategy += `⚖️ **Bランク商品戦略 (${abcAnalysis.B.length}商品)**
+・売上の15%を占める中核商品群
+・需要予測に基づく適正在庫管理
+・推奨: 月次売上の1-1.2倍の在庫確保\n\n`;
+    }
+    
+    // Cランク商品戦略
+    if (abcAnalysis.C.length > 0) {
+      strategy += `📉 **Cランク商品戦略 (${abcAnalysis.C.length}商品)**
+・売上の5%程度の少量商品群
+・在庫圧縮と効率化が重要
+・推奨: 在庫を最小限に抑制、一部商品の廃番検討\n\n`;
+    }
+    
+    // 成長性分析
+    const highValueProducts = sortedProducts.filter(p => p.avgPrice > 5000);
+    const highVolumeProducts = sortedProducts.filter(p => p.quantity > 50);
+    
+    strategy += `📈 **成長機会の特定**\n`;
+    if (highValueProducts.length > 0) {
+      strategy += `・高単価商品 (¥5,000以上): ${highValueProducts.length}商品 → 利益率改善の機会\n`;
+    }
+    if (highVolumeProducts.length > 0) {
+      strategy += `・高回転商品 (50個以上販売): ${highVolumeProducts.length}商品 → 量的拡大の機会\n`;
+    }
+    
+    strategy += `\n💡 **推奨アクション**
+1. 上位3商品の在庫を即座に2週間分確保
+2. 月次で売上推移をモニタリング
+3. 季節性を考慮した発注計画の策定
+4. 新商品導入は既存Aランク商品との関連性を重視`;
+    
+    return strategy;
+  }
+
   async handleToolCall(toolName, params) {
     switch (toolName) {
       case 'get_shopify_orders':
         return await this.getShopifyOrders(params);
       case 'get_shopify_products':
         return await this.getShopifyProducts(params);
+      case 'get_shopify_sales_ranking':
+        return await this.getShopifySalesRanking(params);
       default:
         throw new Error(`Unknown tool: ${toolName}`);
     }
@@ -259,6 +489,19 @@ class ShopifyMCPServer {
           properties: {
             maxResults: { type: "number", description: "最大取得件数", default: 50 }
           }
+        }
+      },
+      {
+        name: "get_shopify_sales_ranking",
+        description: "Shopifyの商品別売上ランキングを取得し、仕入れ戦略を提案します",
+        inputSchema: {
+          type: "object",
+          properties: {
+            startDate: { type: "string", description: "開始日 (YYYY-MM-DD or 2025-01-01)" },
+            endDate: { type: "string", description: "終了日 (YYYY-MM-DD or today)" },
+            maxResults: { type: "number", description: "ランキング件数", default: 20 }
+          },
+          required: ["startDate", "endDate"]
         }
       }
     ];

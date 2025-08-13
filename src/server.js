@@ -56,7 +56,9 @@ class MCPClient {
 
   async callTool(toolName, params) {
     return new Promise((resolve, reject) => {
-      const mcpProcess = spawn('node', [path.join(__dirname, 'mcp-server.js')], {
+      // Shopifyツールかどうかで使用するサーバーを決定
+      const serverFile = toolName.startsWith('get_shopify_') ? 'shopify-mcp-server.js' : 'mcp-server.js';
+      const mcpProcess = spawn('node', [path.join(__dirname, serverFile)], {
         stdio: 'pipe'
       });
 

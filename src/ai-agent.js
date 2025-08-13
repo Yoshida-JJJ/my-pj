@@ -29,7 +29,8 @@ class AIAgent {
 6. get_landing_pages - ランディングページ分析
 7. get_shopify_orders - Shopify注文データ（商品名、売上、日時、顧客情報）
 8. get_shopify_products - Shopify商品データ（商品名、価格、在庫、カテゴリー）
-9. get_integrated_analysis - GA4とShopify統合分析（コンバージョン、ROI）
+9. get_shopify_sales_ranking - Shopify商品別売上ランキング & 仕入れ戦略（NEW）
+10. get_integrated_analysis - GA4とShopify統合分析（コンバージョン、ROI）
 
 【Shopify分析の重点事項】
 ✅ 実際の売上金額と注文履歴の詳細分析
@@ -229,16 +230,32 @@ class AIAgent {
     
     if (hasShopifyRequest) {
       console.log('  ✅ Shopifyツールを追加中...');
-      actions.push({
-        tool: 'get_shopify_orders',
-        params: { viewId, startDate, endDate, maxResults: 50 }
-      });
       
-      if (queryText.includes('商品') || queryText.includes('product') || responseText.includes('商品') || responseText.includes('product')) {
+      // 売上ランキングの特別検出
+      const hasRankingRequest = queryText.includes('ランキング') || queryText.includes('ranking') || 
+                               queryText.includes('売上ランキング') || queryText.includes('商品別') ||
+                               queryText.includes('仕入れ') || queryText.includes('戦略') ||
+                               queryText.includes('1月から') || queryText.includes('今年');
+      
+      if (hasRankingRequest) {
+        console.log('  🏆 売上ランキング機能を使用...');
         actions.push({
-          tool: 'get_shopify_products',
-          params: { viewId, startDate, endDate, maxResults: 20 }
+          tool: 'get_shopify_sales_ranking',
+          params: { startDate, endDate, maxResults: 20 }
         });
+      } else {
+        // 通常のShopify注文データ
+        actions.push({
+          tool: 'get_shopify_orders',
+          params: { viewId, startDate, endDate, maxResults: 50 }
+        });
+        
+        if (queryText.includes('商品') || queryText.includes('product') || responseText.includes('商品') || responseText.includes('product')) {
+          actions.push({
+            tool: 'get_shopify_products',
+            params: { viewId, startDate, endDate, maxResults: 20 }
+          });
+        }
       }
       
       if (queryText.includes('統合') || queryText.includes('比較') || queryText.includes('分析') || responseText.includes('統合') || responseText.includes('比較') || responseText.includes('分析')) {
