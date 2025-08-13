@@ -117,6 +117,34 @@ class GoogleAnalyticsMCPServer {
             },
             required: ['viewId', 'startDate', 'endDate']
           }
+        },
+        {
+          name: 'get_product_sales',
+          description: '商品別売上データを取得します',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              viewId: { type: 'string', description: 'ビューID' },
+              startDate: { type: 'string', description: '開始日' },
+              endDate: { type: 'string', description: '終了日' },
+              maxResults: { type: 'number', description: '最大結果数', default: 50 }
+            },
+            required: ['viewId', 'startDate', 'endDate']
+          }
+        },
+        {
+          name: 'get_sales_ranking',
+          description: '商品売上ランキングを取得します',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              viewId: { type: 'string', description: 'ビューID' },
+              startDate: { type: 'string', description: '開始日' },
+              endDate: { type: 'string', description: '終了日' },
+              maxResults: { type: 'number', description: '最大結果数', default: 20 }
+            },
+            required: ['viewId', 'startDate', 'endDate']
+          }
         }
       ],
     }));
@@ -136,6 +164,10 @@ class GoogleAnalyticsMCPServer {
             return await this.getDemographics(args);
           case 'get_interests':
             return await this.getInterests(args);
+          case 'get_product_sales':
+            return await this.getProductSales(args);
+          case 'get_sales_ranking':
+            return await this.getSalesRanking(args);
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -401,6 +433,130 @@ class GoogleAnalyticsMCPServer {
               `カテゴリー: ${row.dimensionValues[0].value} - セッション: ${row.metricValues[0].value}, ユーザー: ${row.metricValues[1].value}`
             ).join('\n') || 'データがありません'
           }`
+        }
+      ]
+    };
+  }
+
+  async getProductSales(args) {
+    const { viewId, startDate, endDate, maxResults = 50, authTokens } = args;
+
+    // 認証トークンを使用（パラメータまたはグローバル）
+    const tokens = authTokens || global.authTokens;
+    if (tokens) {
+      this.auth.setCredentials(tokens);
+    } else {
+      throw new Error('認証トークンが設定されていません。Google認証を完了してください。');
+    }
+
+    // GA4 Property IDの処理
+    let propertyId;
+    if (viewId.startsWith('G-')) {
+      propertyId = process.env.GA4_PROPERTY_ID || '419224498';
+    } else {
+      propertyId = viewId;
+    }
+    
+    const response = await this.analyticsData.properties.runReport({
+      auth: this.auth,
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: 'itemPurchaseQuantity' },
+          { name: 'itemRevenue' },
+          { name: 'purchaseRevenue' }
+        ],
+        dimensions: [
+          { name: 'itemName' },
+          { name: 'itemCategory' },
+          { name: 'itemId' }
+        ],
+        orderBys: [{ metric: { metricName: 'itemRevenue' }, desc: true }],
+        limit: maxResults
+      }
+    });
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            period: `${startDate} - ${endDate}`,
+            totalProducts: response.data.rowCount,
+            products: response.data.rows?.map(row => ({
+              name: row.dimensionValues[0].value,
+              category: row.dimensionValues[1].value,
+              id: row.dimensionValues[2].value,
+              quantity: parseInt(row.metricValues[0].value),
+              revenue: parseFloat(row.metricValues[1].value),
+              totalRevenue: parseFloat(row.metricValues[2].value)
+            })) || []
+          }, null, 2)
+        }
+      ]
+    };
+  }
+
+  async getSalesRanking(args) {
+    const { viewId, startDate, endDate, maxResults = 20, authTokens } = args;
+
+    // 認証トークンを使用（パラメータまたはグローバル）
+    const tokens = authTokens || global.authTokens;
+    if (tokens) {
+      this.auth.setCredentials(tokens);
+    } else {
+      throw new Error('認証トークンが設定されていません。Google認証を完了してください。');
+    }
+
+    // GA4 Property IDの処理
+    let propertyId;
+    if (viewId.startsWith('G-')) {
+      propertyId = process.env.GA4_PROPERTY_ID || '419224498';
+    } else {
+      propertyId = viewId;
+    }
+    
+    const response = await this.analyticsData.properties.runReport({
+      auth: this.auth,
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: 'itemPurchaseQuantity' },
+          { name: 'itemRevenue' },
+          { name: 'purchaseRevenue' }
+        ],
+        dimensions: [
+          { name: 'itemName' },
+          { name: 'itemCategory' }
+        ],
+        orderBys: [{ metric: { metricName: 'itemRevenue' }, desc: true }],
+        limit: maxResults
+      }
+    });
+
+    const totalRevenue = response.data.rows?.reduce((sum, row) => 
+      sum + parseFloat(row.metricValues[1].value), 0) || 0;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `商品別売上ランキング (${startDate} - ${endDate})\n\n` +
+               `📊 総売上: ¥${totalRevenue.toLocaleString()}\n` +
+               `📦 商品数: ${response.data.rowCount}件\n\n` +
+               `🏆 売上ランキング TOP${maxResults}:\n\n` +
+               (response.data.rows?.map((row, index) => {
+                 const revenue = parseFloat(row.metricValues[1].value);
+                 const quantity = parseInt(row.metricValues[0].value);
+                 const share = ((revenue / totalRevenue) * 100).toFixed(1);
+                 return `${index + 1}位. ${row.dimensionValues[0].value}\n` +
+                        `   カテゴリー: ${row.dimensionValues[1].value}\n` +
+                        `   売上: ¥${revenue.toLocaleString()} (${share}%)\n` +
+                        `   販売数: ${quantity.toLocaleString()}個\n` +
+                        `   単価: ¥${(revenue/quantity).toFixed(0)}\n`;
+               }).join('\n') || 'データがありません')
         }
       ]
     };
