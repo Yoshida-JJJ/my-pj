@@ -224,6 +224,8 @@ class AIAgent {
     const hasShopifyRequest = queryText.includes('shopify') || queryText.includes('売上') || queryText.includes('注文') || 
                              queryText.includes('商品') || queryText.includes('ec') || queryText.includes('eコマース') || 
                              queryText.includes('購入') || queryText.includes('決済') || queryText.includes('オーダー') ||
+                             queryText.includes('ランキング') || queryText.includes('仕入れ') || queryText.includes('戦略') ||
+                             queryText.includes('1月から') || queryText.includes('今年') ||
                              responseText.includes('shopify') || responseText.includes('売上') || responseText.includes('注文');
     
     console.log('  Shopify検出:', hasShopifyRequest);
@@ -231,11 +233,23 @@ class AIAgent {
     if (hasShopifyRequest) {
       console.log('  ✅ Shopifyツールを追加中...');
       
-      // 売上ランキングの特別検出
+      // 売上ランキングの特別検出（強化版）
       const hasRankingRequest = queryText.includes('ランキング') || queryText.includes('ranking') || 
                                queryText.includes('売上ランキング') || queryText.includes('商品別') ||
                                queryText.includes('仕入れ') || queryText.includes('戦略') ||
-                               queryText.includes('1月から') || queryText.includes('今年');
+                               queryText.includes('1月から') || queryText.includes('今年') ||
+                               (queryText.includes('売上') && queryText.includes('商品')) ||
+                               (queryText.includes('ランキング') && queryText.includes('出し'));
+      
+      console.log('  🔍 売上ランキング検出条件チェック:');
+      console.log('    - ランキング:', queryText.includes('ランキング'));
+      console.log('    - 商品別:', queryText.includes('商品別'));
+      console.log('    - 仕入れ:', queryText.includes('仕入れ'));
+      console.log('    - 戦略:', queryText.includes('戦略'));
+      console.log('    - 1月から:', queryText.includes('1月から'));
+      console.log('    - 今年:', queryText.includes('今年'));
+      console.log('    - 売上+商品:', queryText.includes('売上') && queryText.includes('商品'));
+      console.log('    - 総合判定:', hasRankingRequest);
       
       if (hasRankingRequest) {
         console.log('  🏆 売上ランキング機能を使用...');
