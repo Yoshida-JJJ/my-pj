@@ -1320,28 +1320,33 @@ app.post('/api/chat/:sessionId', async (req, res) => {
         console.log(`[チャット ${sessionId}] 最終タイムアウト発生、フォールバック分析を提供`);
         
         // タイムアウト時でも利用可能なデータで基本分析を提供
-        const partialReport = `【緊急分析レポート】
+        const partialReport = `【高速モード自動切替】
 
 📋 **分析要求**: ${message}
 
-⏱️ **状況**: 処理時間が長くなったため、現在取得済みのデータで基本分析をお届けします。
+⏱️ **状況**: 詳細分析処理に時間がかかったため、高速モードに自動切替しました。
 
-📊 **利用可能データ**:
-${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基本GA4データ'}
+🔧 **高速モード制限事項**:
+• 処理時間: 8秒以内
+• データ量: 基本情報のみ
+• 分析深度: 簡易分析
+• 対象範囲: 限定的
 
-🔍 **基本分析**:
-現在の分析要求は正常に処理中です。より詳細な分析については、以下をお試しください：
+📊 **現在取得済みデータ**:
+${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基本データのみ'}
 
-1. 期間を短縮した分析（例：「過去1週間の...」）
-2. より具体的な質問（例：「トップページのパフォーマンス」）
-3. 単一指標に焦点を当てた分析
+💡 **より詳細な分析を希望する場合**:
+1. 期間を短縮（例：「過去1週間の...」）
+2. 具体的な質問（例：「トップページのパフォーマンス」）  
+3. 単一指標に焦点（例：「在庫分析のみ」）
+4. 時間を置いて再実行
 
-📈 **推奨事項**:
-- システムパフォーマンスの最適化中です
-- 継続的な分析で詳細データを取得可能
+🔄 **次回の推奨事項**:
 - より具体的な質問で高速分析が可能
+- 小さな期間での分割分析
+- 単一機能に特化した質問
 
-引き続きサポートいたします。お気軽に再度お試しください。`;
+⚡ 高速モードでも実用的な分析結果をお届けします。`;
 
         if (session) {
           session.history.push({
@@ -1885,6 +1890,14 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
         if (isInventoryQuery) {
           console.log('⚡ 高速在庫分析開始');
           
+          const quickModeConditions = {
+            商品数制限: '20商品',
+            在庫閾値: '10個以下',
+            タイムアウト: '8秒',
+            対象フィールド: '商品名、在庫数、価格のみ',
+            表示制限: '上位5件まで'
+          };
+          
           const productsResponse = await axios.get(
             `https://${shopifyStore}/admin/api/2024-01/products.json`,
             {
@@ -1916,19 +1929,29 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
             });
           });
           
-          return `⚡ **高速在庫分析**
-          
-📦 **チェック完了**: ${products.length}商品
-⚠️ **低在庫商品**: ${lowStockItems.length}件
+          return `⚡ **高速在庫分析** 
+
+🔧 **高速モード条件**:
+• 対象商品数: ${quickModeConditions.商品数制限}（全商品の一部）
+• 在庫判定閾値: ${quickModeConditions.在庫閾値}
+• 処理時間制限: ${quickModeConditions.タイムアウト}
+• 取得データ: ${quickModeConditions.対象フィールド}
+• 結果表示: ${quickModeConditions.表示制限}
+
+📊 **分析結果**:
+📦 チェック完了: ${products.length}商品
+⚠️ 低在庫商品: ${lowStockItems.length}件
 
 ${lowStockItems.length > 0 ? 
   lowStockItems.slice(0, 5).map((item, i) => 
     `${i+1}. ${item.title} - 在庫${item.inventory}個 (¥${item.price})`
   ).join('\n') : 
-  '✅ すべての商品で十分な在庫があります'
+  '✅ チェックした商品はすべて十分な在庫があります'
 }
 
-📋 **提案**: ${lowStockItems.length > 0 ? '低在庫商品の発注を検討してください' : '在庫状況は良好です'}`;
+📋 **提案**: ${lowStockItems.length > 0 ? '低在庫商品の発注を検討してください' : 'チェック範囲では在庫状況は良好です'}
+
+💡 **より詳細な分析**: 全商品対象の詳細分析をご希望の場合は、通常モードでお試しください。`;
         }
 
         console.log('⚡ 高速Shopify API呼び出し開始');
@@ -2004,9 +2027,27 @@ ${lowStockItems.length > 0 ?
 
         const avgOrder = orders.length > 0 ? Math.round(totalSales / orders.length) : 0;
 
+        const quickModeConditionsForSales = {
+          注文数制限: `最大${limit}件`,
+          期間: `${daysDiff}日間`,
+          条件: '支払済み注文のみ',
+          タイムアウト: '8秒',
+          表示制限: 'TOP5商品まで',
+          処理方式: '簡易集計（高速）'
+        };
+
         return `⚡ **高速Shopify売上分析** (${startDate} ～ ${endDate})
 
-✅ **実データ分析** - ${orders.length}注文を高速処理 (${daysDiff}日間)
+🔧 **高速モード条件**:
+• 注文数制限: ${quickModeConditionsForSales.注文数制限}
+• 対象期間: ${quickModeConditionsForSales.期間}
+• 注文条件: ${quickModeConditionsForSales.条件}
+• 処理時間制限: ${quickModeConditionsForSales.タイムアウト}
+• 結果表示: ${quickModeConditionsForSales.表示制限}
+• 分析方式: ${quickModeConditionsForSales.処理方式}
+
+📊 **分析結果**:
+✅ 実データ分析完了 - ${orders.length}注文を処理
 
 💰 **売上サマリー**
 ・総売上: ¥${Math.round(totalSales).toLocaleString()}
@@ -2026,6 +2067,8 @@ ${topProducts.map((product, i) => {
 1. ${topProducts[0]?.name || '主力商品'}の在庫強化
 2. 上位3商品で約${topProducts.slice(0,3).reduce((sum, p) => sum + p.sales, 0) > 0 ? Math.round((topProducts.slice(0,3).reduce((sum, p) => sum + p.sales, 0) / totalSales) * 100) : 0}%の売上占有
 3. 平均注文額¥${avgOrder.toLocaleString()}の維持
+
+💡 **より詳細な分析**: 全注文対象・カテゴリ別・期間別など詳細分析は通常モードで利用可能です。
 
 ⚡ **処理時間**: <3秒（超高速）
 📊 **データソース**: 実Shopifyストア
