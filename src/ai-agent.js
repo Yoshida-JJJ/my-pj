@@ -293,7 +293,7 @@ JSON形式で回答：
         name: 'analyze_inventory',
         params: { 
           lowStockThreshold: 10, 
-          limit: 100, // 詳細分析のために増加
+          limit: 200, // 180秒タイムアウトで最大処理量
           outOfStockOnly: queryLower.includes('在庫切れ') || queryLower.includes('なくなって')
         },
         reason: '在庫分析要求'
