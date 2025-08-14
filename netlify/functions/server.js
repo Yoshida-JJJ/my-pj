@@ -1473,6 +1473,12 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           console.log(`[チャット ${sessionId}] 真のMCPツール呼び出し: ${action.tool}`, action.params);
           
           const timeoutMs = getToolTimeout(action.tool);
+          console.log(`[チャット ${sessionId}] タイムアウト設定: ${timeoutMs}ms`);
+          
+          // trueMCPServerの存在チェック
+          if (!trueMCPServer) {
+            throw new Error('trueMCPServerが初期化されていません');
+          }
           
           const result = await Promise.race([
             trueMCPServer.handleToolCall(action.tool, action.params),

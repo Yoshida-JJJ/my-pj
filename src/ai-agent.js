@@ -226,16 +226,24 @@ class AIAgent {
   async selectToolsDynamically(userQuery) {
     console.log('🧠 動的ツール選択開始:', userQuery);
     
-    const availableTools = this.trueMCPServer.getAvailableTools();
-    console.log('🛠️ 利用可能ツール:', availableTools.map(t => t.name));
+    // MCPサーバーの初期化チェック
+    if (!this.trueMCPServer) {
+      console.warn('⚠️ trueMCPServerが初期化されていません');
+      return this.fallbackToolSelection(userQuery);
+    }
     
-    const toolSelectionPrompt = `以下のユーザー質問に最適なShopify分析ツールを選択してください：
+    try {
+      const availableTools = this.trueMCPServer.getAvailableTools();
+      console.log('🛠️ 利用可能ツール:', availableTools.map(t => t.name));
+    
+      const toolSelectionPrompt = `以下のユーザー質問に最適なShopify分析ツールを選択してください：
 
 質問: "${userQuery}"
 
 利用可能なツール:
 ${availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 
+複合的な質問の場合は複数のツールを選択してください。
 最適なツールを1-3個選択し、必要なパラメータを生成してください。
 JSON形式で回答：
 {
@@ -248,20 +256,23 @@ JSON形式で回答：
   ]
 }`;
 
-    try {
-      const response = await this.anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1000,
-        temperature: 0.1,
-        messages: [{ role: "user", content: toolSelectionPrompt }]
-      });
+      const response = await Promise.race([
+        this.anthropic.messages.create({
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: 1000,
+          temperature: 0.1,
+          messages: [{ role: "user", content: toolSelectionPrompt }]
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('ツール選択タイムアウト')), 30000))
+      ]);
 
       const selection = JSON.parse(response.content[0].text);
       console.log('🎯 動的選択結果:', selection);
       
       return selection.selectedTools || [];
     } catch (error) {
-      console.error('❌ 動的選択エラー:', error);
+      console.error('❌ 動的選択エラー:', error.message);
+      console.error('エラー詳細:', error.stack);
       return this.fallbackToolSelection(userQuery);
     }
   }
@@ -280,6 +291,32 @@ JSON形式で回答：
     const startDate = formatDate(dateRange.start);
     const endDate = formatDate(dateRange.end);
     
+    console.log('📋 フォールバック選択ロジック実行中:', queryLower);
+    
+    // 複合クエリ：販売実績と在庫状況の戦略分析
+    if ((queryLower.includes('販売') || queryLower.includes('売上')) && 
+        queryLower.includes('在庫') && 
+        (queryLower.includes('戦略') || queryLower.includes('仕入れ'))) {
+      console.log('🔄 複合クエリ検出: 販売実績+在庫状況+戦略分析');
+      return [
+        {
+          name: 'analyze_sales',
+          params: { startDate, endDate, groupBy: 'product', limit: 15 },
+          reason: '販売実績分析'
+        },
+        {
+          name: 'analyze_inventory',
+          params: { 
+            lowStockThreshold: 15, 
+            limit: 100,
+            outOfStockOnly: false
+          },
+          reason: '在庫状況分析'
+        }
+      ];
+    }
+    
+    // 売上ランキング単体
     if (queryLower.includes('売上') && queryLower.includes('ランキング')) {
       return [{
         name: 'analyze_sales',
@@ -288,18 +325,21 @@ JSON形式で回答：
       }];
     }
     
+    // 在庫分析単体
     if (queryLower.includes('在庫')) {
       return [{
         name: 'analyze_inventory',
         params: { 
           lowStockThreshold: 10, 
-          limit: 200, // 180秒タイムアウトで最大処理量
+          limit: 200,
           outOfStockOnly: queryLower.includes('在庫切れ') || queryLower.includes('なくなって')
         },
         reason: '在庫分析要求'
       }];
     }
     
+    // デフォルト
+    console.log('🔧 デフォルト選択: 基本注文分析');
     return [{
       name: 'get_orders',
       params: { startDate, endDate, status: 'any', limit: 50 },
