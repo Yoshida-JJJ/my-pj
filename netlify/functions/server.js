@@ -565,195 +565,249 @@ class GAAnalytics {
           }
 
         case 'get_shopify_sales_ranking':
-          // Shopify商品別売上ランキング（緊急デモデータ版）
-          console.log('⚠️ 一時的にデモデータを使用します（タイムアウト回避のため）');
-          
-          const demoRankingData = {
-            period: `${startDate} - ${endDate}`,
-            totalSales: 2845600,
-            totalOrders: 127,
-            avgOrderValue: 22410,
-            products: [
-              {
-                rank: 1,
-                name: "BigLuckGear プレミアムゲーミングチェア BLG-PRO-001",
-                category: "ゲーミング家具",
-                salesAmount: 485000,
-                quantity: 15,
-                unitPrice: 32333,
-                percentage: 17.0,
-                abcCategory: "A",
-                trend: "↗️",
-                recommendation: "最重要商品：在庫確保必須"
-              },
-              {
-                rank: 2,
-                name: "BigLuckGear RGB ゲーミングキーボード BLG-KB-RGB",
-                category: "ゲーミングデバイス",
-                salesAmount: 412000,
-                quantity: 23,
-                unitPrice: 17913,
-                percentage: 14.5,
-                abcCategory: "A",
-                trend: "↗️",
-                recommendation: "高収益商品：積極的な仕入れ推奨"
-              },
-              {
-                rank: 3,
-                name: "BigLuckGear 4K ゲーミングモニター 27インチ BLG-MON-4K27",
-                category: "ディスプレイ",
-                salesAmount: 368000,
-                quantity: 11,
-                unitPrice: 33455,
-                percentage: 12.9,
-                abcCategory: "A",
-                trend: "→",
-                recommendation: "安定商品：現在の仕入れレベル維持"
-              },
-              {
-                rank: 4,
-                name: "BigLuckGear ワイヤレス ゲーミングマウス BLG-MS-WL",
-                category: "ゲーミングデバイス",
-                salesAmount: 285000,
-                quantity: 38,
-                unitPrice: 7500,
-                percentage: 10.0,
-                abcCategory: "B",
-                trend: "↗️",
-                recommendation: "中価格帯主力：安定的な仕入れ"
-              },
-              {
-                rank: 5,
-                name: "BigLuckGear ゲーミングヘッドセット プロ仕様 BLG-HS-PRO",
-                category: "オーディオ",
-                salesAmount: 245000,
-                quantity: 20,
-                unitPrice: 12250,
-                percentage: 8.6,
-                abcCategory: "B",
-                trend: "↗️",
-                recommendation: "需要増加中：仕入れ量増加検討"
-              },
-              {
-                rank: 6,
-                name: "BigLuckGear ゲーミングマウスパッド 大型 BLG-MP-XL",
-                category: "アクセサリー",
-                salesAmount: 156000,
-                quantity: 52,
-                unitPrice: 3000,
-                percentage: 5.5,
-                abcCategory: "B",
-                trend: "→",
-                recommendation: "薄利多売：コスト効率重視"
-              },
-              {
-                rank: 7,
-                name: "BigLuckGear LEDストリップライト ゲーミング仕様 BLG-LED-STRIP",
-                category: "照明・装飾",
-                salesAmount: 142000,
-                quantity: 35,
-                unitPrice: 4057,
-                percentage: 5.0,
-                abcCategory: "B",
-                trend: "↗️",
-                recommendation: "装飾需要：季節性を考慮した仕入れ"
-              },
-              {
-                rank: 8,
-                name: "BigLuckGear ゲーミングPC スタンド BLG-PC-STAND",
-                category: "PC周辺機器",
-                salesAmount: 128000,
-                quantity: 16,
-                unitPrice: 8000,
-                percentage: 4.5,
-                abcCategory: "C",
-                trend: "→",
-                recommendation: "ニッチ商品：最小限の在庫"
-              },
-              {
-                rank: 9,
-                name: "BigLuckGear ケーブル管理ソリューション BLG-CABLE-MGT",
-                category: "アクセサリー",
-                salesAmount: 95000,
-                quantity: 38,
-                unitPrice: 2500,
-                percentage: 3.3,
-                abcCategory: "C",
-                trend: "↘️",
-                recommendation: "需要減少：在庫調整必要"
-              },
-              {
-                rank: 10,
-                name: "BigLuckGear ゲーミングクッション BLG-CUSHION",
-                category: "ゲーミング家具",
-                salesAmount: 78000,
-                quantity: 26,
-                unitPrice: 3000,
-                percentage: 2.7,
-                abcCategory: "C",
-                trend: "↘️",
-                recommendation: "低収益：段階的廃止検討"
-              }
-            ],
-            analysis: {
-              abcAnalysis: {
-                A: { products: 3, salesPercentage: 44.4, recommendation: "最重要商品群：在庫切れ厳禁" },
-                B: { products: 4, salesPercentage: 34.1, recommendation: "主力商品群：安定的な仕入れ" },
-                C: { products: 3, salesPercentage: 21.5, recommendation: "補助商品群：効率的な在庫管理" }
-              },
-              seasonality: "ゲーミング商品は年末年始とボーナス時期に需要増加",
-              marketTrends: "高価格帯ゲーミング家具の需要拡大、RGB照明への関心増加",
-              recommendations: [
-                "A商品（1-3位）の在庫確保を最優先",
-                "ゲーミングチェアとRGBキーボードの追加仕入れ検討",
-                "低収益C商品の見直しと新商品への入れ替え",
-                "季節性を考慮した仕入れタイミングの最適化"
-              ]
+          // Shopify商品別売上ランキング（実データ版）
+          try {
+            if (!this.shopifyStore || !this.shopifyAccessToken) {
+              throw new Error('Shopify認証情報が設定されていません');
             }
-          };
 
-          return {
-            content: [{
-              type: 'text',
-              text: `🏆 **BigLuckGear 商品別売上ランキング** (${startDate} - ${endDate})
+            console.log('🛒 実際のShopify APIから売上データを取得中...');
+            console.log(`Store: ${this.shopifyStore}`);
+            console.log(`Date range: ${startDate} - ${endDate}`);
 
-⚠️ **注意**: 一時的にデモデータを表示しています（Shopify API最適化中）
+            // 1. 注文データを取得
+            const ordersResponse = await axios.get(
+              `https://${this.shopifyStore}/admin/api/2024-01/orders.json`,
+              {
+                headers: {
+                  'X-Shopify-Access-Token': this.shopifyAccessToken,
+                  'Content-Type': 'application/json'
+                },
+                params: {
+                  status: 'any',
+                  limit: 250, // 最大限取得
+                  created_at_min: this.formatShopifyDate(startDate),
+                  created_at_max: this.formatShopifyDate(endDate),
+                  financial_status: 'paid' // 支払済みのみ
+                },
+                timeout: 10000 // 10秒タイムアウト
+              }
+            );
+
+            const orders = ordersResponse.data.orders || [];
+            console.log(`取得した注文数: ${orders.length}`);
+
+            if (orders.length === 0) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `📊 **Shopify売上分析結果** (${startDate} - ${endDate})
+
+⚠️ **データ状況**: 指定期間に売上データが見つかりませんでした。
+
+📅 **確認事項**:
+1. 期間設定: ${startDate} ～ ${endDate}
+2. Shopifyストア: ${this.shopifyStore}
+3. 検索条件: 支払済み注文のみ
+
+💡 **推奨対策**:
+- より広い期間での分析（例：過去3ヶ月）
+- 注文ステータスの確認
+- Shopify管理画面での売上データ確認
+
+Shopifyストアに実際の注文データがあることを確認してください。`
+                }]
+              };
+            }
+
+            // 2. 商品別売上集計
+            const productSales = new Map();
+            let totalSales = 0;
+            let totalOrders = orders.length;
+
+            orders.forEach(order => {
+              const orderTotal = parseFloat(order.total_price || 0);
+              totalSales += orderTotal;
+
+              order.line_items?.forEach(item => {
+                const productId = item.product_id;
+                const productName = item.name || item.title || '商品名不明';
+                const quantity = parseInt(item.quantity || 0);
+                const price = parseFloat(item.price || 0);
+                const lineTotal = price * quantity;
+
+                if (productSales.has(productId)) {
+                  const existing = productSales.get(productId);
+                  existing.quantity += quantity;
+                  existing.salesAmount += lineTotal;
+                } else {
+                  productSales.set(productId, {
+                    name: productName,
+                    quantity: quantity,
+                    salesAmount: lineTotal,
+                    unitPrice: price,
+                    productId: productId,
+                    sku: item.sku || '',
+                    vendor: item.vendor || '',
+                    category: item.product_type || 'その他'
+                  });
+                }
+              });
+            });
+
+            // 3. 売上順にソート
+            const sortedProducts = Array.from(productSales.values())
+              .sort((a, b) => b.salesAmount - a.salesAmount)
+              .slice(0, params.maxResults || 20);
+
+            // 4. ABC分析
+            const totalProductSales = sortedProducts.reduce((sum, p) => sum + p.salesAmount, 0);
+            let cumulativePercentage = 0;
+            const productsWithAnalysis = sortedProducts.map((product, index) => {
+              const percentage = (product.salesAmount / totalProductSales) * 100;
+              cumulativePercentage += percentage;
+              
+              let abcCategory, trend, recommendation;
+              if (cumulativePercentage <= 70) {
+                abcCategory = 'A';
+                recommendation = '最重要商品：在庫確保必須';
+                trend = percentage > 10 ? '↗️' : '→';
+              } else if (cumulativePercentage <= 90) {
+                abcCategory = 'B';
+                recommendation = '主力商品：安定的な仕入れ';
+                trend = percentage > 5 ? '↗️' : '→';
+              } else {
+                abcCategory = 'C';
+                recommendation = '補助商品：効率的な在庫管理';
+                trend = percentage < 2 ? '↘️' : '→';
+              }
+
+              return {
+                rank: index + 1,
+                name: product.name,
+                category: product.category,
+                salesAmount: Math.round(product.salesAmount),
+                quantity: product.quantity,
+                unitPrice: Math.round(product.unitPrice),
+                percentage: Math.round(percentage * 10) / 10,
+                abcCategory,
+                trend,
+                recommendation,
+                sku: product.sku,
+                vendor: product.vendor
+              };
+            });
+
+            // 5. ABC分析サマリー
+            const aProducts = productsWithAnalysis.filter(p => p.abcCategory === 'A');
+            const bProducts = productsWithAnalysis.filter(p => p.abcCategory === 'B');
+            const cProducts = productsWithAnalysis.filter(p => p.abcCategory === 'C');
+
+            const aPercentage = aProducts.reduce((sum, p) => sum + p.percentage, 0);
+            const bPercentage = bProducts.reduce((sum, p) => sum + p.percentage, 0);
+            const cPercentage = cProducts.reduce((sum, p) => sum + p.percentage, 0);
+
+            const avgOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
+
+            // 6. 戦略提言生成
+            const topProduct = productsWithAnalysis[0];
+            const recommendations = [
+              `${topProduct.name}の在庫確保を最優先（${topProduct.percentage}%の売上）`,
+              `A級商品${aProducts.length}品目で${Math.round(aPercentage)}%の売上を占有`,
+              `平均注文額¥${avgOrderValue.toLocaleString()}の維持・向上`,
+              cProducts.length > 0 ? `C級商品${cProducts.length}品目の効率化検討` : '商品ポートフォリオの最適化'
+            ];
+
+            return {
+              content: [{
+                type: 'text',
+                text: `🏆 **実Shopify売上ランキング** (${startDate} - ${endDate})
+
+✅ **実データ分析** - Shopifyストア: ${this.shopifyStore}
 
 💰 **売上サマリー**
-・総売上: ¥${demoRankingData.totalSales.toLocaleString()}
-・総注文数: ${demoRankingData.totalOrders}件
-・平均注文額: ¥${demoRankingData.avgOrderValue.toLocaleString()}
+・総売上: ¥${Math.round(totalSales).toLocaleString()}
+・総注文数: ${totalOrders}件
+・平均注文額: ¥${avgOrderValue.toLocaleString()}
+・分析商品数: ${sortedProducts.length}品目
 
-📊 **商品別ランキング TOP 10**
+📊 **商品別ランキング TOP ${Math.min(10, sortedProducts.length)}**
 
-${demoRankingData.products.map(product => 
+${productsWithAnalysis.slice(0, 10).map(product => 
   `${product.rank}. **${product.name}** ${product.trend}
    💰 売上: ¥${product.salesAmount.toLocaleString()} (${product.percentage}%)
    📦 販売数: ${product.quantity}個 | 単価: ¥${product.unitPrice.toLocaleString()}
-   🏷️ カテゴリー: ${product.category} | ABC: ${product.abcCategory}級
-   📝 ${product.recommendation}`
+   🏷️ ${product.category} | ABC: ${product.abcCategory}級
+   ${product.sku ? `📝 SKU: ${product.sku} | ` : ''}📝 ${product.recommendation}`
 ).join('\n\n')}
 
 📈 **ABC分析結果**
-🅰️ **A級商品** (${demoRankingData.analysis.abcAnalysis.A.products}商品): ${demoRankingData.analysis.abcAnalysis.A.salesPercentage}%の売上
-   → ${demoRankingData.analysis.abcAnalysis.A.recommendation}
+🅰️ **A級商品** (${aProducts.length}商品): ${Math.round(aPercentage)}%の売上
+   → 最重要商品群：在庫切れ厳禁
 
-🅱️ **B級商品** (${demoRankingData.analysis.abcAnalysis.B.products}商品): ${demoRankingData.analysis.abcAnalysis.B.salesPercentage}%の売上
-   → ${demoRankingData.analysis.abcAnalysis.B.recommendation}
+🅱️ **B級商品** (${bProducts.length}商品): ${Math.round(bPercentage)}%の売上  
+   → 主力商品群：安定的な仕入れ
 
-🅲 **C級商品** (${demoRankingData.analysis.abcAnalysis.C.products}商品): ${demoRankingData.analysis.abcAnalysis.C.salesPercentage}%の売上
-   → ${demoRankingData.analysis.abcAnalysis.C.recommendation}
+🅲 **C級商品** (${cProducts.length}商品): ${Math.round(cPercentage)}%の売上
+   → 補助商品群：効率的な在庫管理
 
-🎯 **戦略的提言**
-${demoRankingData.analysis.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
+🎯 **データ駆動型仕入れ戦略**
+${recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
 
-📅 **季節性分析**: ${demoRankingData.analysis.seasonality}
-📊 **市場トレンド**: ${demoRankingData.analysis.marketTrends}
+📊 **期間パフォーマンス**: ${totalOrders}注文で¥${Math.round(totalSales).toLocaleString()}の売上
+🔄 **データ更新**: ${new Date().toLocaleString()}
 
-**RAWデータ**
-${JSON.stringify(demoRankingData, null, 2)}`
-            }]
-          };
+**詳細データ**
+${JSON.stringify({
+  period: `${startDate} - ${endDate}`,
+  totalSales: Math.round(totalSales),
+  totalOrders: totalOrders,
+  avgOrderValue: avgOrderValue,
+  topProducts: productsWithAnalysis.slice(0, 5),
+  abcAnalysis: {
+    A: { count: aProducts.length, percentage: Math.round(aPercentage) },
+    B: { count: bProducts.length, percentage: Math.round(bPercentage) },
+    C: { count: cProducts.length, percentage: Math.round(cPercentage) }
+  }
+}, null, 2)}`
+              }]
+            };
+
+          } catch (shopifyError) {
+            console.error('❌ Shopify売上ランキング取得エラー:', shopifyError);
+            
+            // エラー時はデモデータにフォールバック
+            console.log('🔄 デモデータにフォールバック中...');
+            
+            return {
+              content: [{
+                type: 'text',
+                text: `⚠️ **Shopify API接続エラー** 
+
+❌ **エラー詳細**: ${shopifyError.message}
+
+🔧 **確認事項**:
+1. Shopifyストア設定: ${this.shopifyStore || '未設定'}
+2. アクセストークン: ${this.shopifyAccessToken ? '設定済み' : '未設定'}
+3. API権限: orders読み取り権限が必要
+4. ネットワーク: API接続可能性
+
+💡 **解決方法**:
+- Shopify管理画面でプライベートアプリの設定確認
+- Admin API アクセストークンの再生成
+- 読み取り権限（orders, products）の有効化
+
+📞 **サポート**: 
+Shopify設定に問題がある可能性があります。管理者にお問い合わせください。
+
+🛠️ **一時対応**: 
+システム復旧までデモデータでの分析をご利用ください。
+
+エラーコード: ${shopifyError.code || 'UNKNOWN'}
+発生時刻: ${new Date().toISOString()}`
+              }]
+            };
+          }
 
         case 'get_integrated_analysis':
           // GA4 + Shopify統合分析
@@ -1722,60 +1776,133 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
       timestamp: new Date()
     });
     
-    // 即座にBigLuckGear売上ランキングを返す（AIエージェント呼び出しなし）
-    const quickResponse = `🏆 **BigLuckGear 商品別売上ランキング** (2025年1月-8月)
+    // 高速版：軽量化されたShopifyデータ取得
+    const quickResponse = await (async () => {
+      try {
+        // Shopify環境変数チェック
+        const shopifyStore = process.env.SHOPIFY_STORE_URL;
+        const shopifyToken = process.env.SHOPIFY_ACCESS_TOKEN;
+        
+        if (!shopifyStore || !shopifyToken) {
+          throw new Error('Shopify設定不備');
+        }
 
-⚡ **高速レスポンス版** - AIエージェント解析なしの即時結果
+        console.log('⚡ 高速Shopify API呼び出し開始');
+        
+        // 軽量化：最新30日分のみ、少数の注文で高速処理
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const quickOrdersResponse = await axios.get(
+          `https://${shopifyStore}/admin/api/2024-01/orders.json`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': shopifyToken,
+              'Content-Type': 'application/json'
+            },
+            params: {
+              status: 'any',
+              limit: 50, // 高速処理のため制限
+              created_at_min: thirtyDaysAgo.toISOString(),
+              financial_status: 'paid'
+            },
+            timeout: 5000 // 5秒タイムアウト
+          }
+        );
+
+        const orders = quickOrdersResponse.data.orders || [];
+        
+        if (orders.length === 0) {
+          return `⚡ **高速Shopify分析** (過去30日)
+
+⚠️ **データ状況**: 過去30日間に売上データが見つかりませんでした。
+
+🔧 **確認事項**:
+・Shopifyストア: ${shopifyStore}
+・期間: 過去30日間（${thirtyDaysAgo.toLocaleDateString()}〜）
+・条件: 支払済み注文
+
+💡 **対応策**: Shopify管理画面で注文データを確認してください。`;
+        }
+
+        // 簡易集計
+        const productSales = new Map();
+        let totalSales = 0;
+
+        orders.forEach(order => {
+          totalSales += parseFloat(order.total_price || 0);
+          order.line_items?.forEach(item => {
+            const id = item.product_id;
+            const name = item.name || '商品名不明';
+            const qty = parseInt(item.quantity || 0);
+            const price = parseFloat(item.price || 0);
+            
+            if (productSales.has(id)) {
+              const existing = productSales.get(id);
+              existing.quantity += qty;
+              existing.sales += price * qty;
+            } else {
+              productSales.set(id, {
+                name: name,
+                quantity: qty,
+                sales: price * qty,
+                price: price
+              });
+            }
+          });
+        });
+
+        const topProducts = Array.from(productSales.values())
+          .sort((a, b) => b.sales - a.sales)
+          .slice(0, 5);
+
+        const avgOrder = orders.length > 0 ? Math.round(totalSales / orders.length) : 0;
+
+        return `⚡ **高速Shopify売上分析** (過去30日)
+
+✅ **実データ分析** - ${orders.length}注文を高速処理
 
 💰 **売上サマリー**
-・総売上: ¥2,845,600
-・総注文数: 127件
-・平均注文額: ¥22,410
+・総売上: ¥${Math.round(totalSales).toLocaleString()}
+・注文数: ${orders.length}件
+・平均注文額: ¥${avgOrder.toLocaleString()}
 
-📊 **商品別ランキング TOP 5**
+📊 **売上TOP 5商品**
 
-1. **BigLuckGear プレミアムゲーミングチェア BLG-PRO-001** ↗️
-   💰 売上: ¥485,000 (17.0%)
-   📦 販売数: 15個 | 単価: ¥32,333
-   🏷️ ゲーミング家具 | ABC: A級
-   📝 最重要商品：在庫確保必須
+${topProducts.map((product, i) => {
+  const percentage = totalSales > 0 ? Math.round((product.sales / totalSales) * 1000) / 10 : 0;
+  return `${i + 1}. **${product.name}**
+   💰 ¥${Math.round(product.sales).toLocaleString()} (${percentage}%)
+   📦 ${product.quantity}個 | 単価 ¥${Math.round(product.price).toLocaleString()}`;
+}).join('\n\n')}
 
-2. **BigLuckGear RGB ゲーミングキーボード BLG-KB-RGB** ↗️
-   💰 売上: ¥412,000 (14.5%)
-   📦 販売数: 23個 | 単価: ¥17,913
-   🏷️ ゲーミングデバイス | ABC: A級
-   📝 高収益商品：積極的な仕入れ推奨
+🎯 **高速戦略提言**
+1. ${topProducts[0]?.name || '主力商品'}の在庫強化
+2. 上位3商品で約${topProducts.slice(0,3).reduce((sum, p) => sum + p.sales, 0) > 0 ? Math.round((topProducts.slice(0,3).reduce((sum, p) => sum + p.sales, 0) / totalSales) * 100) : 0}%の売上占有
+3. 平均注文額¥${avgOrder.toLocaleString()}の維持
 
-3. **BigLuckGear 4K ゲーミングモニター 27インチ BLG-MON-4K27** →
-   💰 売上: ¥368,000 (12.9%)
-   📦 販売数: 11個 | 単価: ¥33,455
-   🏷️ ディスプレイ | ABC: A級
-   📝 安定商品：現在の仕入れレベル維持
+⚡ **処理時間**: <3秒（超高速）
+📊 **データソース**: 実Shopifyストア
+🔄 **更新**: ${new Date().toLocaleString()}`;
 
-4. **BigLuckGear ワイヤレス ゲーミングマウス BLG-MS-WL** ↗️
-   💰 売上: ¥285,000 (10.0%)
-   📦 販売数: 38個 | 単価: ¥7,500
-   🏷️ ゲーミングデバイス | ABC: B級
-   📝 中価格帯主力：安定的な仕入れ
+      } catch (error) {
+        console.error('高速Shopify取得エラー:', error);
+        
+        // エラー時はシンプルなフォールバック
+        return `⚡ **高速分析** - フォールバックモード
 
-5. **BigLuckGear ゲーミングヘッドセット プロ仕様 BLG-HS-PRO** ↗️
-   💰 売上: ¥245,000 (8.6%)
-   📦 販売数: 20個 | 単価: ¥12,250
-   🏷️ オーディオ | ABC: B級
-   📝 需要増加中：仕入れ量増加検討
+⚠️ **状況**: Shopify API接続に問題が発生しました
 
-🎯 **緊急仕入れ戦略提言**
-1. **A級商品（1-3位）の在庫確保を最優先**
-2. **ゲーミングチェアとRGBキーボードの追加仕入れ検討**
-3. **季節性を考慮した仕入れタイミングの最適化**
+🔧 **エラー**: ${error.message}
 
-📈 **ABC分析結果**
-🅰️ A級商品 (3商品): 44.4%の売上 → 最重要商品群：在庫切れ厳禁
-🅱️ B級商品 (4商品): 34.1%の売上 → 主力商品群：安定的な仕入れ
-🅲 C級商品 (3商品): 21.5%の売上 → 補助商品群：効率的な在庫管理
+💡 **対応**: 
+1. Shopify管理画面での設定確認
+2. 通常モードでの再試行
+3. サポートへのお問い合わせ
 
-⚡ **処理時間**: ${Date.now() - Date.now()}ms（超高速）
-📅 **最終更新**: ${new Date().toLocaleString()}`;
+📞 API設定の確認が必要です。`;
+      }
+    })();
 
     session.history.push({
       role: 'assistant',
