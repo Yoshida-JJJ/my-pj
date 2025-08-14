@@ -32,13 +32,192 @@ class TrueShopifyMCPServer {
         'X-Shopify-Access-Token': this.shopifyAccessToken,
         'Content-Type': 'application/json'
       },
-      timeout: 180000
+      timeout: 300000  // 5分に延長（大量データ対応）
     });
 
     return response.data;
   }
 
-  // ツール1: 基本的な注文取得
+  // 大量データ用最適化取得メソッド
+  async getOrdersOptimized(params, daysDiff) {
+    try {
+      const { startDate, endDate, status = 'any', financialStatus = 'paid', limit = 50 } = params;
+      
+      console.log(`🚀 最適化処理開始: ${daysDiff}日間のデータを効率的に取得`);
+      
+      // 1年間データの場合は月別に分割して取得
+      if (daysDiff > 300) {
+        console.log('📅 1年間データ - 月別分割取得を実行');
+        return await this.getOrdersByMonths(params);
+      }
+      
+      // 6ヶ月未満は週別取得
+      console.log('📅 中期間データ - 効率化取得を実行');
+      return await this.getOrdersEfficient(params);
+      
+    } catch (error) {
+      console.error('❌ 最適化取得エラー:', error);
+      throw error;
+    }
+  }
+
+  // 月別分割取得（1年間データ対応）
+  async getOrdersByMonths(params) {
+    try {
+      const { startDate, endDate, status = 'any', financialStatus = 'paid' } = params;
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      console.log('📊 月別データ取得開始...');
+      
+      const allOrders = [];
+      const months = [];
+      
+      // 月ごとの期間を生成
+      let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (currentDate <= end) {
+        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        months.push({
+          start: new Date(currentDate),
+          end: monthEnd > end ? end : monthEnd
+        });
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+      }
+      
+      console.log(`📅 ${months.length}ヶ月に分割して取得`);
+      
+      // 月別に順次取得（レート制限対応）
+      for (let i = 0; i < months.length; i++) {
+        const month = months[i];
+        console.log(`📆 ${i+1}/${months.length}月目処理: ${month.start.toISOString().split('T')[0]} ～ ${month.end.toISOString().split('T')[0]}`);
+        
+        const apiParams = {
+          status,
+          financial_status: financialStatus,
+          limit: 250,
+          created_at_min: month.start.toISOString(),
+          created_at_max: month.end.toISOString(),
+          fields: 'id,created_at,total_price,line_items,customer' // 必要フィールドのみ
+        };
+        
+        try {
+          const data = await this.makeShopifyRequest('/orders.json', apiParams);
+          const monthOrders = data.orders || [];
+          allOrders.push(...monthOrders);
+          
+          console.log(`✅ ${i+1}月目完了: ${monthOrders.length}件取得 (累計: ${allOrders.length}件)`);
+          
+          // レート制限対応（0.5秒待機）
+          if (i < months.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          
+        } catch (monthError) {
+          console.error(`❌ ${i+1}月目取得エラー:`, monthError.message);
+          // エラーがあっても次の月の処理を続行
+          continue;
+        }
+      }
+      
+      console.log(`🎉 月別取得完了: 総計${allOrders.length}件の注文データ`);
+      
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tool: 'get_orders_optimized',
+            orderCount: allOrders.length,
+            orders: allOrders,
+            period: `${startDate} to ${endDate}`,
+            optimizationMethod: 'monthly_chunks',
+            monthsProcessed: months.length,
+            processingTime: 'optimized_for_large_data'
+          }, null, 2)
+        }]
+      };
+      
+    } catch (error) {
+      throw new Error(`月別取得処理エラー: ${error.message}`);
+    }
+  }
+
+  // 効率化取得（中期間データ対応）
+  async getOrdersEfficient(params) {
+    const { startDate, endDate, status = 'any', financialStatus = 'paid', limit = 50 } = params;
+    
+    console.log('⚡ 効率化取得実行中...');
+    
+    // 最初に件数をチェック
+    const countParams = {
+      status,
+      financial_status: financialStatus,
+      limit: 1,
+      created_at_min: new Date(startDate).toISOString(),
+      created_at_max: new Date(endDate).toISOString(),
+      fields: 'id'
+    };
+    
+    const countData = await this.makeShopifyRequest('/orders/count.json', countParams);
+    const totalCount = countData.count || 0;
+    
+    console.log(`📊 総注文数: ${totalCount}件`);
+    
+    if (totalCount <= 250) {
+      // 通常取得で十分
+      const apiParams = {
+        status,
+        financial_status: financialStatus,
+        limit: Math.min(limit, 250),
+        created_at_min: new Date(startDate).toISOString(),
+        created_at_max: new Date(endDate).toISOString()
+      };
+      
+      const data = await this.makeShopifyRequest('/orders.json', apiParams);
+      
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tool: 'get_orders_efficient',
+            orderCount: data.orders?.length || 0,
+            orders: data.orders || [],
+            period: `${startDate} to ${endDate}`,
+            optimizationMethod: 'single_request'
+          }, null, 2)
+        }]
+      };
+    }
+    
+    // 大量データの場合は制限を告知
+    const limitedParams = {
+      status,
+      financial_status: financialStatus,
+      limit: 250, // 最大取得
+      created_at_min: new Date(startDate).toISOString(),
+      created_at_max: new Date(endDate).toISOString(),
+      order: 'created_at desc' // 最新順
+    };
+    
+    const data = await this.makeShopifyRequest('/orders.json', limitedParams);
+    
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          tool: 'get_orders_efficient',
+          orderCount: data.orders?.length || 0,
+          orders: data.orders || [],
+          period: `${startDate} to ${endDate}`,
+          totalAvailable: totalCount,
+          retrieved: data.orders?.length || 0,
+          optimizationMethod: 'limited_recent_data',
+          note: totalCount > 250 ? `注意: ${totalCount}件中、最新の${data.orders?.length || 0}件を表示` : 'complete_data'
+        }, null, 2)
+      }]
+    };
+  }
+
+  // ツール1: 基本的な注文取得（大量データ対応版）
   async getOrders(params) {
     try {
       const {
@@ -50,6 +229,22 @@ class TrueShopifyMCPServer {
         fields
       } = params;
 
+      console.log('📊 注文データ取得開始:', { startDate, endDate, limit });
+
+      // 期間長さを計算してデータ量を推定
+      const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endDate ? new Date(endDate) : new Date();
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      
+      console.log(`📅 分析期間: ${daysDiff}日間 (${start.toISOString().split('T')[0]} ～ ${end.toISOString().split('T')[0]})`);
+
+      // 大量データの場合は段階的取得を実装
+      if (daysDiff > 180 || limit > 250) {
+        console.log('🔄 大量データ検出 - 最適化処理を実行');
+        return await this.getOrdersOptimized(params, daysDiff);
+      }
+
+      // 通常処理
       const apiParams = {
         status,
         financial_status: financialStatus,
