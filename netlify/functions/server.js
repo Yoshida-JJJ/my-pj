@@ -7,6 +7,7 @@ const { google } = require('googleapis');
 const axios = require('axios');
 const AIAgent = require('../../src/ai-agent');
 const MCPManager = require('../../src/mcp-manager');
+const TrueShopifyMCPServer = require('../../src/true-shopify-mcp-server');
 require('dotenv').config();
 
 console.log('🔄 サーバー初期化 - バージョン v3.0.0 (MCP対応)');
@@ -911,30 +912,36 @@ Shopify設定に問題がある可能性があります。管理者にお問い�
 const mcpClient = new GAAnalytics();
 let mcpManager = null;
 let mcpInitialized = false;
+let trueMCPServer = null;
 
-// MCP サーバー初期化（安全な初期化）
+// 真のMCP サーバー初期化
+try {
+  trueMCPServer = new TrueShopifyMCPServer();
+  console.log('🚀 真のMCPサーバー初期化完了');
+  mcpInitialized = true;
+} catch (error) {
+  console.error('❌ 真のMCPサーバー初期化失敗:', error);
+  trueMCPServer = null;
+  mcpInitialized = false;
+}
+
+// 従来のMCP サーバー（フォールバック用）
 try {
   mcpManager = new MCPManager();
-  console.log('✅ MCPManager インスタンス作成完了');
+  console.log('✅ MCPManager インスタンス作成完了（フォールバック用）');
   
   // 非同期でMCPサーバーを初期化（エラー時も続行）
   mcpManager.startServer('shopify_analytics')
     .then(() => {
-      mcpInitialized = true;
-      console.log('✅ MCP Shopify サーバー初期化完了');
+      console.log('✅ 従来MCP Shopify サーバー初期化完了');
     })
     .catch(error => {
-      console.error('❌ MCP Shopify サーバー初期化失敗:', error);
-      console.error('❌ エラー詳細:', error.stack);
-      // フォールバック: 直接統合を使用
-      mcpInitialized = false;
-      mcpManager = null; // 失敗した場合はnullにリセット
+      console.error('❌ 従来MCP Shopify サーバー初期化失敗:', error);
+      mcpManager = null;
     });
 } catch (error) {
   console.error('❌ MCPManager インスタンス作成失敗:', error);
-  console.error('❌ エラー詳細:', error.stack);
   mcpManager = null;
-  mcpInitialized = false;
 }
 
 // Google OAuth認証用の設定（Netlify環境で強制的に正しいURLを使用）
@@ -1379,8 +1386,8 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
 
     console.log(`[チャット ${sessionId}] 処理開始...`);
     
-    // AIエージェントによる智的ツール選択
-    console.log(`[チャット ${sessionId}] 🤖 AIエージェントによる分析開始...`);
+    // 真のMCP: 動的ツール選択の実行
+    console.log(`[チャット ${sessionId}] 🚀 真のMCP: 動的ツール選択開始...`);
     let queryAnalysis;
     try {
       // AIエージェントが正しく初期化されているかチェック
@@ -1441,37 +1448,61 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
       tools: queryAnalysis.suggestedActions.map(a => a.tool)
     });
     
-    // AIエージェントが提案したツールを使用
+    // 真のMCPモードかどうかで処理を分岐
     const suggestedActions = queryAnalysis.suggestedActions;
+    const isDynamicMCP = queryAnalysis.mcpMode === 'dynamic';
     
-    console.log(`[チャット ${sessionId}] GA4データ取得開始...`);
-    
-    // 並列実行で処理時間短縮
-    const toolPromises = suggestedActions.map(async (action) => {
-      try {
-        console.log(`Calling GA tool: ${action.tool}`, action.params);
-        
-        const paramsWithAuth = {
-          ...action.params,
-          authTokens: authTokens
-        };
-        
-        console.log(`[チャット ${sessionId}] ツール呼び出し開始: ${action.tool}`);
-        const result = await Promise.race([
-          callUnifiedTool(action.tool, paramsWithAuth),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 25000))
-        ]);
-        console.log(`[チャット ${sessionId}] ツール呼び出し成功: ${action.tool}`);
-        
-        console.log(`GA tool result (${action.tool}): 成功`);
-        mcpResults[action.tool] = result;
-      } catch (error) {
-        console.error(`GA tool error (${action.tool}):`, error.message);
-        mcpResults[action.tool] = { error: error.message };
-      }
-    });
-    
-    await Promise.allSettled(toolPromises);
+    if (isDynamicMCP && trueMCPServer) {
+      console.log(`[チャット ${sessionId}] 🎯 真のMCPツール実行中...`);
+      
+      // 真のMCPツールの実行
+      const mcpPromises = suggestedActions.map(async (action) => {
+        try {
+          console.log(`[チャット ${sessionId}] 真のMCPツール呼び出し: ${action.tool}`);
+          const result = await Promise.race([
+            trueMCPServer.handleToolCall(action.tool, action.params),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('真のMCP タイムアウト')), 25000))
+          ]);
+          console.log(`[チャット ${sessionId}] 真のMCPツール成功: ${action.tool}`);
+          mcpResults[action.tool] = result;
+        } catch (error) {
+          console.error(`真のMCPツールエラー (${action.tool}):`, error.message);
+          mcpResults[action.tool] = { error: error.message };
+        }
+      });
+      
+      await Promise.allSettled(mcpPromises);
+      console.log(`[チャット ${sessionId}] ✅ 真のMCPツール実行完了`);
+    } else {
+      console.log(`[チャット ${sessionId}] 従来のGA4データ取得開始...`);
+      
+      // 従来のGA4ツールの実行
+      const toolPromises = suggestedActions.map(async (action) => {
+        try {
+          console.log(`Calling GA tool: ${action.tool}`, action.params);
+          
+          const paramsWithAuth = {
+            ...action.params,
+            authTokens: authTokens
+          };
+          
+          console.log(`[チャット ${sessionId}] ツール呼び出し開始: ${action.tool}`);
+          const result = await Promise.race([
+            callUnifiedTool(action.tool, paramsWithAuth),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 25000))
+          ]);
+          console.log(`[チャット ${sessionId}] ツール呼び出し成功: ${action.tool}`);
+          
+          console.log(`GA tool result (${action.tool}): 成功`);
+          mcpResults[action.tool] = result;
+        } catch (error) {
+          console.error(`GA tool error (${action.tool}):`, error.message);
+          mcpResults[action.tool] = { error: error.message };
+        }
+      });
+      
+      await Promise.allSettled(toolPromises);
+    }
 
     console.log(`[チャット ${sessionId}] レポート生成開始...`);
     let report;

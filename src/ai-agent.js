@@ -1,5 +1,6 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { v4: uuidv4 } = require('uuid');
+const TrueShopifyMCPServer = require('./true-shopify-mcp-server');
 
 class AIAgent {
   constructor() {
@@ -11,26 +12,33 @@ class AIAgent {
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
     
-    this.systemPrompt = `あなたは経験豊富なGoogle Analyticsシニアアナリスト兼デジタルマーケティングコンサルタントです。
+    // 真のMCPサーバーを初期化
+    this.trueMCPServer = new TrueShopifyMCPServer();
+    
+    this.systemPrompt = `あなたは経験豊富なShopifyコマース分析専門家兼デジタルマーケティングコンサルタントです。
 
 【専門分野】
-・GA4データ分析とインサイト抽出
-・ウェブサイトパフォーマンス最適化
-・デジタルマーケティング戦略立案
+・Shopify売上データ分析とインサイト抽出
+・ECサイトパフォーマンス最適化
+・商品戦略とマーケティング戦略立案
 ・ROI改善提案
-・競合分析とベンチマーキング
+・在庫管理と顧客分析
 
-【利用可能ツール】
-1. get_ga_data - 基本GA4データ（セッション、ユーザー、PV等）
-2. get_top_pages - 人気ページランキング
-3. get_traffic_sources - トラフィック源詳細
-4. get_search_keywords - 検索キーワード分析（Search Console）
-5. get_search_analysis - Google流入分析 
-6. get_landing_pages - ランディングページ分析
-7. get_shopify_orders - Shopify注文データ（商品名、売上、日時、顧客情報）
-8. get_shopify_products - Shopify商品データ（商品名、価格、在庫、カテゴリー）
-9. get_shopify_sales_ranking - Shopify商品別売上ランキング & 仕入れ戦略（NEW）
-10. get_integrated_analysis - GA4とShopify統合分析（コンバージョン、ROI）
+【真のMCPツール】（動的選択可能）
+1. get_orders - Shopify注文データ取得（期間、ステータス指定可能）
+2. get_products - Shopify商品データ取得（ベンダー、タイプ、ステータス指定可能）
+3. get_customers - Shopify顧客データ取得（期間、条件指定可能）
+4. analyze_inventory - 在庫分析（低在庫・在庫切れ特定）
+5. analyze_sales - 売上分析（商品・カテゴリ・ベンダー・期間別グループ化）
+6. analyze_customer_segments - 顧客セグメント分析（新規・リピート・VIP・非アクティブ）
+
+【真のMCP動作原理】
+✅ 自然言語クエリを分析して最適なツールを動的選択
+✅ ユーザーの意図に基づく柔軟なパラメータ生成
+✅ 複数ツールの組み合わせによる包括的分析
+✅ リアルタイムShopify APIデータの活用
+✅ コンテキストに応じた分析深度の調整
+✅ ビジネス要求に最適化された戦略的洞察
 
 【Shopify分析の重点事項】
 ✅ 実際の売上金額と注文履歴の詳細分析
@@ -40,12 +48,6 @@ class AIAgent {
 ✅ 在庫状況と売上実績の関連性
 ✅ 具体的な商品名と価格を含む戦略提案
 
-【必須】Shopify売上データの優先利用
-- GA4データよりもShopifyの実際の売上・注文・商品データを重視
-- 注文金額、商品名、価格、売上ランキングを必ず含める
-- 実際の購入された商品に基づく戦略提案を行う
-- GAデータは補助的な位置づけとする
-
 【アウトプット品質基準】
 ✅ データドリブンな洞察とトレンド分析
 ✅ 具体的なアクションプランと優先順位
@@ -54,6 +56,13 @@ class AIAgent {
 ✅ ROI向上のための戦略的提言
 ✅ リスクと機会の特定
 
+【動的ツール選択の指針】
+- 売上・ランキング → analyze_sales (groupBy: product/vendor/category)
+- 在庫・商品管理 → analyze_inventory, get_products
+- 顧客分析 → get_customers, analyze_customer_segments
+- 注文詳細 → get_orders (期間・ステータス指定)
+- 統合分析 → 複数ツールの組み合わせ
+
 常にプロフェッショナルで洞察に富んだ、実行可能な提案を含む包括的な分析レポートを作成してください。`;
   }
 
@@ -61,6 +70,25 @@ class AIAgent {
     try {
       console.log('🚀 processQuery 開始:', userQuery);
       
+      // 動的ツール選択の実行
+      const selectedTools = await this.selectToolsDynamically(userQuery);
+      
+      if (selectedTools.length > 0) {
+        console.log('🎯 真のMCP選択完了:', selectedTools.map(t => t.name));
+        return {
+          id: uuidv4(),
+          query: userQuery,
+          aiAnalysis: `真のMCP: 動的にツール選択しました - ${selectedTools.map(t => t.name).join(', ')}`,
+          suggestedActions: selectedTools.map(tool => ({
+            tool: tool.name,
+            params: tool.params
+          })),
+          mcpMode: 'dynamic',
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      // フォールバック: 従来の静的ロジック
       const response = await this.anthropic.messages.create({
         model: "claude-3-5-sonnet-20241022",
         max_tokens: 600,
@@ -86,6 +114,7 @@ class AIAgent {
         query: userQuery,
         aiAnalysis: aiResponse,
         suggestedActions: analysis.actions,
+        mcpMode: 'static',
         timestamp: new Date().toISOString()
       };
     } catch (error) {
@@ -193,6 +222,87 @@ class AIAgent {
     };
   }
 
+  // 新しい動的ツール選択メソッド
+  async selectToolsDynamically(userQuery) {
+    console.log('🧠 動的ツール選択開始:', userQuery);
+    
+    const availableTools = this.trueMCPServer.getAvailableTools();
+    console.log('🛠️ 利用可能ツール:', availableTools.map(t => t.name));
+    
+    const toolSelectionPrompt = `以下のユーザー質問に最適なShopify分析ツールを選択してください：
+
+質問: "${userQuery}"
+
+利用可能なツール:
+${availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
+
+最適なツールを1-3個選択し、必要なパラメータを生成してください。
+JSON形式で回答：
+{
+  "selectedTools": [
+    {
+      "name": "ツール名",
+      "params": { "必要なパラメータ": "値" },
+      "reason": "選択理由"
+    }
+  ]
+}`;
+
+    try {
+      const response = await this.anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 1000,
+        temperature: 0.1,
+        messages: [{ role: "user", content: toolSelectionPrompt }]
+      });
+
+      const selection = JSON.parse(response.content[0].text);
+      console.log('🎯 動的選択結果:', selection);
+      
+      return selection.selectedTools || [];
+    } catch (error) {
+      console.error('❌ 動的選択エラー:', error);
+      return this.fallbackToolSelection(userQuery);
+    }
+  }
+
+  // フォールバック用のシンプルな選択ロジック
+  fallbackToolSelection(userQuery) {
+    const queryLower = userQuery.toLowerCase();
+    const dateRange = this.extractDateRange(userQuery);
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const startDate = formatDate(dateRange.start);
+    const endDate = formatDate(dateRange.end);
+    
+    if (queryLower.includes('売上') && queryLower.includes('ランキング')) {
+      return [{
+        name: 'analyze_sales',
+        params: { startDate, endDate, groupBy: 'product', limit: 20 },
+        reason: '売上ランキング要求'
+      }];
+    }
+    
+    if (queryLower.includes('在庫')) {
+      return [{
+        name: 'analyze_inventory',
+        params: { lowStockThreshold: 10 },
+        reason: '在庫分析要求'
+      }];
+    }
+    
+    return [{
+      name: 'get_orders',
+      params: { startDate, endDate, status: 'any', limit: 50 },
+      reason: 'デフォルト注文分析'
+    }];
+  }
+
   parseAIResponse(aiResponse, viewId, userQuery = '') {
     const actions = [];
     const today = new Date();
@@ -220,21 +330,18 @@ class AIAgent {
     console.log('  ユーザー質問:', userQuery);
     console.log('  小文字変換:', queryText);
     
-    // 🚨 強制Shopify売上ランキング検出（最優先）
-    const forceShopifyRanking = (queryText.includes('商品別') && queryText.includes('売上') && queryText.includes('ランキング')) ||
-                               (queryText.includes('今年') && queryText.includes('1月') && queryText.includes('ランキング')) ||
-                               (queryText.includes('商品') && queryText.includes('仕入れ') && queryText.includes('戦略'));
+    // 真のMCP：動的ツール選択を優先
+    const shouldUseDynamicSelection = queryText.includes('shopify') || queryText.includes('売上') || 
+                                     queryText.includes('商品') || queryText.includes('ランキング') ||
+                                     queryText.includes('在庫') || queryText.includes('顧客');
     
-    console.log('🚨 強制Shopify売上ランキング検出:', forceShopifyRanking);
-    
-    if (forceShopifyRanking) {
-      console.log('🎯 強制的にShopify売上ランキングツールを使用します！');
+    if (shouldUseDynamicSelection) {
+      console.log('🚀 真のMCP: 動的ツール選択を実行中...');
+      // 動的選択は非同期のため、後でprocessQueryで処理
       actions.push({
-        tool: 'get_shopify_sales_ranking',
-        params: { startDate, endDate, maxResults: 20 }
+        tool: 'dynamic_mcp_selection',
+        params: { query: userQuery, startDate, endDate }
       });
-      
-      // 他のツールは追加せずに即座にreturn
       return { actions };
     }
     
