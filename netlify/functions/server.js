@@ -1471,7 +1471,16 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           mcpResults[action.tool] = result;
         } catch (error) {
           console.error(`真のMCPツールエラー (${action.tool}):`, error.message);
-          mcpResults[action.tool] = { error: error.message };
+          console.error('エラースタック:', error.stack);
+          
+          // より詳細なエラー情報を提供
+          mcpResults[action.tool] = { 
+            error: error.message,
+            errorType: error.constructor.name,
+            tool: action.tool,
+            timestamp: new Date().toISOString(),
+            fallbackMessage: `${action.tool}の実行中にエラーが発生しました。しばらく待ってから再度お試しください。`
+          };
         }
       });
       
@@ -1866,6 +1875,60 @@ app.post('/api/chat/:sessionId/quick', async (req, res) => {
         
         if (!shopifyStore || !shopifyToken) {
           throw new Error('Shopify設定不備');
+        }
+        
+        // 在庫分析クエリの判定
+        const isInventoryQuery = message.toLowerCase().includes('在庫') || 
+                               message.toLowerCase().includes('少なく') ||
+                               message.toLowerCase().includes('在庫切れ');
+        
+        if (isInventoryQuery) {
+          console.log('⚡ 高速在庫分析開始');
+          
+          const productsResponse = await axios.get(
+            `https://${shopifyStore}/admin/api/2024-01/products.json`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': shopifyToken,
+                'Content-Type': 'application/json'
+              },
+              params: {
+                limit: 20, // 高速処理のため制限
+                fields: 'id,title,variants'
+              },
+              timeout: 8000
+            }
+          );
+          
+          const products = productsResponse.data.products || [];
+          const lowStockItems = [];
+          
+          products.forEach(product => {
+            product.variants?.forEach(variant => {
+              const inventory = parseInt(variant.inventory_quantity || 0);
+              if (inventory <= 10) { // 閾値10
+                lowStockItems.push({
+                  title: product.title,
+                  inventory: inventory,
+                  price: variant.price
+                });
+              }
+            });
+          });
+          
+          return `⚡ **高速在庫分析**
+          
+📦 **チェック完了**: ${products.length}商品
+⚠️ **低在庫商品**: ${lowStockItems.length}件
+
+${lowStockItems.length > 0 ? 
+  lowStockItems.slice(0, 5).map((item, i) => 
+    `${i+1}. ${item.title} - 在庫${item.inventory}個 (¥${item.price})`
+  ).join('\n') : 
+  '✅ すべての商品で十分な在庫があります'
+}
+
+📋 **提案**: ${lowStockItems.length > 0 ? '低在庫商品の発注を検討してください' : '在庫状況は良好です'}`;
         }
 
         console.log('⚡ 高速Shopify API呼び出し開始');

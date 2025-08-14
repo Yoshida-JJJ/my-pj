@@ -158,9 +158,25 @@ class TrueShopifyMCPServer {
       const { lowStockThreshold = 10, outOfStockOnly = false, limit = 50 } = params;
 
       console.log(`🔍 在庫分析開始: 閾値=${lowStockThreshold}, 在庫切れのみ=${outOfStockOnly}`);
+      console.log(`🔧 Shopify設定確認: Store=${this.shopifyStore || '未設定'}, Token=${this.shopifyAccessToken ? '設定済み' : '未設定'}`);
+      
+      // Shopify認証情報のチェック
+      if (!this.shopifyStore || !this.shopifyAccessToken) {
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              tool: 'analyze_inventory',
+              error: 'Shopify認証情報が設定されていません',
+              message: '在庫分析にはShopifyストアとアクセストークンが必要です',
+              suggestion: '環境変数SHOPIFY_STORE_URLとSHOPIFY_ACCESS_TOKENを設定してください'
+            }, null, 2)
+          }]
+        };
+      }
       
       const data = await this.makeShopifyRequest('/products.json', {
-        limit: Math.min(limit, 250), // 全商品をチェック（詳細分析用）
+        limit: Math.min(limit, 50), // エラー回避のために制限
         fields: 'id,title,variants,product_type,vendor'
       });
       
@@ -217,7 +233,36 @@ class TrueShopifyMCPServer {
         }]
       };
     } catch (error) {
-      return this.handleError('analyze_inventory', error);
+      console.error('❌ 在庫分析エラー:', error.message);
+      
+      // エラータイプ別の詳細メッセージ
+      let errorMessage = '在庫分析中にエラーが発生しました';
+      let suggestion = 'しばらく待ってから再度お試しください';
+      
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        errorMessage = 'ネットワーク接続エラー';
+        suggestion = 'インターネット接続を確認してください';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Shopify認証エラー';
+        suggestion = 'アクセストークンを確認してください';
+      } else if (error.response?.status === 429) {
+        errorMessage = 'APIレート制限';
+        suggestion = '1分待ってから再度お試しください';
+      }
+      
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tool: 'analyze_inventory',
+            error: errorMessage,
+            details: error.message,
+            suggestion: suggestion,
+            fallback: '現在、在庫分析機能は一時的に利用できません。Shopify管理画面で直接在庫を確認してください。',
+            timestamp: new Date().toISOString()
+          }, null, 2)
+        }]
+      };
     }
   }
 
