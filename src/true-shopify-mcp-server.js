@@ -56,8 +56,14 @@ class TrueShopifyMCPServer {
         limit: Math.min(limit, 250)
       };
 
-      if (startDate) apiParams.created_at_min = new Date(startDate).toISOString();
-      if (endDate) apiParams.created_at_max = new Date(endDate).toISOString();
+      if (startDate) {
+        apiParams.created_at_min = new Date(startDate).toISOString();
+        console.log(`📅 開始日設定: ${startDate} → ${apiParams.created_at_min}`);
+      }
+      if (endDate) {
+        apiParams.created_at_max = new Date(endDate).toISOString();
+        console.log(`📅 終了日設定: ${endDate} → ${apiParams.created_at_max}`);
+      }
       if (fields) apiParams.fields = fields;
 
       const data = await this.makeShopifyRequest('/orders.json', apiParams);
@@ -282,8 +288,14 @@ class TrueShopifyMCPServer {
         limit: 250
       };
 
-      if (startDate) apiParams.created_at_min = new Date(startDate).toISOString();
-      if (endDate) apiParams.created_at_max = new Date(endDate).toISOString();
+      if (startDate) {
+        apiParams.created_at_min = new Date(startDate).toISOString();
+        console.log(`📊 売上分析開始日: ${startDate} → ${apiParams.created_at_min}`);
+      }
+      if (endDate) {
+        apiParams.created_at_max = new Date(endDate).toISOString();
+        console.log(`📊 売上分析終了日: ${endDate} → ${apiParams.created_at_max}`);
+      }
 
       const data = await this.makeShopifyRequest('/orders.json', apiParams);
       

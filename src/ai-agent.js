@@ -127,6 +127,12 @@ class AIAgent {
     const currentYear = today.getFullYear();
     const queryLower = query.toLowerCase();
     
+    console.log('🔍 期間解析開始:', {
+      originalQuery: query,
+      queryLower: queryLower,
+      today: today.toISOString().split('T')[0]
+    });
+    
     // 日本語の期間指定パターンをチェック
     
     // 「今年の○月から」パターン
@@ -153,10 +159,31 @@ class AIAgent {
       };
     }
     
+    // 「1年間」「過去1年」「1年」の特別パターン
+    if (queryLower.includes('1年間') || queryLower.includes('過去1年') || 
+        queryLower.match(/(?:過去\s*)?1\s*年(?!\d)/)) {
+      console.log('📅 1年間指定検出');
+      return {
+        start: new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()),
+        end: today
+      };
+    }
+    
     // 「昨年から」「去年から」パターン
     if (queryLower.includes('昨年') || queryLower.includes('去年')) {
       return {
         start: new Date(currentYear - 1, 0, 1), // 昨年の1月1日
+        end: today
+      };
+    }
+    
+    // 「過去○年間」「○年間」パターン
+    const yearsMatch = queryLower.match(/(?:過去\s*)?(\d+)\s*年(?:間)?/);
+    if (yearsMatch) {
+      const years = parseInt(yearsMatch[1]);
+      console.log(`📅 年間指定検出: ${years}年間`);
+      return {
+        start: new Date(today.getFullYear() - years, today.getMonth(), today.getDate()),
         end: today
       };
     }
@@ -215,11 +242,20 @@ class AIAgent {
       };
     }
     
+    console.log('📅 どのパターンにもマッチしなかったため、デフォルト期間を使用');
+    
     // デフォルト: 過去30日
-    return {
+    const defaultRange = {
       start: new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000)),
       end: today
     };
+    
+    console.log('📅 デフォルト期間:', {
+      start: defaultRange.start.toISOString().split('T')[0],
+      end: defaultRange.end.toISOString().split('T')[0]
+    });
+    
+    return defaultRange;
   }
 
   // 新しい動的ツール選択メソッド
