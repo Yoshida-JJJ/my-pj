@@ -32,7 +32,7 @@ class TrueShopifyMCPServer {
         'X-Shopify-Access-Token': this.shopifyAccessToken,
         'Content-Type': 'application/json'
       },
-      timeout: 30000
+      timeout: 45000
     });
 
     return response.data;
@@ -176,7 +176,7 @@ class TrueShopifyMCPServer {
       }
       
       const data = await this.makeShopifyRequest('/products.json', {
-        limit: Math.min(limit, 50), // エラー回避のために制限
+        limit: Math.min(limit, 150), // より多くの商品を処理可能に
         fields: 'id,title,variants,product_type,vendor'
       });
       

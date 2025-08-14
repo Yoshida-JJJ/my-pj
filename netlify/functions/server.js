@@ -1314,7 +1314,7 @@ app.post('/api/chat/:sessionId', async (req, res) => {
     const { sessionId } = req.params;
     const { message, viewId, authTokens } = req.body;
     
-    // 90秒でタイムアウト（詳細分析に対応）
+    // 180秒でタイムアウト（最大限詳細分析に対応）
     timeoutId = setTimeout(() => {
       if (!res.headersSent) {
         console.log(`[チャット ${sessionId}] 最終タイムアウト発生、フォールバック分析を提供`);
@@ -1368,7 +1368,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           message: 'フォールバック分析を提供しました'
         });
       }
-    }, 90000);
+    }, 180000);
     
     if (!message || !viewId) {
       clearTimeout(timeoutId);
@@ -1460,13 +1460,55 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
     if (isDynamicMCP && trueMCPServer) {
       console.log(`[チャット ${sessionId}] 🎯 真のMCPツール実行中...`);
       
-      // 真のMCPツールの実行
+      // 真のMCPツールの段階的実行と高速モードフォールバック
       const mcpPromises = suggestedActions.map(async (action) => {
+        // ツール別の段階的タイムアウト設定
+        const getToolTimeout = (toolName) => {
+          switch(toolName) {
+            case 'analyze_inventory': return 90000; // 90秒
+            case 'analyze_sales': return 120000; // 120秒  
+            case 'get_orders': return 80000; // 80秒
+            case 'get_products': return 70000; // 70秒
+            case 'get_customers': return 60000; // 60秒
+            case 'analyze_customer_segments': return 100000; // 100秒
+            default: return 90000; // デフォルト 90秒
+          }
+        };
+        
+        // 高速モード用パラメータ生成
+        const generateQuickModeParams = (toolName, originalParams) => {
+          switch(toolName) {
+            case 'analyze_inventory':
+              return {
+                ...originalParams,
+                limit: 30, // 商品数を制限
+                lowStockThreshold: originalParams.lowStockThreshold || 10
+              };
+            case 'analyze_sales':
+              return {
+                ...originalParams,
+                limit: 10, // 結果件数を制限
+                groupBy: 'product' // シンプルなグループ化
+              };
+            case 'get_orders':
+              return {
+                ...originalParams,
+                limit: 50 // 注文数を制限
+              };
+            case 'get_products':
+              return {
+                ...originalParams,
+                limit: 40 // 商品数を制限
+              };
+            default:
+              return originalParams;
+          }
+        };
+        
         try {
           console.log(`[チャット ${sessionId}] 真のMCPツール呼び出し: ${action.tool}`, action.params);
           
-          // 全ツールで長いタイムアウトを設定（詳細分析用）
-          const timeoutMs = 60000; // 60秒
+          const timeoutMs = getToolTimeout(action.tool);
           
           const result = await Promise.race([
             trueMCPServer.handleToolCall(action.tool, action.params),
@@ -1476,20 +1518,73 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           mcpResults[action.tool] = result;
         } catch (error) {
           console.error(`真のMCPツールエラー (${action.tool}):`, error.message);
-          console.error('エラースタック:', error.stack);
           
-          // より詳細なエラー情報を提供
-          mcpResults[action.tool] = { 
-            error: error.message,
-            errorType: error.constructor.name,
-            tool: action.tool,
-            timestamp: new Date().toISOString(),
-            fallbackMessage: `${action.tool}の実行中にエラーが発生しました。しばらく待ってから再度お試しください。`
-          };
+          // タイムアウトの場合、高速モードで再試行
+          if (error.message.includes('タイムアウト')) {
+            console.log(`[チャット ${sessionId}] 高速モードで再試行: ${action.tool}`);
+            try {
+              const quickParams = generateQuickModeParams(action.tool, action.params);
+              const quickResult = await Promise.race([
+                trueMCPServer.handleToolCall(action.tool, quickParams),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('高速モードタイムアウト')), 30000)) // 30秒
+              ]);
+              
+              // 高速モード成功時のメッセージ付加
+              if (quickResult && quickResult.content && quickResult.content[0]) {
+                const originalText = quickResult.content[0].text;
+                const parsedResult = JSON.parse(originalText);
+                parsedResult.quickModeUsed = true;
+                parsedResult.quickModeReason = '詳細分析タイムアウトのため高速モードで実行';
+                parsedResult.quickModeParams = quickParams;
+                quickResult.content[0].text = JSON.stringify(parsedResult, null, 2);
+              }
+              
+              console.log(`[チャット ${sessionId}] 高速モード成功: ${action.tool}`);
+              mcpResults[action.tool] = quickResult;
+            } catch (quickError) {
+              console.error(`高速モードも失敗 (${action.tool}):`, quickError.message);
+              mcpResults[action.tool] = { 
+                error: error.message,
+                quickModeError: quickError.message,
+                errorType: error.constructor.name,
+                tool: action.tool,
+                timestamp: new Date().toISOString(),
+                fallbackMessage: `${action.tool}の詳細分析と高速モードの両方が失敗しました。`
+              };
+            }
+          } else {
+            // タイムアウト以外のエラー
+            mcpResults[action.tool] = { 
+              error: error.message,
+              errorType: error.constructor.name,
+              tool: action.tool,
+              timestamp: new Date().toISOString(),
+              fallbackMessage: `${action.tool}の実行中にエラーが発生しました。`
+            };
+          }
         }
       });
       
       await Promise.allSettled(mcpPromises);
+      
+      // 高速モード使用状況をログ出力
+      const quickModeTools = Object.keys(mcpResults).filter(tool => {
+        const result = mcpResults[tool];
+        if (result && result.content && result.content[0] && result.content[0].text) {
+          try {
+            const parsed = JSON.parse(result.content[0].text);
+            return parsed.quickModeUsed;
+          } catch (e) {
+            return false;
+          }
+        }
+        return false;
+      });
+      
+      if (quickModeTools.length > 0) {
+        console.log(`[チャット ${sessionId}] 💫 高速モード使用ツール: ${quickModeTools.join(', ')}`);
+      }
+      
       console.log(`[チャット ${sessionId}] ✅ 真のMCPツール実行完了`);
     } else {
       console.log(`[チャット ${sessionId}] 従来のGA4データ取得開始...`);
@@ -1507,7 +1602,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           console.log(`[チャット ${sessionId}] ツール呼び出し開始: ${action.tool}`);
           const result = await Promise.race([
             callUnifiedTool(action.tool, paramsWithAuth),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 60000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), getToolTimeout('ga_api')))
           ]);
           console.log(`[チャット ${sessionId}] ツール呼び出し成功: ${action.tool}`);
           
@@ -1526,10 +1621,35 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
     let report;
     try {
       if (aiAgent && typeof aiAgent.generateReportWithHistory === 'function') {
+        // 高速モード使用情報をレポートに含める
+        const quickModeInfo = Object.keys(mcpResults).reduce((info, tool) => {
+          const result = mcpResults[tool];
+          if (result && result.content && result.content[0] && result.content[0].text) {
+            try {
+              const parsed = JSON.parse(result.content[0].text);
+              if (parsed.quickModeUsed) {
+                info[tool] = {
+                  reason: parsed.quickModeReason,
+                  params: parsed.quickModeParams
+                };
+              }
+            } catch (e) {
+              // JSONパースエラーは無視
+            }
+          }
+          return info;
+        }, {});
+        
         report = await Promise.race([
           aiAgent.generateReportWithHistory(message, mcpResults, '', session.history),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('レポート生成タイムアウト')), 25000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('レポート生成タイムアウト')), 40000))
         ]);
+        
+        // 高速モード使用時の注意書きを追加
+        if (Object.keys(quickModeInfo).length > 0) {
+          const quickModeNote = `\n\n💫 **高速モード使用通知**\n以下のツールで高速モードが使用されました：\n${Object.keys(quickModeInfo).map(tool => `・ ${tool}: ${quickModeInfo[tool].reason}`).join('\n')}\n\n💡 **より詳細な分析**: 時間を置いてから再度お試しください。`;
+          report += quickModeNote;
+        }
       } else {
         throw new Error('AIエージェントが利用できません');
       }
