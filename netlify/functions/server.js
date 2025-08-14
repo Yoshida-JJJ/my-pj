@@ -1458,10 +1458,14 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
       // 真のMCPツールの実行
       const mcpPromises = suggestedActions.map(async (action) => {
         try {
-          console.log(`[チャット ${sessionId}] 真のMCPツール呼び出し: ${action.tool}`);
+          console.log(`[チャット ${sessionId}] 真のMCPツール呼び出し: ${action.tool}`, action.params);
+          
+          // 在庫分析は短いタイムアウト、他は通常タイムアウト
+          const timeoutMs = action.tool === 'analyze_inventory' ? 15000 : 25000;
+          
           const result = await Promise.race([
             trueMCPServer.handleToolCall(action.tool, action.params),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('真のMCP タイムアウト')), 25000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error(`真のMCP タイムアウト (${timeoutMs}ms)`)), timeoutMs))
           ]);
           console.log(`[チャット ${sessionId}] 真のMCPツール成功: ${action.tool}`);
           mcpResults[action.tool] = result;

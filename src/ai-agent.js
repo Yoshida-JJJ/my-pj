@@ -291,7 +291,11 @@ JSON形式で回答：
     if (queryLower.includes('在庫')) {
       return [{
         name: 'analyze_inventory',
-        params: { lowStockThreshold: 10 },
+        params: { 
+          lowStockThreshold: 10, 
+          limit: 30,
+          outOfStockOnly: queryLower.includes('在庫切れ') || queryLower.includes('なくなって')
+        },
         reason: '在庫分析要求'
       }];
     }

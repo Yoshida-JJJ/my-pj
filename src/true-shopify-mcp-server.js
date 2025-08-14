@@ -152,21 +152,29 @@ class TrueShopifyMCPServer {
     }
   }
 
-  // ツール4: 在庫分析
+  // ツール4: 在庫分析（最適化版）
   async analyzeInventory(params) {
     try {
-      const { lowStockThreshold = 10, outOfStockOnly = false } = params;
+      const { lowStockThreshold = 10, outOfStockOnly = false, limit = 50 } = params;
 
+      console.log(`🔍 在庫分析開始: 閾値=${lowStockThreshold}, 在庫切れのみ=${outOfStockOnly}`);
+      
       const data = await this.makeShopifyRequest('/products.json', {
-        limit: 250,
+        limit: Math.min(limit, 100), // 最大100個に制限
         fields: 'id,title,variants,product_type,vendor'
       });
+      
+      console.log(`📦 商品データ取得完了: ${data.products?.length || 0}件`);
 
       const inventoryAnalysis = [];
+      let totalChecked = 0;
       
       data.products?.forEach(product => {
-        product.variants?.forEach(variant => {
-          const inventory = variant.inventory_quantity || 0;
+        if (!product.variants || product.variants.length === 0) return;
+        
+        product.variants.forEach(variant => {
+          totalChecked++;
+          const inventory = parseInt(variant.inventory_quantity || 0);
           const shouldInclude = outOfStockOnly ? 
             inventory === 0 : 
             inventory <= lowStockThreshold;
@@ -178,25 +186,34 @@ class TrueShopifyMCPServer {
               productType: product.product_type,
               vendor: product.vendor,
               variantId: variant.id,
-              variantTitle: variant.title,
+              variantTitle: variant.title || product.title,
               inventoryQuantity: inventory,
-              price: variant.price,
-              sku: variant.sku
+              price: parseFloat(variant.price || 0),
+              sku: variant.sku || 'N/A'
             });
           }
         });
       });
+      
+      console.log(`✅ 在庫分析完了: ${totalChecked}バリエーション中${inventoryAnalysis.length}件が条件に該当`);
 
+      // 結果を分かりやすい形式で整理
+      const summary = {
+        tool: 'analyze_inventory',
+        analysis: {
+          threshold: lowStockThreshold,
+          outOfStockOnly,
+          totalProductsChecked: data.products?.length || 0,
+          totalVariantsChecked: totalChecked,
+          lowStockItemsFound: inventoryAnalysis.length
+        },
+        lowStockItems: inventoryAnalysis.sort((a, b) => a.inventoryQuantity - b.inventoryQuantity)
+      };
+      
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({
-            tool: 'analyze_inventory',
-            threshold: lowStockThreshold,
-            outOfStockOnly,
-            itemsFound: inventoryAnalysis.length,
-            lowStockItems: inventoryAnalysis
-          }, null, 2)
+          text: JSON.stringify(summary, null, 2)
         }]
       };
     } catch (error) {
@@ -450,12 +467,13 @@ class TrueShopifyMCPServer {
       },
       {
         name: "analyze_inventory",
-        description: "在庫状況を分析し、低在庫・在庫切れ商品を特定します",
+        description: "在庫状況を分析し、低在庫・在庫切れ商品を特定します（高速処理版）",
         inputSchema: {
           type: "object",
           properties: {
             lowStockThreshold: { type: "number", description: "低在庫判定閾値", default: 10 },
-            outOfStockOnly: { type: "boolean", description: "在庫切れのみ表示", default: false }
+            outOfStockOnly: { type: "boolean", description: "在庫切れのみ表示", default: false },
+            limit: { type: "number", description: "チェックする商品数の上限", default: 50 }
           }
         }
       },
