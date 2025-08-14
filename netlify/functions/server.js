@@ -914,13 +914,28 @@ let mcpManager = null;
 let mcpInitialized = false;
 let trueMCPServer = null;
 
-// 真のMCP サーバー初期化
+// 真のMCP サーバー初期化（詳細ログ付き）
 try {
+  console.log('🔄 真のMCPサーバー初期化開始...');
+  console.log('環境変数確認:', {
+    SHOPIFY_STORE_URL: process.env.SHOPIFY_STORE_URL ? '設定済み' : '未設定',
+    SHOPIFY_ACCESS_TOKEN: process.env.SHOPIFY_ACCESS_TOKEN ? '設定済み' : '未設定',
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? '設定済み' : '未設定'
+  });
+  
   trueMCPServer = new TrueShopifyMCPServer();
-  console.log('🚀 真のMCPサーバー初期化完了');
-  mcpInitialized = true;
+  
+  // 初期化後の検証
+  if (trueMCPServer && typeof trueMCPServer.handleToolCall === 'function') {
+    console.log('🚀 真のMCPサーバー初期化完了');
+    console.log('利用可能ツール:', trueMCPServer.getAvailableTools().map(t => t.name).join(', '));
+    mcpInitialized = true;
+  } else {
+    throw new Error('MCPサーバーは作成されましたが、必要なメソッドが利用できません');
+  }
 } catch (error) {
-  console.error('❌ 真のMCPサーバー初期化失敗:', error);
+  console.error('❌ 真のMCPサーバー初期化失敗:', error.message);
+  console.error('❌ エラースタック:', error.stack);
   trueMCPServer = null;
   mcpInitialized = false;
 }
@@ -943,6 +958,47 @@ try {
   console.error('❌ MCPManager インスタンス作成失敗:', error);
   mcpManager = null;
 }
+
+// 最終初期化検証
+console.log('🔍 最終システム検証中...');
+const systemValidation = {
+  aiAgent: {
+    available: !!aiAgent,
+    error: aiAgentError || null
+  },
+  trueMCPServer: {
+    available: !!trueMCPServer && typeof trueMCPServer.handleToolCall === 'function',
+    initialized: mcpInitialized,
+    toolsCount: trueMCPServer ? trueMCPServer.getAvailableTools().length : 0
+  },
+  mcpManager: {
+    available: !!mcpManager,
+    serversCount: mcpManager ? Array.from(mcpManager.servers.keys()).length : 0
+  },
+  environment: {
+    shopifyStore: !!process.env.SHOPIFY_STORE_URL,
+    shopifyToken: !!process.env.SHOPIFY_ACCESS_TOKEN,
+    anthropicKey: !!process.env.ANTHROPIC_API_KEY,
+    nodeEnv: process.env.NODE_ENV || 'unknown'
+  }
+};
+
+console.log('📊 システム状態サマリー:', JSON.stringify(systemValidation, null, 2));
+
+// 重要なサービスの可用性チェック
+const criticalServices = [];
+if (!systemValidation.aiAgent.available) criticalServices.push('AIAgent');
+if (!systemValidation.trueMCPServer.available) criticalServices.push('TrueMCPServer');
+if (!systemValidation.environment.anthropicKey) criticalServices.push('Anthropic API Key');
+
+if (criticalServices.length > 0) {
+  console.warn('⚠️ 重要なサービスが利用できません:', criticalServices);
+  console.warn('システムは限定的な機能で動作します。');
+} else {
+  console.log('✅ 全ての重要なサービスが利用可能です');
+}
+
+console.log('🚀 システム初期化完了 - v3.0.1 (診断機能強化版)');
 
 // Google OAuth認証用の設定（Netlify環境で強制的に正しいURLを使用）
 let REDIRECT_URI;
@@ -1460,6 +1516,13 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
     if (isDynamicMCP && trueMCPServer) {
       console.log(`[チャット ${sessionId}] 🎯 真のMCPツール実行中...`);
       
+      // 真のMCPサーバーの詳細状態確認
+      console.log(`[チャット ${sessionId}] 🔍 真のMCPサーバー状態:`);
+      console.log(`  - trueMCPServer存在: ${!!trueMCPServer}`);
+      console.log(`  - mcpInitialized: ${mcpInitialized}`);
+      console.log(`  - Shopify Store: ${process.env.SHOPIFY_STORE_URL ? '設定済み' : '未設定'}`);
+      console.log(`  - Shopify Token: ${process.env.SHOPIFY_ACCESS_TOKEN ? '設定済み' : '未設定'}`);
+      
       // 真のMCPツールの段階的実行と高速モードフォールバック
       const mcpPromises = suggestedActions.map(async (action) => {
         // 全ツール統一タイムアウト設定
@@ -1475,9 +1538,14 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           const timeoutMs = getToolTimeout(action.tool);
           console.log(`[チャット ${sessionId}] タイムアウト設定: ${timeoutMs}ms`);
           
-          // trueMCPServerの存在チェック
+          // 厳密なtrueMCPServerの存在チェック
           if (!trueMCPServer) {
-            throw new Error('trueMCPServerが初期化されていません');
+            throw new Error(`真のMCPサーバーが初期化されていません - mcpInitialized: ${mcpInitialized}`);
+          }
+          
+          // MCPサーバーのメソッド存在確認
+          if (typeof trueMCPServer.handleToolCall !== 'function') {
+            throw new Error('真のMCPサーバーのhandleToolCallメソッドが利用できません');
           }
           
           const result = await Promise.race([
@@ -1551,6 +1619,22 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
       });
       
       await Promise.allSettled(toolPromises);
+      
+      // GA4ツール実行結果のサマリー
+      const successfulGA4Tools = Object.keys(mcpResults).filter(tool => {
+        const result = mcpResults[tool];
+        return result && !result.error;
+      });
+      const failedGA4Tools = Object.keys(mcpResults).filter(tool => {
+        const result = mcpResults[tool];
+        return result && result.error;
+      });
+      
+      console.log(`[チャット ${sessionId}] GA4実行結果サマリー:`, {
+        成功: successfulGA4Tools,
+        失敗: failedGA4Tools,
+        合計実行: Object.keys(mcpResults).length
+      });
     }
 
     console.log(`[チャット ${sessionId}] レポート生成開始...`);
@@ -1620,22 +1704,54 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
         const { message, viewId } = req.body;
         const sessionId = req.params.sessionId;
         
-        const fallbackResponse = `【システムエラー - 緊急レポート】
+        // 詳細診断情報
+        const diagnostics = {
+          serverInitialization: {
+            aiAgentAvailable: !!aiAgent,
+            trueMCPServerAvailable: !!trueMCPServer,
+            mcpInitialized: mcpInitialized,
+            mcpManagerAvailable: !!mcpManager
+          },
+          environmentConfig: {
+            shopifyStoreConfigured: !!process.env.SHOPIFY_STORE_URL,
+            shopifyTokenConfigured: !!process.env.SHOPIFY_ACCESS_TOKEN,
+            anthropicKeyConfigured: !!process.env.ANTHROPIC_API_KEY
+          },
+          errorContext: {
+            errorName: error.name || 'Unknown',
+            errorMessage: error.message || '不明なエラー',
+            timestamp: new Date().toISOString()
+          }
+        };
+        
+        console.log(`[チャット ${sessionId}] 🔍 診断情報:`, JSON.stringify(diagnostics, null, 2));
+        
+        const fallbackResponse = `【システム診断レポート】
 
 📋 **分析要求**: ${message || '不明'}
 
-❌ **エラー状況**: システム処理中にエラーが発生しました
+❌ **エラー状況**: ${error.message || 'システム処理中にエラーが発生しました'}
 - エラータイプ: ${error.name || 'Unknown'}
 - 発生時刻: ${new Date().toLocaleString()}
-- セッション: ${sessionId}
+- セッションID: ${sessionId}
+
+🔍 **システム診断結果**:
+- AIエージェント: ${diagnostics.serverInitialization.aiAgentAvailable ? '✅ 利用可能' : '❌ 未初期化'}
+- 真のMCPサーバー: ${diagnostics.serverInitialization.trueMCPServerAvailable ? '✅ 利用可能' : '❌ 未初期化'}
+- MCP初期化状態: ${diagnostics.serverInitialization.mcpInitialized ? '✅ 完了' : '❌ 失敗'}
+- Shopify設定: ${diagnostics.environmentConfig.shopifyStoreConfigured && diagnostics.environmentConfig.shopifyTokenConfigured ? '✅ 設定済み' : '❌ 未完了'}
 
 🔧 **推奨対策**:
-1. ページを再読み込みして再試行
-2. Google認証を再度実行
+1. ${!diagnostics.environmentConfig.shopifyStoreConfigured || !diagnostics.environmentConfig.shopifyTokenConfigured ? 'Netlify環境変数でShopify設定を確認' : 'ページを再読み込みして再試行'}
+2. ${!diagnostics.serverInitialization.aiAgentAvailable ? 'ANTHROPIC_API_KEY環境変数を確認' : 'Google認証を再度実行'}
 3. より簡単な質問で試行（例："今月のアクセス数は？"）
 
+💡 **技術者向け情報**:
+- 診断コード: ${error.code || 'NO_CODE'}
+- MCP状態: ${JSON.stringify(diagnostics.serverInitialization)}
+
 📞 **サポート情報**:
-この問題は記録されました。継続する場合は以下の情報をお知らせください：
+この問題は記録されました。継続する場合は診断コードをお知らせください：
 - セッションID: ${sessionId}
 - エラー時刻: ${new Date().toISOString()}
 - ブラウザ: ${req.headers['user-agent'] ? req.headers['user-agent'].substring(0, 100) : 'Unknown'}
