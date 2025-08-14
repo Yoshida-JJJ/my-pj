@@ -433,6 +433,36 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Shopify売上ランキング直接テスト
+app.get('/api/shopify/ranking-direct', async (req, res) => {
+  try {
+    console.log('📊 Shopify売上ランキング直接テスト開始...');
+    
+    const result = await mcpClient.callTool('get_shopify_sales_ranking', {
+      startDate: '2025-01-01',
+      endDate: '2025-08-13',
+      maxResults: 10
+    });
+    
+    res.json({
+      success: true,
+      message: 'Shopify売上ランキング直接テスト完了',
+      timestamp: new Date().toISOString(),
+      result: result
+    });
+    
+  } catch (error) {
+    console.error('❌ Shopify売上ランキング直接テストエラー:', error);
+    
+    res.json({
+      success: false,
+      message: 'Shopify売上ランキング直接テストエラー',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Shopify接続テスト（軽量版）
 app.get('/api/shopify/test', async (req, res) => {
   try {

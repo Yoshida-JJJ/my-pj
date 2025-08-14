@@ -220,6 +220,24 @@ class AIAgent {
     console.log('  ユーザー質問:', userQuery);
     console.log('  小文字変換:', queryText);
     
+    // 🚨 強制Shopify売上ランキング検出（最優先）
+    const forceShopifyRanking = (queryText.includes('商品別') && queryText.includes('売上') && queryText.includes('ランキング')) ||
+                               (queryText.includes('今年') && queryText.includes('1月') && queryText.includes('ランキング')) ||
+                               (queryText.includes('商品') && queryText.includes('仕入れ') && queryText.includes('戦略'));
+    
+    console.log('🚨 強制Shopify売上ランキング検出:', forceShopifyRanking);
+    
+    if (forceShopifyRanking) {
+      console.log('🎯 強制的にShopify売上ランキングツールを使用します！');
+      actions.push({
+        tool: 'get_shopify_sales_ranking',
+        params: { startDate, endDate, maxResults: 20 }
+      });
+      
+      // 他のツールは追加せずに即座にreturn
+      return { actions };
+    }
+    
     // Shopify関連の分析要求（最優先で強制実行）
     const hasShopifyRequest = queryText.includes('shopify') || queryText.includes('売上') || queryText.includes('注文') || 
                              queryText.includes('商品') || queryText.includes('ec') || queryText.includes('eコマース') || 
