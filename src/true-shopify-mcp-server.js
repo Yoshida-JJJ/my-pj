@@ -32,7 +32,7 @@ class TrueShopifyMCPServer {
         'X-Shopify-Access-Token': this.shopifyAccessToken,
         'Content-Type': 'application/json'
       },
-      timeout: 15000
+      timeout: 30000
     });
 
     return response.data;
@@ -160,7 +160,7 @@ class TrueShopifyMCPServer {
       console.log(`🔍 在庫分析開始: 閾値=${lowStockThreshold}, 在庫切れのみ=${outOfStockOnly}`);
       
       const data = await this.makeShopifyRequest('/products.json', {
-        limit: Math.min(limit, 100), // 最大100個に制限
+        limit: Math.min(limit, 250), // 全商品をチェック（詳細分析用）
         fields: 'id,title,variants,product_type,vendor'
       });
       

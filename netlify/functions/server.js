@@ -1314,7 +1314,7 @@ app.post('/api/chat/:sessionId', async (req, res) => {
     const { sessionId } = req.params;
     const { message, viewId, authTokens } = req.body;
     
-    // 50秒でタイムアウト（長期間分析に対応）
+    // 90秒でタイムアウト（詳細分析に対応）
     timeoutId = setTimeout(() => {
       if (!res.headersSent) {
         console.log(`[チャット ${sessionId}] 最終タイムアウト発生、フォールバック分析を提供`);
@@ -1363,7 +1363,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           message: 'フォールバック分析を提供しました'
         });
       }
-    }, 50000);
+    }, 90000);
     
     if (!message || !viewId) {
       clearTimeout(timeoutId);
@@ -1460,8 +1460,8 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
         try {
           console.log(`[チャット ${sessionId}] 真のMCPツール呼び出し: ${action.tool}`, action.params);
           
-          // 在庫分析は短いタイムアウト、他は通常タイムアウト
-          const timeoutMs = action.tool === 'analyze_inventory' ? 15000 : 25000;
+          // 全ツールで長いタイムアウトを設定（詳細分析用）
+          const timeoutMs = 60000; // 60秒
           
           const result = await Promise.race([
             trueMCPServer.handleToolCall(action.tool, action.params),
@@ -1493,7 +1493,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
           console.log(`[チャット ${sessionId}] ツール呼び出し開始: ${action.tool}`);
           const result = await Promise.race([
             callUnifiedTool(action.tool, paramsWithAuth),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 25000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('GA API タイムアウト')), 60000))
           ]);
           console.log(`[チャット ${sessionId}] ツール呼び出し成功: ${action.tool}`);
           
@@ -1514,7 +1514,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
       if (aiAgent && typeof aiAgent.generateReportWithHistory === 'function') {
         report = await Promise.race([
           aiAgent.generateReportWithHistory(message, mcpResults, '', session.history),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('レポート生成タイムアウト')), 20000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('レポート生成タイムアウト')), 25000))
         ]);
       } else {
         throw new Error('AIエージェントが利用できません');

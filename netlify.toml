@@ -7,7 +7,7 @@
   NODE_ENV = "production"
 
 [functions.server]
-  timeout = 60
+  timeout = 120
 
 [[headers]]
   for = "/*"
