@@ -114,7 +114,7 @@ class AIAgent {
       
       // AIの回答から必要なアクションを解析
       console.log('📊 parseAIResponse 呼び出し中...');
-      const analysis = this.parseAIResponse(aiResponse, viewId, userQuery);
+      const analysis = await this.parseAIResponse(aiResponse, viewId, userQuery);
       
       return {
         id: uuidv4(),
@@ -508,7 +508,7 @@ JSON形式で回答：
     }];
   }
 
-  parseAIResponse(aiResponse, viewId, userQuery = '') {
+  async parseAIResponse(aiResponse, viewId, userQuery = '') {
     const actions = [];
     const today = new Date();
     
@@ -767,7 +767,7 @@ ${recentContext ? `\n前回の文脈: ${recentContext}` : ''}
       });
 
       const aiResponse = response.content[0].text;
-      const analysis = this.parseAIResponse(aiResponse, viewId, userQuery);
+      const analysis = await this.parseAIResponse(aiResponse, viewId, userQuery);
       
       return {
         id: uuidv4(),

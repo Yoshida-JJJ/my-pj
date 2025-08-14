@@ -1467,7 +1467,7 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
       console.log(`[チャット ${sessionId}] AIエージェントフォールバック実行`);
       try {
         if (aiAgent && typeof aiAgent.parseAIResponse === 'function') {
-          const fallbackAnalysis = aiAgent.parseAIResponse('', viewId, message);
+          const fallbackAnalysis = await aiAgent.parseAIResponse('', viewId, message);
           queryAnalysis = {
             query: message,
             aiAnalysis: '分析処理中にエラーが発生したため、フォールバック処理を実行',
@@ -1925,7 +1925,7 @@ app.post('/api/debug/chat', async (req, res) => {
         console.log('日付解析結果:', dateRange);
         
         // AI レスポンス解析テスト
-        analysis = aiAgent.parseAIResponse('', viewId || 'test-view', message);
+        analysis = await aiAgent.parseAIResponse('', viewId || 'test-view', message);
         console.log('解析結果:', analysis);
       } catch (error) {
         console.error('AIエージェント機能エラー:', error);
