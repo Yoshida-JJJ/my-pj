@@ -61,16 +61,21 @@ class TrueShopifyMCPServer {
     }
   }
 
-  // 月別分割取得（1年間データ対応）
+  // 月別分割取得（メモリ効率化版）
   async getOrdersByMonths(params) {
     try {
       const { startDate, endDate, status = 'any', financialStatus = 'paid' } = params;
       const start = new Date(startDate);
       const end = new Date(endDate);
       
-      console.log('📊 月別データ取得開始...');
+      console.log('📊 メモリ効率化月別データ取得開始...');
       
-      const allOrders = [];
+      // メモリ効率化: 全データを保持せず、集計のみ実行
+      const salesSummary = new Map(); // 商品別売上集計
+      const monthlySummary = new Map(); // 月別集計
+      let totalOrders = 0;
+      let totalRevenue = 0;
+      
       const months = [];
       
       // 月ごとの期間を生成
@@ -84,9 +89,9 @@ class TrueShopifyMCPServer {
         currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
       }
       
-      console.log(`📅 ${months.length}ヶ月に分割して取得`);
+      console.log(`📅 ${months.length}ヶ月に分割して集計処理`);
       
-      // 月別に順次取得（レート制限対応）
+      // 月別にストリーミング処理（メモリ効率化）
       for (let i = 0; i < months.length; i++) {
         const month = months[i];
         console.log(`📆 ${i+1}/${months.length}月目処理: ${month.start.toISOString().split('T')[0]} ～ ${month.end.toISOString().split('T')[0]}`);
@@ -97,47 +102,103 @@ class TrueShopifyMCPServer {
           limit: 250,
           created_at_min: month.start.toISOString(),
           created_at_max: month.end.toISOString(),
-          fields: 'id,created_at,total_price,line_items,customer' // 必要フィールドのみ
+          fields: 'id,created_at,total_price,line_items' // 最小限のフィールド
         };
         
         try {
           const data = await this.makeShopifyRequest('/orders.json', apiParams);
           const monthOrders = data.orders || [];
-          allOrders.push(...monthOrders);
           
-          console.log(`✅ ${i+1}月目完了: ${monthOrders.length}件取得 (累計: ${allOrders.length}件)`);
+          // ストリーミング集計（メモリ効率化）
+          let monthRevenue = 0;
+          monthOrders.forEach(order => {
+            const orderTotal = parseFloat(order.total_price || 0);
+            totalRevenue += orderTotal;
+            monthRevenue += orderTotal;
+            totalOrders++;
+            
+            // 商品別集計（即座に処理、注文データは保持しない）
+            order.line_items?.forEach(item => {
+              const productName = item.name || 'Unknown Product';
+              const itemRevenue = parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+              const itemQuantity = parseInt(item.quantity || 0);
+              
+              if (!salesSummary.has(productName)) {
+                salesSummary.set(productName, { revenue: 0, quantity: 0, orders: 0 });
+              }
+              
+              const current = salesSummary.get(productName);
+              salesSummary.set(productName, {
+                revenue: current.revenue + itemRevenue,
+                quantity: current.quantity + itemQuantity,
+                orders: current.orders + 1
+              });
+            });
+          });
           
-          // レート制限対応（0.5秒待機）
+          // 月別集計
+          const monthKey = `${month.start.getFullYear()}-${String(month.start.getMonth() + 1).padStart(2, '0')}`;
+          monthlySummary.set(monthKey, {
+            orders: monthOrders.length,
+            revenue: monthRevenue
+          });
+          
+          console.log(`✅ ${i+1}月目完了: ${monthOrders.length}件処理 (月売上: ¥${monthRevenue.toLocaleString()})`);
+          
+          // 月別データを即座に破棄（メモリ解放）
+          monthOrders.length = 0;
+          
+          // レート制限対応（0.8秒待機）
           if (i < months.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 800));
           }
           
         } catch (monthError) {
           console.error(`❌ ${i+1}月目取得エラー:`, monthError.message);
-          // エラーがあっても次の月の処理を続行
           continue;
         }
       }
       
-      console.log(`🎉 月別取得完了: 総計${allOrders.length}件の注文データ`);
+      // 集計結果を配列に変換（上位20商品のみ）
+      const topProducts = Array.from(salesSummary.entries())
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .slice(0, 20)
+        .map(([name, data]) => ({
+          product: name,
+          revenue: data.revenue,
+          quantity: data.quantity,
+          orders: data.orders,
+          averagePrice: data.quantity > 0 ? (data.revenue / data.quantity) : 0
+        }));
+      
+      const monthlyData = Array.from(monthlySummary.entries())
+        .map(([month, data]) => ({ month, ...data }));
+      
+      console.log(`🎉 メモリ効率化処理完了: ${totalOrders}件の注文を集計`);
+      console.log(`💰 総売上: ¥${totalRevenue.toLocaleString()}`);
+      console.log(`📊 メモリ使用量: 集計データのみ保持`);
       
       return {
         content: [{
           type: 'text',
           text: JSON.stringify({
-            tool: 'get_orders_optimized',
-            orderCount: allOrders.length,
-            orders: allOrders,
+            tool: 'get_orders_memory_optimized',
+            totalOrders: totalOrders,
+            totalRevenue: totalRevenue,
+            averageOrderValue: totalOrders > 0 ? (totalRevenue / totalOrders) : 0,
             period: `${startDate} to ${endDate}`,
-            optimizationMethod: 'monthly_chunks',
+            topProducts: topProducts,
+            monthlyBreakdown: monthlyData,
+            optimizationMethod: 'streaming_aggregation',
             monthsProcessed: months.length,
-            processingTime: 'optimized_for_large_data'
+            memoryEfficient: true,
+            dataReduction: `Raw data discarded, summary retained`
           }, null, 2)
         }]
       };
       
     } catch (error) {
-      throw new Error(`月別取得処理エラー: ${error.message}`);
+      throw new Error(`メモリ効率化月別取得エラー: ${error.message}`);
     }
   }
 
@@ -467,7 +528,7 @@ class TrueShopifyMCPServer {
     }
   }
 
-  // ツール5: 売上分析
+  // ツール5: 売上分析（メモリ効率化対応）
   async analyzeSales(params) {
     try {
       const {
@@ -477,6 +538,21 @@ class TrueShopifyMCPServer {
         limit = 20
       } = params;
 
+      console.log('📊 売上分析開始:', { startDate, endDate, groupBy, limit });
+
+      // 期間長さをチェックして処理方法を決定
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff > 300) {
+          console.log('🔄 大量データ売上分析 - 最適化処理を実行');
+          return await this.analyzeSalesOptimized(params, daysDiff);
+        }
+      }
+
+      // 通常処理
       const apiParams = {
         status: 'any',
         financial_status: 'paid',
@@ -535,6 +611,48 @@ class TrueShopifyMCPServer {
       };
     } catch (error) {
       return this.handleError('analyze_sales', error);
+    }
+  }
+
+  // 売上分析最適化版（大量データ対応）
+  async analyzeSalesOptimized(params, daysDiff) {
+    try {
+      const { startDate, endDate, groupBy = 'product', limit = 20 } = params;
+      
+      console.log(`🚀 売上分析最適化処理: ${daysDiff}日間 (groupBy: ${groupBy})`);
+      
+      // getOrdersByMonths の結果を利用（重複処理を避ける）
+      const ordersResult = await this.getOrdersByMonths(params);
+      const ordersData = JSON.parse(ordersResult.content[0].text);
+      
+      if (ordersData.tool === 'get_orders_memory_optimized') {
+        // 既に集計済みのデータを使用
+        console.log('📊 メモリ効率化データから売上分析を生成');
+        
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              tool: 'analyze_sales_optimized',
+              period: `${startDate} to ${endDate}`,
+              groupBy: groupBy,
+              totalOrders: ordersData.totalOrders,
+              totalRevenue: ordersData.totalRevenue,
+              results: ordersData.topProducts.slice(0, limit),
+              monthlyBreakdown: ordersData.monthlyBreakdown,
+              optimizationMethod: 'memory_efficient_aggregation',
+              dataSource: 'reused_from_orders_analysis'
+            }, null, 2)
+          }]
+        };
+      }
+      
+      // フォールバック処理
+      throw new Error('最適化データが利用できません');
+      
+    } catch (error) {
+      console.error('❌ 売上分析最適化エラー:', error.message);
+      throw error;
     }
   }
 

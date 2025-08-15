@@ -1569,7 +1569,27 @@ ${Object.keys(mcpResults).length > 0 ? Object.keys(mcpResults).join(', ') : '基
         }
       });
       
-      await Promise.allSettled(mcpPromises);
+      // 大量データ検出時は順次処理でメモリ負荷を軽減
+      const hasLargeDataQuery = queryAnalysis.query && (
+        queryAnalysis.query.includes('1年間') || 
+        queryAnalysis.query.includes('年間') ||
+        queryAnalysis.query.includes('12ヶ月') ||
+        queryAnalysis.query.match(/\d+年/)
+      );
+      
+      if (hasLargeDataQuery && suggestedActions.length > 1) {
+        console.log(`[チャット ${sessionId}] 🔄 大量データ検出 - 順次処理でメモリ負荷軽減`);
+        
+        // 順次処理（メモリ効率化）
+        for (const promise of mcpPromises) {
+          await promise;
+          // 各処理間で100ms待機（メモリ解放時間を確保）
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      } else {
+        // 通常の並行処理
+        await Promise.allSettled(mcpPromises);
+      }
       
       // 高速モード使用状況をログ出力
       const quickModeTools = Object.keys(mcpResults).filter(tool => {
