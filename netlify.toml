@@ -26,6 +26,16 @@
   status = 200
 
 [[redirects]]
+  from = "/test"
+  to = "/shopify-test.html"
+  status = 200
+
+[[redirects]]
+  from = "/emergency"
+  to = "/.netlify/functions/emergency"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/chat.html"
   status = 200

@@ -330,14 +330,16 @@ JSON形式で回答してください：
 
 今日の日付: ${new Date().toISOString().split('T')[0]}
 
-利用可能なツール:
+【🛒 Shopify専用ツール（必須使用）】:
 ${availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 
-【重要な指示】
-1. ユーザーの質問から期間の意図を読み取り、適切なstartDateとendDateを生成してください
-2. 期間が明示されていない場合は、分析の目的に応じた適切な期間を推定してください
-3. 複合的な質問の場合は複数のツールを選択してください
-4. 各ツールに必要なパラメータを具体的に指定してください
+【⚠️ 絶対的なルール】
+1. **📊 売上データ専用**: 「売上実績」「売上」「売上データ」「注文」「購入」が含まれる場合は必ずShopifyツールのみを使用
+2. GA4やGoogle Analyticsツールは絶対に選択しない
+3. **🚀 1年間データ対応**: 「1年間」「年間」「過去1年」が含まれる場合は必ず analyze_orders_ultra_light を使用
+4. 売上分析 = analyze_sales または analyze_orders_ultra_light（期間により選択）
+5. 注文データ = get_orders, 在庫分析 = analyze_inventory
+6. 「商品仕入れ戦略」には analyze_sales + analyze_inventory を必ず組み合わせる（1年間の場合は analyze_orders_ultra_light + analyze_inventory）
 
 【期間解析の例】
 - "過去1年間" → startDate: 1年前の今日, endDate: 今日
@@ -345,18 +347,31 @@ ${availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 - "先月の実績" → startDate: 先月1日, endDate: 先月末日
 - "期間指定なし" → 分析目的に応じて適切な期間を推定
 
+【必須の戦略分析組み合わせ】
+売上実績 + 商品仕入れ戦略 = analyze_sales + analyze_inventory + get_products
+
 JSON形式で回答してください：
 {
   "selectedTools": [
     {
-      "name": "ツール名",
+      "name": "analyze_sales",
       "params": {
         "startDate": "YYYY-MM-DD",
         "endDate": "YYYY-MM-DD",
-        "その他のパラメータ": "値"
+        "groupBy": "product",
+        "limit": 20
       },
-      "reason": "選択理由と期間設定の根拠",
+      "reason": "Shopify売上実績分析",
       "periodAnalysis": "期間解析の詳細"
+    },
+    {
+      "name": "analyze_inventory", 
+      "params": {
+        "lowStockThreshold": 10,
+        "limit": 100
+      },
+      "reason": "在庫状況分析による仕入れ戦略立案",
+      "periodAnalysis": "在庫分析"
     }
   ]
 }`;
@@ -560,18 +575,41 @@ JSON形式で回答：
       return { actions };
     }
     
-    // Shopify関連の分析要求（最優先で強制実行）
+    // Shopify関連の分析要求（最優先で強制実行、1週間売上対応）
     const hasShopifyRequest = queryText.includes('shopify') || queryText.includes('売上') || queryText.includes('注文') || 
                              queryText.includes('商品') || queryText.includes('ec') || queryText.includes('eコマース') || 
                              queryText.includes('購入') || queryText.includes('決済') || queryText.includes('オーダー') ||
                              queryText.includes('ランキング') || queryText.includes('仕入れ') || queryText.includes('戦略') ||
-                             queryText.includes('1月から') || queryText.includes('今年') ||
+                             queryText.includes('1月から') || queryText.includes('今年') || queryText.includes('週間') ||
+                             queryText.includes('1週間') || queryText.includes('過去') ||
                              responseText.includes('shopify') || responseText.includes('売上') || responseText.includes('注文');
     
-    console.log('  Shopify検出:', hasShopifyRequest);
+    console.log('  🎯 Shopify検出:', hasShopifyRequest, 'クエリ:', queryText);
     
     if (hasShopifyRequest) {
       console.log('  ✅ Shopifyツールを追加中...');
+      
+      // 売上分析の期間検出
+      const hasSalesRequest = queryText.includes('売上') || queryText.includes('注文') || queryText.includes('購入');
+      const hasTimeframe = queryText.includes('週間') || queryText.includes('1週間') || queryText.includes('過去') || 
+                          queryText.includes('今月') || queryText.includes('今日');
+      
+      // 期間指定売上分析
+      if (hasSalesRequest && hasTimeframe) {
+        console.log('  📊 期間指定売上分析を検出');
+        actions.push({
+          tool: 'get_shopify_orders',
+          params: { viewId, startDate, endDate, maxResults: 100 }
+        });
+        
+        // 商品別分析も追加
+        actions.push({
+          tool: 'get_shopify_sales_ranking', 
+          params: { startDate, endDate, maxResults: 20 }
+        });
+        
+        return { actions };
+      }
       
       // 売上ランキングの特別検出（強化版）
       const hasRankingRequest = queryText.includes('ランキング') || queryText.includes('ranking') || 
@@ -681,13 +719,19 @@ JSON形式で回答：
         return `${tool}: データなし`;
       }).join('\n\n');
 
-      const reportPrompt = `GA分析レポート作成
+      const reportPrompt = `【🛒 Shopify売上中心】商品仕入れ戦略レポート作成
 質問: ${query}
 
-データ概要:
+📊 Shopifyデータ概要:
 ${dataSummary}
 
-実用的なレポートを簡潔に作成してください。`;
+【⚠️ 重要指示】
+1. Shopifyの売上・注文データを分析の中心とする
+2. 具体的な商品名、売上金額、注文数を必ず含める
+3. GA4データは補助情報として使用する
+4. 商品仕入れ戦略に焦点を当てた実用的な提案をする
+
+Shopify売上データに基づく戦略的レポートを作成してください。`;
 
       const response = await this.anthropic.messages.create({
         model: "claude-3-5-sonnet-20241022",

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify MCP テスト</title>
+    <style>
+        :root {
+            --background: oklch(1 0 0);
+            --foreground: oklch(0.3 0 0);
+            --card: oklch(0.98 0.02 142);
+            --card-foreground: oklch(0.3 0 0);
+            --primary: oklch(0.45 0.15 142);
+            --primary-foreground: oklch(1 0 0);
+            --secondary: oklch(0.75 0.12 100);
+            --secondary-foreground: oklch(0.3 0 0);
+            --muted: oklch(0.98 0.02 142);
+            --muted-foreground: oklch(0.5 0 0);
+            --border: oklch(0.92 0 0);
+            --radius: 0.5rem;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--background);
+            color: var(--foreground);
+            min-height: 100vh;
+        }
+        .container {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--border);
+        }
+        h1 {
+            color: var(--foreground);
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 700;
+            font-size: 2.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 24px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--muted);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .test-button {
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-button:hover {
+            background: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .test-button:disabled {
+            background: var(--muted);
+            color: var(--muted-foreground);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .loading {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span>🛒</span>
+            Shopify MCP テスト環境
+        </h1>
+        
+        <div class="test-section">
+            <h3>📡 接続テスト</h3>
+            <p>Shopify APIの基本接続を確認します（最軽量）</p>
+            <button class="test-button" onclick="testConnection()">接続テスト実行</button>
+            <div id="connectionResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 基本データ取得</h3>
+            <p>ショップ情報、最新注文、商品数を取得します</p>
+            <button class="test-button" onclick="testBasicData()">基本データ取得</button>
+            <div id="basicDataResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>💰 今日の売上確認</h3>
+            <p>今日の注文データを確認します（軽量テスト）</p>
+            <button class="test-button" onclick="testTodaySales()">今日の売上</button>
+            <div id="todaySalesResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📦 商品一覧テスト</h3>
+            <p>商品一覧を5件取得します</p>
+            <button class="test-button" onclick="testProducts()">商品一覧取得</button>
+            <div id="productsResult"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testConnection() {
+            const button = document.querySelector('button[onclick="testConnection()"]');
+            const resultDiv = document.getElementById('connectionResult');
+            
+            button.disabled = true;
+            button.textContent = '接続中...';
+            resultDiv.innerHTML = '<div class="result loading">Shopify接続テスト中...</div>';
+            
+            try {
+                const response = await fetch('/api/shopify/test');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ 接続成功</div>
+                        <div class="result success">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">❌ 接続失敗</div>
+                        <div class="result error">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ ネットワークエラー</div>
+                    <div class="result error">エラー: ${error.message}</div>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = '接続テスト実行';
+            }
+        }
+
+        async function testBasicData() {
+            const button = document.querySelector('button[onclick="testBasicData()"]');
+            const resultDiv = document.getElementById('basicDataResult');
+            
+            button.disabled = true;
+            button.textContent = '取得中...';
+            resultDiv.innerHTML = '<div class="result loading">基本データ取得中...</div>';
+            
+            try {
+                const response = await fetch('/api/shopify/basic');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ データ取得成功</div>
+                        <div class="result success">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">❌ データ取得失敗</div>
+                        <div class="result error">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ ネットワークエラー</div>
+                    <div class="result error">エラー: ${error.message}</div>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = '基本データ取得';
+            }
+        }
+
+        async function testTodaySales() {
+            const button = document.querySelector('button[onclick="testTodaySales()"]');
+            const resultDiv = document.getElementById('todaySalesResult');
+            
+            button.disabled = true;
+            button.textContent = '確認中...';
+            resultDiv.innerHTML = '<div class="result loading">今日の売上確認中...</div>';
+            
+            // 今日の日付を計算
+            const today = new Date().toISOString().split('T')[0];
+            
+            try {
+                const url = `/api/shopify/orders-by-date?date=${today}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ 今日の売上確認完了</div>
+                        <div class="result success">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status info">ℹ️ エンドポイント未実装または接続エラー</div>
+                        <div class="result info">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status info">ℹ️ 今日の売上APIは基本データで代用可能</div>
+                    <div class="result info">基本データテストで最新注文を確認してください</div>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = '今日の売上';
+            }
+        }
+
+        async function testProducts() {
+            const button = document.querySelector('button[onclick="testProducts()"]');
+            const resultDiv = document.getElementById('productsResult');
+            
+            button.disabled = true;
+            button.textContent = '取得中...';
+            resultDiv.innerHTML = '<div class="result loading">商品一覧取得中...</div>';
+            
+            try {
+                const response = await fetch('/api/shopify/products?limit=5');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ 商品取得成功</div>
+                        <div class="result success">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status info">ℹ️ 商品API未実装または接続エラー</div>
+                        <div class="result info">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status info">ℹ️ 商品APIエンドポイントが必要</div>
+                    <div class="result info">基本データテストで商品数は確認できます</div>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = '商品一覧取得';
+            }
+        }
+    </script>
+</body>
+</html>

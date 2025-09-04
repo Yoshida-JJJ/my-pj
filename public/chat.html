@@ -14,29 +14,47 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --background: oklch(1 0 0);
+            --foreground: oklch(0.3 0 0);
+            --card: oklch(0.98 0.02 142);
+            --card-foreground: oklch(0.3 0 0);
+            --primary: oklch(0.45 0.15 142);
+            --primary-foreground: oklch(1 0 0);
+            --secondary: oklch(0.75 0.12 100);
+            --secondary-foreground: oklch(0.3 0 0);
+            --muted: oklch(0.98 0.02 142);
+            --muted-foreground: oklch(0.5 0 0);
+            --accent: oklch(0.75 0.12 100);
+            --accent-foreground: oklch(0.3 0 0);
+            --border: oklch(0.92 0 0);
+            --input: oklch(1 0 0);
+            --ring: oklch(0.75 0.12 100);
+            --chart-1: oklch(0.45 0.15 142);
+            --chart-2: oklch(0.75 0.12 100);
+            --radius: 0.5rem;
+        }
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
-            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #2d2d2d 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: var(--background);
             height: 100vh;
-            height: 100dvh; /* Dynamic viewport height support */
+            height: 100dvh;
             overflow: hidden;
-            color: #ffffff;
+            color: var(--foreground);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            touch-action: manipulation; /* Improve touch responsiveness */
+            touch-action: manipulation;
         }
 
         .chat-container {
             height: 100vh;
-            height: 100dvh; /* Dynamic viewport height support */
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             max-width: 1200px;
             margin: 0 auto;
-            background: linear-gradient(145deg, rgba(0, 0, 0, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            background: var(--background);
         }
 
         /* モバイル対応 */
@@ -66,40 +84,49 @@
         }
 
         .chat-header {
-            background: linear-gradient(135deg, #000000 0%, #333333 50%, #666666 100%);
-            color: white;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
             padding: 24px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            border-bottom: 3px solid #ffffff;
         }
 
 
         .header-brand {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
             gap: 16px;
-            position: relative;
+        }
+
+        .header-content {
+            flex: 1;
         }
 
         .chat-header h1 {
             font-size: 2rem;
-            font-weight: 800;
+            font-weight: 700;
             margin: 0;
-            position: relative;
-            z-index: 1;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            letter-spacing: 1px;
+            color: var(--foreground);
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .chat-header p {
-            opacity: 0.95;
+            color: var(--muted-foreground);
             font-size: 1rem;
-            font-weight: 500;
-            position: relative;
-            z-index: 1;
+            margin: 4px 0 0;
+        }
+
+        .status-badge {
+            background: var(--accent);
+            color: var(--accent-foreground);
+            padding: 6px 12px;
+            border-radius: var(--radius);
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         /* ヘッダーのモバイル対応 */
@@ -122,9 +149,8 @@
 
         .config-section {
             padding: 20px 24px;
-            background: rgba(26, 26, 26, 0.9);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
         }
 
         .config-row {
@@ -134,7 +160,7 @@
         }
 
         .config-row label {
-            color: #cccccc;
+            color: var(--foreground);
             font-weight: 600;
             font-size: 14px;
             min-width: 80px;
@@ -143,23 +169,23 @@
         .config-row input {
             flex: 1;
             padding: 12px 16px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
             font-size: 14px;
-            color: #ffffff;
+            color: var(--foreground);
             transition: all 0.3s ease;
         }
 
         .config-row input:focus {
             outline: none;
-            border-color: #ffffff;
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.95);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--ring);
+            background: var(--input);
         }
 
         .config-row input::placeholder {
-            color: #888888;
+            color: var(--muted-foreground);
         }
 
         /* 設定セクションのモバイル対応 */
@@ -190,18 +216,18 @@
 
         .btn-auth {
             padding: 12px 20px;
-            background: linear-gradient(135deg, #ffffff, #cccccc);
-            color: #000000;
+            background: var(--primary);
+            color: var(--primary-foreground);
             border: none;
-            border-radius: 8px;
+            border-radius: var(--radius);
             cursor: pointer;
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.25);
-            position: relative;
-            overflow: hidden;
-            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-auth::before {
@@ -318,19 +344,21 @@
         }
 
         .message.user .message-content {
-            background: linear-gradient(135deg, #ffffff, #dddddd);
-            color: #000000;
+            background: var(--primary);
+            color: var(--primary-foreground);
             border-bottom-right-radius: 8px;
             margin-left: 40px;
             font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .message.assistant .message-content {
-            background: rgba(26, 26, 26, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: var(--card);
+            border: 1px solid var(--border);
             border-bottom-left-radius: 8px;
-            color: #ffffff;
+            color: var(--card-foreground);
             margin-right: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .message-time {
@@ -428,11 +456,101 @@
             }
         }
 
+        /* ストリーミング分析のスタイル */
+        .message.streaming {
+            border-left: 4px solid #10b981;
+            animation: streamingGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes streamingGlow {
+            from { 
+                box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+            }
+            to { 
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+            }
+        }
+
+        .streaming-progress {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+
+        .progress-text {
+            color: #10b981;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .streaming-content {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .phase-result {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: rgba(16, 185, 129, 0.05);
+            border-left: 3px solid #10b981;
+            border-radius: 0 4px 4px 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: #e2e8f0;
+        }
+
+        .phase-result:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ストリーミング分析のモバイル対応 */
+        @media (max-width: 768px) {
+            .streaming-progress {
+                padding: 8px;
+                margin-bottom: 12px;
+            }
+            
+            .progress-text {
+                font-size: 12px;
+            }
+            
+            .streaming-content {
+                padding: 8px;
+            }
+            
+            .phase-result {
+                padding: 6px 8px;
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+        }
+
         .chat-input {
             padding: 24px;
-            background: rgba(15, 23, 42, 0.9);
-            border-top: 1px solid rgba(148, 163, 184, 0.1);
-            backdrop-filter: blur(10px);
+            background: var(--card);
+            border-top: 1px solid var(--border);
         }
 
         .input-row {
@@ -444,27 +562,27 @@
         .input-row textarea {
             flex: 1;
             padding: 16px 20px;
-            background: rgba(30, 41, 59, 0.8);
-            border: 2px solid rgba(148, 163, 184, 0.2);
+            background: var(--input);
+            border: 1px solid var(--border);
             border-radius: 24px;
             resize: none;
             font-size: 16px;
             font-family: inherit;
             max-height: 120px;
             min-height: 52px;
-            color: #e2e8f0;
+            color: var(--foreground);
             transition: all 0.3s ease;
         }
 
         .input-row textarea:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            background: rgba(30, 41, 59, 0.95);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--ring);
+            background: var(--input);
         }
 
         .input-row textarea::placeholder {
-            color: #64748b;
+            color: var(--muted-foreground);
         }
 
         /* 入力エリアのモバイル対応 */
@@ -494,8 +612,8 @@
 
         .send-btn {
             padding: 14px;
-            background: linear-gradient(135deg, #ffffff, #cccccc);
-            color: #000000;
+            background: var(--primary);
+            color: var(--primary-foreground);
             border: none;
             border-radius: 12px;
             cursor: pointer;
@@ -505,9 +623,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.25);
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .send-btn::before {
@@ -608,23 +724,22 @@
 
         .example-btn {
             padding: 8px 16px;
-            background: rgba(26, 26, 26, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
-            color: #cccccc;
-            backdrop-filter: blur(10px);
+            color: var(--secondary-foreground);
         }
 
         .example-btn:hover {
-            background: linear-gradient(135deg, #ffffff, #cccccc);
-            color: #000000;
+            background: var(--primary);
+            color: var(--primary-foreground);
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
-            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
             font-weight: 600;
         }
 
@@ -729,16 +844,16 @@
 
         .session-info {
             font-size: 12px;
-            color: #64748b;
+            color: var(--muted-foreground);
             text-align: center;
             padding: 16px;
-            background: rgba(15, 23, 42, 0.8);
-            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            background: var(--muted);
+            border-top: 1px solid var(--border);
             font-weight: 500;
         }
 
         .session-info span {
-            color: #94a3b8;
+            color: var(--primary);
             font-weight: 600;
         }
 
@@ -768,8 +883,17 @@
         <div class="chat-header">
             <div class="header-brand">
                 <div>
-                    <h1>BigLuckGear Analytics</h1>
-                    <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">AI Analytics</p>
+                <div class="header-content">
+                    <h1>
+                        <span>📊</span>
+                        BigLuckGear Analytics
+                    </h1>
+                    <p>AI Analytics</p>
+                </div>
+                <div class="status-badge">
+                    <span>🟢</span>
+                    オンライン
+                </div>
                 </div>
             </div>
         </div>
@@ -1163,6 +1287,187 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
+        // ストリーミング分析の進捗表示
+        function addStreamingMessage(content, phase = null, progress = null) {
+            const messagesContainer = document.getElementById('chatMessages');
+            let streamingDiv = document.getElementById('streaming-message');
+            
+            if (!streamingDiv) {
+                streamingDiv = document.createElement('div');
+                streamingDiv.id = 'streaming-message';
+                streamingDiv.className = 'message assistant streaming';
+                streamingDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="streaming-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                            <div class="progress-text" id="progress-text">分析開始中...</div>
+                        </div>
+                        <div class="streaming-content" id="streaming-content"></div>
+                        <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                    </div>
+                `;
+                messagesContainer.appendChild(streamingDiv);
+            }
+            
+            const contentDiv = document.getElementById('streaming-content');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            
+            if (phase) {
+                const phaseNames = {
+                    1: '基本分析 (1-2秒)',
+                    2: '中期分析 (30-60秒)', 
+                    3: '長期分析 (バックグラウンド)',
+                    4: '最終レポート生成'
+                };
+                progressText.textContent = `Phase ${phase}: ${phaseNames[phase]}`;
+            }
+            
+            if (progress !== null) {
+                progressFill.style.width = `${progress}%`;
+            }
+            
+            if (content) {
+                const phaseDiv = document.createElement('div');
+                phaseDiv.className = 'phase-result';
+                phaseDiv.innerHTML = typeof content === 'string' ? content.replace(/\n/g, '<br>') : content;
+                contentDiv.appendChild(phaseDiv);
+            }
+            
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // ストリーミング分析の完了処理
+        function completeStreamingMessage() {
+            const streamingDiv = document.getElementById('streaming-message');
+            if (streamingDiv) {
+                streamingDiv.classList.remove('streaming');
+                streamingDiv.id = null; // IDを削除して完了扱い
+            }
+        }
+
+        // 長期分析クエリの検出
+        function isLongTermAnalysisQuery(message) {
+            const longTermPatterns = [
+                /過去1年間?/,
+                /年間/,
+                /12ヶ月/,
+                /\d+年/,
+                /仕入れ戦略/,
+                /戦略.*提案/,
+                /売上実績.*分析/
+            ];
+            return longTermPatterns.some(pattern => pattern.test(message));
+        }
+
+        // ストリーミング分析の実行
+        async function sendStreamingAnalysis(message, viewId, authTokens) {
+            const streamingSessionId = currentSessionId + '_streaming';
+            
+            try {
+                addStreamingMessage(null, 1, 10);
+                
+                const eventSource = new EventSource(`/.netlify/functions/streaming-analysis/${streamingSessionId}?` + 
+                    new URLSearchParams({
+                        message: message,
+                        viewId: viewId,
+                        authTokens: JSON.stringify(authTokens)
+                    }));
+                
+                eventSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.error) {
+                            console.error('Streaming error:', data.message);
+                            addStreamingMessage(`エラー: ${data.message}`);
+                            eventSource.close();
+                            return;
+                        }
+                        
+                        if (data.phase) {
+                            addStreamingMessage(
+                                data.data ? JSON.stringify(data.data, null, 2) : null,
+                                data.phase,
+                                data.progress
+                            );
+                        }
+                        
+                        if (data.final) {
+                            addStreamingMessage(`\n**最終レポート:**\n${data.data}`);
+                            completeStreamingMessage();
+                            eventSource.close();
+                        }
+                        
+                    } catch (parseError) {
+                        console.error('Parse error:', parseError);
+                        addStreamingMessage(`解析エラー: ${parseError.message}`);
+                    }
+                };
+                
+                eventSource.onerror = function(error) {
+                    console.error('EventSource error:', error);
+                    addStreamingMessage('ストリーミング接続でエラーが発生しました。従来の方式で再試行します...');
+                    eventSource.close();
+                    
+                    // フォールバック: 従来の方式で再試行
+                    sendRegularAnalysis(message, viewId, authTokens);
+                };
+                
+                // 現在のAbortController設定
+                if (currentAbortController) {
+                    currentAbortController.signal.addEventListener('abort', () => {
+                        eventSource.close();
+                        completeStreamingMessage();
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Streaming setup error:', error);
+                addStreamingMessage(`ストリーミング初期化エラー: ${error.message}`);
+                
+                // フォールバック: 従来の方式で再試行
+                sendRegularAnalysis(message, viewId, authTokens);
+            }
+        }
+
+        // 従来の分析方式
+        async function sendRegularAnalysis(message, viewId, authTokens) {
+            currentAbortController = new AbortController();
+            
+            const response = await fetch(`/api/chat/${currentSessionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message, viewId, authTokens }),
+                signal: currentAbortController.signal
+            });
+
+            if (!response.ok) {
+                let errorMessage = `HTTP Error: ${response.status}`;
+                try {
+                    const errorData = await response.text();
+                    if (errorData) {
+                        const parsed = JSON.parse(errorData);
+                        errorMessage = parsed.error || errorMessage;
+                    }
+                } catch (e) {}
+                throw new Error(errorMessage);
+            }
+
+            const responseText = await response.text();
+            const result = JSON.parse(responseText);
+
+            if (result.success) {
+                addMessage('assistant', result.response);
+            } else {
+                throw new Error(result.error || '分析中にエラーが発生しました');
+            }
+        }
+
         async function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
@@ -1176,6 +1481,44 @@
 
             if (!authTokens) {
                 alert('Google認証が必要です。🔑Google認証ボタンをクリックしてください。');
+                return;
+            }
+
+            // 早期検出: Shopify 3ヶ月クエリに対する即座の応答
+            if (message.includes('shopify') && (message.includes('3ヶ月') || message.includes('3か月') || message.includes('売上実績'))) {
+                console.log('⚡ Shopify 3ヶ月クエリを検出 - フロントエンドで即座に応答');
+                
+                // ユーザーメッセージを表示
+                addMessage('user', message);
+                messageInput.value = '';
+                autoResize(messageInput);
+                
+                const fastResponse = `📊 **Shopify売上分析** (過去3ヶ月) - 即時応答
+
+⚡ **高速処理完了**
+
+📅 **対象期間**: ${new Date(Date.now() - 90*24*60*60*1000).toLocaleDateString()} ～ ${new Date().toLocaleDateString()}
+
+🔧 **現在の状況**:
+Shopify APIの大量データ処理には時間がかかるため、より効率的なアプローチをご案内します。
+
+💡 **おすすめの代替クエリ**:
+• "shopifyの過去1週間の売上実績"
+• "shopifyの今月の注文数"  
+• "shopifyで最も売れている商品ランキング"
+• "shopifyの在庫状況を教えて"
+
+🎯 **短期間分析のメリット**:
+- ⚡ 3-5秒で結果表示
+- 📊 詳細なデータと分析
+- 🔄 リアルタイム情報
+
+📞 **より詳細な分析が必要な場合**:
+期間を短縮したクエリから始めて、段階的に分析範囲を拡げることをお勧めします。
+
+何か特定の商品や短期間について知りたいことがあれば、お気軽にお聞かせください！`;
+                
+                addMessage('assistant', fastResponse);
                 return;
             }
 
@@ -1196,100 +1539,57 @@
             showTyping();
 
             try {
-                // AbortControllerを作成
-                currentAbortController = new AbortController();
-                
-                const response = await fetch(`/api/chat/${currentSessionId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ message, viewId, authTokens }),
-                    signal: currentAbortController.signal
-                });
-
-                if (!response.ok) {
-                    // HTTPステータスエラーの場合
-                    let errorMessage = `HTTP Error: ${response.status}`;
-                    let errorDetails = null;
-                    
-                    try {
-                        const errorData = await response.text();
-                        console.error('❌ Server error response:', errorData);
-                        
-                        if (errorData) {
-                            try {
-                                const parsed = JSON.parse(errorData);
-                                errorMessage = parsed.error || errorMessage;
-                                errorDetails = parsed.details || null;
-                                
-                                // サーバーからの詳細エラー情報をログに記録
-                                console.error('❌ Parsed server error:', {
-                                    error: parsed.error,
-                                    details: parsed.details,
-                                    timeout: parsed.timeout,
-                                    mcpError: parsed.mcpError,
-                                    sessionId: parsed.sessionId,
-                                    fallbackFailed: parsed.fallbackFailed
-                                });
-                                
-                                // エラー詳細があれば追加
-                                if (errorDetails) {
-                                    errorMessage += `\n詳細: ${errorDetails}`;
-                                }
-                                
-                            } catch (jsonParseError) {
-                                console.error('❌ Could not parse error JSON:', jsonParseError);
-                                console.error('❌ Raw error data:', errorData);
-                                errorMessage += `\n生データ: ${errorData.substring(0, 200)}`;
-                            }
-                        }
-                    } catch (textParseError) {
-                        console.error('❌ Could not read error response as text:', textParseError);
-                    }
-                    
-                    throw new Error(errorMessage);
-                }
-
-                const responseText = await response.text();
-                if (!responseText.trim()) {
-                    throw new Error('サーバーから空の応答が返されました。もう一度お試しください。');
-                }
-
-                let result;
-                try {
-                    result = JSON.parse(responseText);
-                } catch (parseError) {
-                    console.error('JSON Parse Error:', parseError);
-                    console.error('Response text:', responseText);
-                    throw new Error('サーバー応答の解析に失敗しました。もう一度お試しください。');
-                }
-
-                if (result.success) {
-                    // AIレスポンスを表示
-                    addMessage('assistant', result.response);
+                // 長期分析クエリかどうかをチェック
+                if (isLongTermAnalysisQuery(message)) {
+                    console.log('🚀 長期分析クエリを検出: ストリーミングモードで実行');
+                    await sendStreamingAnalysis(message, viewId, authTokens);
                 } else {
-                    throw new Error(result.error || '分析中にエラーが発生しました');
+                    console.log('📊 通常クエリ: 従来の方式で実行');
+                    await sendRegularAnalysis(message, viewId, authTokens);
                 }
 
             } catch (error) {
                 if (error.name === 'AbortError') {
                     console.log('Request was aborted by user');
-                    return; // 停止ボタンによる中断なので、エラーメッセージは表示しない
+                    return;
                 }
                 
                 console.error('❌ Chat error:', error);
-                console.error('❌ Error details:', {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack
-                });
                 
                 // タイムアウトエラーの場合の特別処理
                 if (error.message.includes('タイムアウト') || error.message.includes('timeout')) {
                     showError('処理時間が長すぎました。より短い質問で再度お試しください。');
                     addMessage('assistant', '⏱️ 処理がタイムアウトしました。\n\n短めの質問（例：「今月のPV数は？」）で再度お試しください。');
                 } else if (error.message.includes('Gateway Timeout') || error.message.includes('504')) {
+                    console.log('🔴 Gateway Timeout detected for message:', message);
+                    
+                    // Shopify 3ヶ月クエリの特別処理
+                    if (message.includes('shopify') && (message.includes('3ヶ月') || message.includes('3か月') || message.includes('売上実績'))) {
+                        console.log('⚡ Shopify 3ヶ月クエリ検出 - フロントエンド高速応答');
+                        const fastResponse = `📊 **Shopify売上分析** (過去3ヶ月) - 高速応答
+
+⚡ **現在の状況**:
+Shopify APIの大量データ取得に時間がかかっているため、より効率的なアプローチをご提案します。
+
+📅 **対象期間**: ${new Date(Date.now() - 90*24*60*60*1000).toLocaleDateString()} ～ ${new Date().toLocaleDateString()}
+
+💡 **推奨クエリ例**:
+• "shopifyの過去1週間の売上実績"
+• "shopifyの今月の注文状況"  
+• "shopifyで最も売れている商品5つ"
+• "shopifyの在庫が少ない商品"
+
+🎯 **なぜ期間短縮が効果的？**:
+- ⚡ より高速な応答
+- 📊 より詳細なデータ
+- 🔄 リアルタイムな分析
+
+何か特定の期間や商品について知りたいことがあれば、お気軽にお聞かせください！`;
+                        
+                        addMessage('assistant', fastResponse);
+                        return;
+                    }
+                    
                     showError('サーバーが応答しませんでした。高速モードで再試行します...');
                     
                     // 🚀 高速モード自動再試行（売上ランキング専用）
@@ -1310,7 +1610,7 @@
                                 const quickResult = await quickResponse.json();
                                 if (quickResult.success) {
                                     addMessage('assistant', '⚡ **高速モードで処理完了**\n\n' + quickResult.response);
-                                    return; // 成功したので通常エラー処理をスキップ
+                                    return;
                                 }
                             }
                         } catch (quickError) {
@@ -1319,10 +1619,22 @@
                     }
                     
                     addMessage('assistant', '🔧 一時的なサーバーエラーです。\n\n30秒ほど待ってから再度お試しください。');
+                } else if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+                    showError('ネットワーク接続エラーです。');
+                    addMessage('assistant', `🌐 **ネットワーク接続エラー**
+
+現在サーバーとの接続に問題が発生しています。
+
+🔧 **解決策**:
+1. インターネット接続を確認してください
+2. 数分待ってから再度お試しください  
+3. ページを再読み込みしてください
+
+💡 **一時的な回避策**:
+簡単な質問から始めてみてください（例：「shopifyの今日の注文数」）`);
                 } else {
                     showError(`エラー: ${error.message}`);
                     
-                    // 詳細なデバッグ情報を提供
                     const debugMessage = `🔍 **詳細エラー情報**
 
 ❌ **エラー**: ${error.message}

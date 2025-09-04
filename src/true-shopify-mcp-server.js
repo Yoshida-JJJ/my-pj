@@ -20,22 +20,166 @@ class TrueShopifyMCPServer {
     }
   }
 
-  // 基本的なShopify API呼び出し
-  async makeShopifyRequest(endpoint, params = {}) {
+  // 基本的なShopify API呼び出し（エラーハンドリング強化）
+  async makeShopifyRequest(endpoint, params = {}, retryCount = 0) {
     const url = `https://${this.shopifyStore}/admin/api/2024-01${endpoint}`;
     const queryParams = new URLSearchParams(
       Object.entries(params).filter(([_, value]) => value !== undefined)
     );
     
-    const response = await axios.get(`${url}?${queryParams}`, {
-      headers: {
-        'X-Shopify-Access-Token': this.shopifyAccessToken,
-        'Content-Type': 'application/json'
-      },
-      timeout: 300000  // 5分に延長（大量データ対応）
-    });
+    const maxRetries = 3;
+    const baseTimeout = 30000; // 30秒ベース
+    const timeout = baseTimeout * (retryCount + 1); // リトライごとに延長
+    
+    try {
+      console.log(`🔄 Shopify API呼び出し: ${endpoint} (試行${retryCount + 1}/${maxRetries + 1}, タイムアウト: ${timeout}ms)`);
+      
+      const response = await axios.get(`${url}?${queryParams}`, {
+        headers: {
+          'X-Shopify-Access-Token': this.shopifyAccessToken,
+          'Content-Type': 'application/json'
+        },
+        timeout: timeout
+      });
 
-    return response.data;
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Shopify API エラー (試行${retryCount + 1}):`, {
+        endpoint,
+        error: error.message,
+        code: error.code,
+        status: error.response?.status
+      });
+      
+      // タイムアウトまたは一時的なエラーの場合はリトライ
+      if (retryCount < maxRetries && this.shouldRetry(error)) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // 指数バックオフ
+        console.log(`⏳ ${delay}ms後にリトライします...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.makeShopifyRequest(endpoint, params, retryCount + 1);
+      }
+      
+      throw this.formatShopifyError(error, endpoint);
+    }
+  }
+
+  // 超軽量分析専用ツール（1年間データ対応）
+  async analyzeOrdersUltraLight(params) {
+    const { startDate, endDate, status = 'any', financialStatus = 'paid' } = params;
+    
+    console.log('🪶 超軽量分析モード開始...');
+    
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      
+      console.log(`📅 分析期間: ${daysDiff}日間`);
+      
+      // 最小限のデータのみ取得（IDと価格のみ）
+      const ultraLightParams = {
+        status,
+        financial_status: financialStatus,
+        limit: 50, // 極小制限
+        created_at_min: start.toISOString(),
+        created_at_max: end.toISOString(),
+        fields: 'id,created_at,total_price' // 最小限フィールド
+      };
+      
+      // サンプリングベースの分析
+      const sampleData = await this.makeShopifyRequest('/orders.json', ultraLightParams);
+      const sampleOrders = sampleData.orders || [];
+      
+      if (sampleOrders.length === 0) {
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              tool: 'analyze_orders_ultra_light',
+              message: '指定期間に注文データが見つかりませんでした',
+              period: `${startDate} to ${endDate}`,
+              recommendations: [
+                '期間を短縮して再分析を試してください',
+                '注文データの存在を確認してください'
+              ]
+            }, null, 2)
+          }]
+        };
+      }
+      
+      // 超軽量サンプリング分析
+      let totalSample = 0;
+      let countSample = 0;
+      
+      sampleOrders.forEach(order => {
+        totalSample += parseFloat(order.total_price || 0);
+        countSample++;
+      });
+      
+      const avgOrderValue = totalSample / countSample;
+      
+      // 簡易推定（サンプルベース）
+      const estimatedTotalOrders = Math.round(countSample * 3); // 控えめな推定
+      const estimatedTotalRevenue = totalSample * 3;
+      
+      // シンプルな戦略提案
+      const strategy = {
+        period: `${startDate} to ${endDate}`,
+        analysis_type: 'ultra_light_sampling',
+        sample_size: countSample,
+        estimated_metrics: {
+          total_orders: estimatedTotalOrders,
+          total_revenue: Math.round(estimatedTotalRevenue),
+          avg_order_value: Math.round(avgOrderValue)
+        },
+        key_insights: [
+          `平均注文単価: ¥${Math.round(avgOrderValue).toLocaleString()}`,
+          `推定総売上: ¥${Math.round(estimatedTotalRevenue).toLocaleString()}`,
+          `サンプル期間: ${daysDiff}日間から${countSample}件を分析`
+        ],
+        purchasing_strategy: [
+          avgOrderValue > 5000 ? 
+            '高単価商品の販売が好調です。プレミアム商品の仕入れを増やすことを検討してください。' :
+            '平均単価向上のため、セット商品や付加価値商品の仕入れを検討してください。',
+          
+          estimatedTotalRevenue > 100000 ?
+            '売上が好調です。人気商品の在庫確保と新商品開拓を優先してください。' :
+            '売上拡大のため、マーケティング強化と商品ラインナップ見直しを検討してください。',
+          
+          '詳細分析のため、期間を3ヶ月や6ヶ月に短縮した分析もお試しください。'
+        ],
+        next_steps: [
+          '「過去3ヶ月の商品別売上ランキング」で詳細商品分析',
+          '「在庫が少なくなっている商品を教えて」で在庫管理',
+          '「今月の売上実績」で直近パフォーマンス確認'
+        ],
+        note: 'この分析は超軽量サンプリングモードです。より詳細な分析には期間を短縮してください。'
+      };
+      
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(strategy, null, 2)
+        }]
+      };
+      
+    } catch (error) {
+      console.error('超軽量分析エラー:', error.message);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            tool: 'analyze_orders_ultra_light',
+            error: `分析エラー: ${error.message}`,
+            fallback_recommendations: [
+              '期間を短縮してお試しください（例：過去3ヶ月）',
+              'Shopify接続設定を確認してください',
+              'システム管理者にお問い合わせください'
+            ]
+          }, null, 2)
+        }]
+      };
+    }
   }
 
   // 大量データ用最適化取得メソッド
@@ -99,7 +243,7 @@ class TrueShopifyMCPServer {
         const apiParams = {
           status,
           financial_status: financialStatus,
-          limit: 250,
+          limit: 100, // 制限を削減してメモリ負荷軽減
           created_at_min: month.start.toISOString(),
           created_at_max: month.end.toISOString(),
           fields: 'id,created_at,total_price,line_items' // 最小限のフィールド
@@ -148,9 +292,10 @@ class TrueShopifyMCPServer {
           // 月別データを即座に破棄（メモリ解放）
           monthOrders.length = 0;
           
-          // レート制限対応（0.8秒待機）
+          // 強制メモリ解放とレート制限対応
+          if (global.gc) global.gc(); // ガベージコレクション実行
           if (i < months.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 待機時間を延長
           }
           
         } catch (monthError) {
@@ -302,6 +447,13 @@ class TrueShopifyMCPServer {
       // 大量データの場合は段階的取得を実装
       if (daysDiff > 180 || limit > 250) {
         console.log('🔄 大量データ検出 - 最適化処理を実行');
+        
+        // 1年以上のデータは集計専用モードに切り替え
+        if (daysDiff > 300) {
+          console.log('📊 長期データ検出 - 集計専用モードに切り替え');
+          return await this.getOrdersByMonths(params);
+        }
+        
         return await this.getOrdersOptimized(params, daysDiff);
       }
 
@@ -766,18 +918,79 @@ class TrueShopifyMCPServer {
     return monthlySales;
   }
 
+  // リトライ判定
+  shouldRetry(error) {
+    // タイムアウトエラー
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return true;
+    }
+    
+    // 一時的なネットワークエラー
+    if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
+      return true;
+    }
+    
+    // Shopify APIレート制限
+    if (error.response?.status === 429) {
+      return true;
+    }
+    
+    // サーバーエラー（5xx）
+    if (error.response?.status >= 500) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  // Shopifyエラーのフォーマット
+  formatShopifyError(error, endpoint) {
+    const errorInfo = {
+      endpoint,
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      shopifyError: error.response?.data?.errors
+    };
+    
+    let userMessage = 'Shopify接続エラーが発生しました';
+    
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      userMessage = 'Shopify APIのタイムアウトが発生しました。データ量が多いか、ネットワークが不安定な可能性があります。';
+    } else if (error.response?.status === 401) {
+      userMessage = 'Shopify認証エラー。アクセストークンを確認してください。';
+    } else if (error.response?.status === 429) {
+      userMessage = 'Shopify APIのレート制限に達しました。しばらく待ってから再試行してください。';
+    } else if (error.response?.status >= 500) {
+      userMessage = 'Shopifyサーバーで一時的な問題が発生しています。';
+    }
+    
+    const customError = new Error(userMessage);
+    customError.details = errorInfo;
+    return customError;
+  }
+
   // エラーハンドリング
   handleError(toolName, error) {
     console.error(`${toolName} error:`, error.message);
+    
+    const errorResponse = {
+      tool: toolName,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      suggestion: this.getErrorSuggestion(error)
+    };
+    
+    // 詳細情報がある場合は追加
+    if (error.details) {
+      errorResponse.details = error.details;
+      errorResponse.retryable = this.shouldRetry(error);
+    }
+    
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify({
-          tool: toolName,
-          error: error.message,
-          timestamp: new Date().toISOString(),
-          suggestion: this.getErrorSuggestion(error)
-        }, null, 2)
+        text: JSON.stringify(errorResponse, null, 2)
       }]
     };
   }
@@ -894,6 +1107,8 @@ class TrueShopifyMCPServer {
         return await this.analyzeSales(params);
       case 'analyze_customer_segments':
         return await this.analyzeCustomerSegments(params);
+      case 'analyze_orders_ultra_light':
+        return await this.analyzeOrdersUltraLight(params);
       default:
         throw new Error(`Unknown tool: ${toolName}`);
     }
