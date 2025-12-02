@@ -1,7 +1,7 @@
 services:
   - type: web
     name: baseball-card-api
-    rootDirectory: TC-APP
+    rootDir: TC-APP
     env: docker
     plan: free
     buildCommand: docker build -t myservice .
