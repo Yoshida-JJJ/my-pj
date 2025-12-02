@@ -1,0 +1,113 @@
+# Data Model Definition for Baseball Trading Card Platform
+# Version: 1.0.0
+
+models:
+  # ---------------------------------------------------------
+  # CardCatalog: カードそのもののマスターデータ（不変）
+  # ---------------------------------------------------------
+  CardCatalog:
+    type: object
+    description: "メーカーが発行したカードのカタログ情報。出品時の親データとなる。"
+    properties:
+      id:
+        type: uuid
+        primary_key: true
+      manufacturer:
+        type: string
+        enum: ["BBM", "Calbee", "Epoch", "Topps_Japan"]
+        description: "発行メーカー"
+      year:
+        type: integer
+        example: 2024
+        description: "発行年度"
+      series_name:
+        type: string
+        example: "Genesis"
+        description: "シリーズ名"
+      card_number:
+        type: string
+        example: "G-01"
+        description: "カード裏面の番号"
+      player_name:
+        type: string
+        example: "大谷翔平"
+        description: "選手名（漢字フルネーム推奨）"
+      team:
+        type: string
+        enum: 
+          - "Giants"    # 読売ジャイアンツ
+          - "Tigers"    # 阪神タイガース
+          - "Dragons"   # 中日ドラゴンズ
+          - "Swallows"  # 東京ヤクルトスワローズ
+          - "Carp"      # 広島東洋カープ
+          - "BayStars"  # 横浜DeNAベイスターズ
+          - "Hawks"     # 福岡ソフトバンクホークス
+          - "Fighters"  # 北海道日本ハムファイターズ
+          - "Marines"   # 千葉ロッテマリーンズ
+          - "Buffaloes" # オリックス・バファローズ
+          - "Eagles"    # 東北楽天ゴールデンイーグルス
+          - "Lions"     # 埼玉西武ライオンズ
+      rarity:
+        type: string
+        enum: ["Common", "Rare", "Super Rare", "Parallel", "Autograph", "Patch"]
+      is_rookie:
+        type: boolean
+        default: false
+        description: "ルーキーカードフラグ"
+
+  # ---------------------------------------------------------
+  # ListingItem: ユーザーが出品した個別の商品データ
+  # ---------------------------------------------------------
+  ListingItem:
+    type: object
+    description: "ユーザー間取引の対象となる具体的な出品アイテム"
+    properties:
+      id:
+        type: uuid
+        primary_key: true
+      catalog_id:
+        type: uuid
+        foreign_key: "CardCatalog.id"
+        description: "どのカタログのカードか"
+      seller_id:
+        type: uuid
+        description: "出品ユーザーID"
+      status:
+        type: string
+        enum: ["Draft", "Active", "TransactionPending", "Sold", "Cancelled", "Dispute"]
+        default: "Draft"
+      price:
+        type: integer
+        minimum: 100
+        description: "出品価格（日本円）。100円以上必須。"
+      images:
+        type: array
+        items: 
+          type: string
+          format: uri
+        min_items: 2
+        description: "画像URLリスト。表と裏の最低2枚が必要。"
+      condition_grading:
+        type: object
+        description: "カードの状態または鑑定情報"
+        properties:
+          is_graded:
+            type: boolean
+            description: "鑑定済みかどうか"
+          service:
+            type: string
+            enum: ["PSA", "BGS", "CGC", "ARS", "Raw"]
+            description: "鑑定機関。未鑑定の場合はRaw。"
+          score:
+            type: number
+            nullable: true
+            example: 10
+            description: "鑑定スコア"
+          certification_number:
+            type: string
+            nullable: true
+            description: "鑑定証明番号（PSA/BGS等の場合必須）"
+      created_at:
+        type: datetime
+      updated_at:
+        type: datetime

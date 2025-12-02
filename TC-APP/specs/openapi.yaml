@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: Baseball Card Trading Platform API
+  version: 1.0.0
+  description: プロ野球カード取引プラットフォームのバックエンドAPI仕様
+
+servers:
+  - url: http://localhost:8000/v1
+    description: Local Development Server
+
+paths:
+  # --- Catalog Endpoints ---
+  /catalog/cards:
+    get:
+      summary: カタログ検索
+      description: 条件に一致するカードカタログ情報を検索する
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: フリーワード検索（選手名など）
+        - name: team
+          in: query
+          schema:
+            type: string
+            enum: ["Giants", "Tigers", "Dragons", "Swallows", "Carp", "BayStars", "Hawks", "Fighters", "Marines", "Buffaloes", "Eagles", "Lions"]
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 検索結果リスト
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardCatalog'
+
+  # --- Market Endpoints ---
+  /market/listings:
+    get:
+      summary: 出品一覧取得
+      description: 特定のカタログIDに紐づく出品、または新着出品を取得する
+      parameters:
+        - name: catalog_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: ["price_asc", "price_desc", "newest"]
+      responses:
+        '200':
+          description: 出品リスト
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListingItem'
+    
+    post:
+      summary: 新規出品作成
+      description: 新しいカードを出品する
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["catalog_id", "price", "images", "condition_grading"]
+              properties:
+                catalog_id:
+                  type: string
+                  format: uuid
+                price:
+                  type: integer
+                  minimum: 100
+                images:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 2
+                condition_grading:
+                  $ref: '#/components/schemas/ConditionGrading'
+      responses:
+        '201':
+          description: 出品作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingItem'
+
+  /market/orders:
+    post:
+      summary: 購入処理（注文作成）
+      description: 出品されているアイテムを購入し、決済プロセスを開始する
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["listing_id", "payment_method_id"]
+              properties:
+                listing_id:
+                  type: string
+                  format: uuid
+                payment_method_id:
+                  type: string
+      responses:
+        '200':
+          description: 注文受付完了
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: "payment_processing"
+        '409':
+          description: コンフリクト（既に売り切れ、または決済処理中）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CardCatalog:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        player_name: { type: string }
+        team: { type: string }
+        manufacturer: { type: string }
+        year: { type: integer }
+    
+    ListingItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        catalog_id: { type: string, format: uuid }
+        price: { type: integer }
+        status: { type: string }
+        condition_grading: { $ref: '#/components/schemas/ConditionGrading' }
+    
+    ConditionGrading:
+      type: object
+      properties:
+        service: { type: string }
+        score: { type: number }
+        certification_number: { type: string }
+
+    ErrorResponse:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        detail: { type: string }
