@@ -9,7 +9,7 @@ import os
 import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
-from . import models, schemas, database
+from . import models, schemas, database, utils
 
 load_dotenv()
 
@@ -26,8 +26,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://tc-app2.vercel.app",
-        "https://tc-app-git-main-yoshida-jjjs-projects.vercel.app", # Vercel preview URLs
-        "*" # Keep wildcard for now as fallback, but specific origins are better
+        "https://tc-app-git-main-yoshida-jjjs-projects.vercel.app",
+        "*" 
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -48,6 +48,102 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # --- Dependency ---
 def get_db():
     db = database.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# --- Auth Endpoints ---
+@app.post("/auth/register", response_model=schemas.UserResponse)
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = utils.get_password_hash(user.password)
+    new_user = models.User(
+        email=user.email,
+        hashed_password=hashed_password,
+        name=user.name
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+@app.post("/auth/login", response_model=schemas.UserResponse)
+def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
+    if not user:
+        raise HTTPException(status_code=403, detail="Invalid credentials")
+    
+    if not utils.verify_password(user_credentials.password, user.hashed_password):
+        raise HTTPException(status_code=403, detail="Invalid credentials")
+        
+    return user
+
+# --- Catalog Endpoints ---
+@app.get("/catalog/cards", response_model=List[schemas.CardCatalog])
+def get_catalog_cards(
+    q: Optional[str] = Query(None),
+    team: Optional[models.Team] = Query(None),
+    year: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.CardCatalog)
+    if team:
+        query = query.filter(models.CardCatalog.team == team)
+    if year:
+        query = query.filter(models.CardCatalog.year == year)
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            (models.CardCatalog.player_name.ilike(search)) |
+            (models.CardCatalog.series_name.ilike(search))
+        )
+    return query.all()
+
+# --- Market Endpoints ---
+@app.get("/market/listings", response_model=List[schemas.ListingItemResponse])
+def get_market_listings(
+    catalog_id: Optional[str] = Query(None),
+    seller_id: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+    team: Optional[models.Team] = Query(None),
+    sort: Optional[str] = Query("newest"),
+    db: Session = Depends(get_db)
+):
+    # Join with CardCatalog to filter by catalog attributes
+    query = db.query(models.ListingItem).join(models.CardCatalog).filter(models.ListingItem.status == models.ListingStatus.Active)
+    
+    if catalog_id:
+        query = query.filter(models.ListingItem.catalog_id == catalog_id)
+
+    if seller_id:
+        query = query.filter(models.ListingItem.seller_id == seller_id)
+
+    if team:
+        query = query.filter(models.CardCatalog.team == team)
+        
+    if q:
+        search = f"%{q}%"
+        query = query.filter(
+            (models.CardCatalog.player_name.ilike(search)) |
+            (models.CardCatalog.series_name.ilike(search))
+        )
+        
+    if sort == "price_asc":
+        query = query.order_by(models.ListingItem.price.asc())
+    elif sort == "price_desc":
+        query = query.order_by(models.ListingItem.price.desc())
+    else:
+        query = query.order_by(models.ListingItem.id.desc())
+        
+    return query.all()
+
+@app.get("/market/listings/{listing_id}", response_model=schemas.ListingItemResponse)
+def get_listing(listing_id: str, db: Session = Depends(get_db)):
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == listing_id).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
     return listing
