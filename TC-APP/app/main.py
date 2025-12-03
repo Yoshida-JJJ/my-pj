@@ -200,21 +200,6 @@ async def upload_file(file: UploadFile = File(...)):
         print(f"Cloudinary upload failed: {e}. Falling back to local storage.")
         os.makedirs("app/static/uploads", exist_ok=True)
         file_extension = os.path.splitext(file.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = f"app/static/uploads/{unique_filename}"
-        
-        # Reset file pointer
-        await file.seek(0)
-        
-):
-    query = db.query(models.Order)
-    if buyer_id:
-        query = query.filter(models.Order.buyer_id == buyer_id)
-    
-    orders = query.all()
-    response = []
-    for order in orders:
-        listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
         status = listing.status if listing else "Unknown"
         response.append(schemas.OrderResponse(
             id=order.id,
