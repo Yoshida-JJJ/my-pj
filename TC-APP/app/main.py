@@ -50,31 +50,6 @@ def get_db():
     db = database.SessionLocal()
     try:
         yield db
-    finally:
-        db.close()
-
-# --- Auth Endpoints ---
-@app.post("/auth/register", response_model=schemas.UserResponse)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    hashed_password = utils.get_password_hash(user.password)
-    new_user = models.User(
-        email=user.email,
-        hashed_password=hashed_password,
-        name=user.name
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-
-@app.post("/auth/login", response_model=schemas.UserResponse)
-def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
-    if not user:
         raise HTTPException(status_code=403, detail="Invalid credentials")
     
     if not utils.verify_password(user_credentials.password, user.hashed_password):
