@@ -51,19 +51,6 @@ class User(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    name = Column(String, nullable=True)
-    created_at = Column(String, default=lambda: str(uuid.uuid4()))
-
-class CardCatalog(Base):
-    __tablename__ = "card_catalogs"
-
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-    series_name = Column(String, nullable=True)
-    player_name = Column(String, nullable=False, index=True)
-    team = Column(SAEnum(Team), nullable=False)
-    card_number = Column(String, nullable=True)
-    rarity = Column(SAEnum(Rarity), nullable=True)
-    is_rookie = Column(Boolean, default=False)
     year = Column(Integer, nullable=True)
 
 class ListingItem(Base):
