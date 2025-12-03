@@ -438,6 +438,201 @@ def debug_db(db: Session = Depends(get_db)):
 
 @app.get("/debug/seed", include_in_schema=False)
 def seed_data(db: Session = Depends(get_db)):
+# 2. 存在チェック
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    # 3. ステータスチェック (State Machine: Active 以外は購入不可)
+    if listing.status != models.ListingStatus.Active:
+        raise HTTPException(
+            status_code=409, # Conflict
+            detail="Item is not available for purchase (Already sold or pending)"
+        )
+
+    # 4. トランザクション処理
+    try:
+        # ステータス更新: Active -> TransactionPending (在庫ロック)
+        listing.status = models.ListingStatus.TransactionPending
+        
+        buyer_id = order_data.buyer_id if order_data.buyer_id else str(uuid.uuid4())
+        
+        # 注文レコード作成
+        new_order = models.Order(
+            listing_id=str(listing.id),
+            buyer_id=buyer_id, 
+            payment_method_id=order_data.payment_method_id,
+            total_amount=listing.price
+        )
+        
+        db.add(new_order)
+        db.commit()
+        db.refresh(new_order)
+        
+        return schemas.OrderResponse(
+            id=new_order.id,
+            listing_id=listing.id,
+            buyer_id=new_order.buyer_id,
+            status=listing.status,
+            total_amount=new_order.total_amount,
+            tracking_number=new_order.tracking_number
+        )
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Transaction Flow Endpoints ---
+
+@app.post("/market/orders/{order_id}/capture", response_model=schemas.OrderResponse)
+def capture_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.TransactionPending:
+         raise HTTPException(status_code=400, detail="Invalid status for capture")
+
+    listing.status = models.ListingStatus.AwaitingShipment
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.post("/market/orders/{order_id}/fail", response_model=schemas.OrderResponse)
+def fail_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.TransactionPending:
+         raise HTTPException(status_code=400, detail="Invalid status for failure")
+
+    listing.status = models.ListingStatus.Active # Revert to Active
+    # Note: In a real system, we might want to mark the order as failed instead of just reverting the listing
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.post("/market/orders/{order_id}/ship", response_model=schemas.OrderResponse)
+def ship_order(
+    order_id: str, 
+    shipment: schemas.ShipmentCreate,
+    db: Session = Depends(get_db)
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.AwaitingShipment:
+         raise HTTPException(status_code=400, detail="Invalid status for shipping")
+
+    listing.status = models.ListingStatus.Shipped
+    order.tracking_number = shipment.tracking_number
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.post("/market/orders/{order_id}/deliver", response_model=schemas.OrderResponse)
+def deliver_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.Shipped:
+         raise HTTPException(status_code=400, detail="Invalid status for delivery")
+
+    listing.status = models.ListingStatus.Delivered
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.post("/market/orders/{order_id}/complete", response_model=schemas.OrderResponse)
+def complete_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.Delivered:
+         raise HTTPException(status_code=400, detail="Invalid status for completion")
+
+    listing.status = models.ListingStatus.Completed
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+# --- Debug Endpoints ---
+@app.get("/debug/db")
+def debug_db(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    try:
+        # Test connection
+        db.execute(text("SELECT 1"))
+        
+        # Check tables (PostgreSQL specific query, fallback for SQLite if needed)
+        try:
+            tables = db.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")).fetchall()
+            table_names = [t[0] for t in tables]
+        except:
+            # Fallback for SQLite
+            tables = db.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
+            table_names = [t[0] for t in tables]
+        
+        # Check row counts
+        counts = {}
+        if "card_catalogs" in table_names:
+            counts["card_catalogs"] = db.query(models.CardCatalog).count()
+        if "listing_items" in table_names:
+            counts["listing_items"] = db.query(models.ListingItem).count()
+            
+        return {
+            "status": "ok",
+            "tables": table_names,
+            "counts": counts,
+            "database_url_set": bool(os.getenv("DATABASE_URL"))
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "detail": str(e),
+            "type": type(e).__name__
+        }
+
+@app.get("/debug/seed", include_in_schema=False)
+def seed_data(db: Session = Depends(get_db)):
     # Import here to avoid circular imports if any
     from seed_db import seed_db
     try:
@@ -445,3 +640,19 @@ def seed_data(db: Session = Depends(get_db)):
         return {"message": "Database seeded successfully!"}
     except Exception as e:
         return {"message": f"Seeding failed: {str(e)}"}
+
+@app.get("/debug/validate_listings")
+def debug_validate_listings(db: Session = Depends(get_db)):
+    try:
+        items = db.query(models.ListingItem).join(models.CardCatalog).all()
+        results = []
+        for item in items:
+            try:
+                # Manually validate against schema
+                schema_item = schemas.ListingItemResponse.model_validate(item)
+                results.append({"id": item.id, "status": "valid"})
+            except Exception as e:
+                results.append({"id": item.id, "status": "invalid", "error": str(e)})
+        return results
+    except Exception as e:
+        return {"error": str(e)}
