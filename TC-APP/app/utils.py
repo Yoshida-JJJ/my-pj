@@ -14,4 +14,8 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(_hash_password_pre(plain_password), hashed_password)
 
 def get_password_hash(password):
-    return pwd_context.hash(_hash_password_pre(password))
+    pre_hashed = _hash_password_pre(password)
+    print(f"DEBUG: Original password length: {len(password)}")
+    print(f"DEBUG: Pre-hashed password: {pre_hashed}")
+    print(f"DEBUG: Pre-hashed length: {len(pre_hashed)}")
+    return pwd_context.hash(pre_hashed)
