@@ -38,7 +38,8 @@ export default function Home() {
 
         const response = await fetch(`/api/proxy/market/listings?${params.toString()}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch listings');
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch listings: ${response.status} ${response.statusText} - ${errorText}`);
         }
         const data = await response.json();
         setListings(data);
