@@ -31,24 +31,6 @@ class Rarity(str, enum.Enum):
     Super_Rare = "Super Rare"
     Parallel = "Parallel"
     Autograph = "Autograph"
-    Patch = "Patch"
-
-class ListingStatus(str, enum.Enum):
-    Draft = "Draft"
-    Active = "Active"
-    TransactionPending = "TransactionPending"
-    series_name = Column(String, nullable=True)
-    player_name = Column(String, nullable=False, index=True)
-    team = Column(SAEnum(Team), nullable=False)
-    card_number = Column(String, nullable=True)
-    rarity = Column(SAEnum(Rarity), nullable=True)
-    is_rookie = Column(Boolean, default=False)
-
-class ListingItem(Base):
-    __tablename__ = "listing_items"
-
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-    catalog_id = Column(String, ForeignKey("card_catalogs.id"), nullable=False)
     seller_id = Column(String, nullable=False)
     status = Column(SAEnum(ListingStatus), default=ListingStatus.Draft, nullable=False)
     price = Column(Integer, nullable=False)
