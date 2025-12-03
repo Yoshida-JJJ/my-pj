@@ -56,21 +56,6 @@ def get_db():
 # --- Catalog Endpoints ---
 @app.get("/catalog/cards", response_model=List[schemas.CardCatalog])
 def get_catalog_cards(
-    q: Optional[str] = Query(None),
-    team: Optional[models.Team] = Query(None),
-    year: Optional[int] = Query(None),
-    db: Session = Depends(get_db)
-):
-    query = db.query(models.CardCatalog)
-    if team:
-    team: Optional[models.Team] = Query(None),
-    sort: Optional[str] = Query("newest"),
-    db: Session = Depends(get_db)
-):
-    # Join with CardCatalog to filter by catalog attributes
-    query = db.query(models.ListingItem).join(models.CardCatalog).filter(models.ListingItem.status == models.ListingStatus.Active)
-    
-    if catalog_id:
         query = query.filter(models.ListingItem.catalog_id == catalog_id)
 
     if seller_id:
