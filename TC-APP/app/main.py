@@ -1,12 +1,3 @@
-from fastapi import FastAPI, Depends, Query, HTTPException, Path, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-    title="Baseball Card Trading Platform API",
-    version="1.0.0"
-)
-
-# DBテーブル作成はstartupイベントで行う
-@app.on_event("startup")
-def startup_event():
     models.Base.metadata.create_all(bind=database.engine)
 
 app.add_middleware(
