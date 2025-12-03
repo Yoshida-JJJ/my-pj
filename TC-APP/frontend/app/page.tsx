@@ -2,41 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-// Types based on API response
-type Manufacturer = "BBM" | "Calbee" | "Epoch" | "Topps_Japan";
-type Team = "Giants" | "Tigers" | "Dragons" | "Swallows" | "Carp" | "BayStars" | "Hawks" | "Fighters" | "Marines" | "Buffaloes" | "Eagles" | "Lions";
-type Rarity = "Common" | "Rare" | "Super Rare" | "Parallel" | "Autograph" | "Patch";
-
-interface CardCatalog {
-  id: string;
-  manufacturer: Manufacturer;
-  year: number;
-  series_name?: string;
-  player_name: string;
-  team: Team;
-  card_number?: string;
-  rarity?: Rarity;
-  is_rookie: boolean;
-}
-
-interface ConditionGrading {
-  is_graded: boolean;
-  service: string;
-  score?: number;
-  certification_number?: string;
-}
-
-interface ListingItem {
-  id: string;
-  catalog_id: string;
-  price: number;
-  images: string[];
-  condition_grading: ConditionGrading;
-  seller_id: string;
-  status: string;
-  catalog: CardCatalog;
-}
+import HeroSection from '../components/HeroSection';
+import CardListing from '../components/CardListing';
+import Footer from '../components/Footer';
+import { ListingItem, Team } from '../types';
 
 export default function Home() {
   const [listings, setListings] = useState<ListingItem[]>([]);
@@ -86,136 +55,106 @@ export default function Home() {
   const teams: Team[] = ["Giants", "Tigers", "Dragons", "Swallows", "Carp", "BayStars", "Hawks", "Fighters", "Marines", "Buffaloes", "Eagles", "Lions"];
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Baseball Card Market</h1>
-          <p className="mt-2 text-gray-600">Find your favorite rare cards.</p>
-        </header>
+    <div className="min-h-screen bg-brand-dark flex flex-col">
+      <HeroSection />
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 flex-1 w-full">
         {/* Search & Filter Bar */}
-        <div className="bg-white p-4 rounded-lg shadow mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:space-x-4">
-          {/* Search Input */}
-          <div className="flex-1">
-            <label htmlFor="search" className="sr-only">Search</label>
-            <input
-              type="text"
-              id="search"
-              placeholder="Search player or series..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 text-gray-900 relative z-10"
-            />
-          </div>
+        <div className="glass-panel p-6 rounded-2xl shadow-2xl mb-12 animate-fade-in-up">
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            {/* Search Input */}
+            <div className="flex-1 w-full">
+              <label htmlFor="search" className="sr-only">Search</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-brand-platinum/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  id="search"
+                  placeholder="Search player, series, or year..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white placeholder-brand-platinum/30 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
 
-          {/* Team Filter */}
-          <div className="w-full md:w-48">
-            <label htmlFor="team" className="sr-only">Team</label>
-            <select
-              id="team"
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 text-gray-900 relative z-10"
-            >
-              <option value="">All Teams</option>
-              {teams.map((team) => (
-                <option key={team} value={team}>{team}</option>
-              ))}
-            </select>
-          </div>
+            {/* Team Filter */}
+            <div className="w-full md:w-48">
+              <label htmlFor="team" className="sr-only">Team</label>
+              <select
+                id="team"
+                value={selectedTeam}
+                onChange={(e) => setSelectedTeam(e.target.value)}
+                className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
+              >
+                <option value="">All Teams</option>
+                {teams.map((team) => (
+                  <option key={team} value={team}>{team}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* Sort Order */}
-          <div className="w-full md:w-48">
-            <label htmlFor="sort" className="sr-only">Sort</label>
-            <select
-              id="sort"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 text-gray-900 relative z-10"
-            >
-              <option value="newest">Newest</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-            </select>
+            {/* Sort Order */}
+            <div className="w-full md:w-48">
+              <label htmlFor="sort" className="sr-only">Sort</label>
+              <select
+                id="sort"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
+              >
+                <option value="newest">Newest</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {loading ? (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        {/* Listings Grid */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-heading font-bold text-white">Latest Arrivals</h2>
+            <span className="text-brand-platinum/60 text-sm">{listings.length} items found</span>
           </div>
-        ) : error ? (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-red-500 text-xl font-semibold">Error: {error}</div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {listings.map((item) => (
-                <Link href={`/listings/${item.id}`} key={item.id} className="block group">
-                  <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
-                    {/* Image Section */}
-                    <div className="relative h-64 bg-gray-200">
-                      {item.images && item.images.length > 0 ? (
-                        <img
-                          src={item.images[0]}
-                          alt={item.catalog.player_name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            // Fallback for broken images
-                            (e.target as HTMLImageElement).src = 'https://placehold.co/400x600?text=No+Image';
-                          }}
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400">
-                          No Image
-                        </div>
-                      )}
-                      <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                        {item.catalog.year} {item.catalog.manufacturer}
-                      </div>
-                    </div>
 
-                    {/* Content Section */}
-                    <div className="p-4 flex-1 flex flex-col">
-                      <div className="mb-2">
-                        <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 mb-1">
-                          {item.catalog.team}
-                        </span>
-                        {item.catalog.is_rookie && (
-                          <span className="inline-block ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 mb-1">
-                            RC
-                          </span>
-                        )}
-                        <h2 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                          {item.catalog.player_name}
-                        </h2>
-                        <p className="text-sm text-gray-500">{item.catalog.series_name} {item.catalog.card_number}</p>
-                      </div>
-
-                      <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-gray-500">Price</p>
-                          <p className="text-xl font-bold text-gray-900">¥{item.price.toLocaleString()}</p>
-                        </div>
-                        <span className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium">
-                          Buy Now
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+          {loading ? (
+            <div className="min-h-[400px] flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-blue"></div>
             </div>
-
-            {listings.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No listings found matching your criteria.</p>
+          ) : error ? (
+            <div className="min-h-[400px] flex items-center justify-center">
+              <div className="text-red-500 text-xl font-semibold bg-red-500/10 px-6 py-4 rounded-lg border border-red-500/20">Error: {error}</div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                {listings.map((item) => (
+                  <CardListing key={item.id} item={item} />
+                ))}
               </div>
-            )}
-          </>
-        )}
+
+              {listings.length === 0 && (
+                <div className="text-center py-20 bg-brand-dark-light/30 rounded-2xl border border-brand-platinum/5">
+                  <p className="text-brand-platinum/50 text-lg">No listings found matching your criteria.</p>
+                  <button
+                    onClick={() => { setSearchQuery(''); setSelectedTeam(''); }}
+                    className="mt-4 text-brand-blue hover:text-brand-blue-glow font-medium"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

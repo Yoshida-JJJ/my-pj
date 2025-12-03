@@ -2,23 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-
-// Types
-type Manufacturer = "BBM" | "Calbee" | "Epoch" | "Topps_Japan";
-type Team = "Giants" | "Tigers" | "Dragons" | "Swallows" | "Carp" | "BayStars" | "Hawks" | "Fighters" | "Marines" | "Buffaloes" | "Eagles" | "Lions";
-
-interface CardCatalog {
-    id: string;
-    manufacturer: Manufacturer;
-    year: number;
-    series_name?: string;
-    player_name: string;
-    team: Team;
-    card_number?: string;
-    is_rookie: boolean;
-}
+import Footer from '../../components/Footer';
+import { CardCatalog } from '../../types';
 
 export default function SellPage() {
     const { data: session, status } = useSession();
@@ -158,32 +144,33 @@ export default function SellPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl mx-auto">
+        <div className="min-h-screen bg-brand-dark py-12 px-4 sm:px-6 lg:px-8 flex flex-col">
+            <div className="max-w-3xl mx-auto w-full flex-1">
                 <div className="md:flex md:items-center md:justify-between mb-8">
                     <div className="flex-1 min-w-0">
-                        <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                        <h2 className="text-3xl font-heading font-bold leading-7 text-white sm:text-4xl sm:truncate text-glow">
                             Create New Listing
                         </h2>
+                        <p className="mt-2 text-brand-platinum/60">List your card for sale in the marketplace.</p>
                     </div>
                 </div>
 
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <div className="glass-panel rounded-2xl overflow-hidden shadow-2xl border border-brand-platinum/10">
+                    <form onSubmit={handleSubmit} className="p-8 space-y-8">
 
                         {/* Catalog Selection */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Select Card</label>
+                            <label className="block text-sm font-medium text-brand-platinum mb-2">Select Card</label>
                             {loadingCatalog ? (
-                                <p className="text-sm text-gray-500">Loading catalog...</p>
+                                <p className="text-sm text-brand-platinum/50 animate-pulse">Loading catalog...</p>
                             ) : (
                                 <select
                                     value={selectedCatalogId}
                                     onChange={(e) => setSelectedCatalogId(e.target.value)}
-                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border relative z-10 text-gray-900"
+                                    className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
                                 >
                                     {catalogItems.map((item) => (
-                                        <option key={item.id} value={item.id}>
+                                        <option key={item.id} value={item.id} className="bg-brand-dark">
                                             {item.player_name} - {item.year} {item.manufacturer} ({item.card_number})
                                         </option>
                                     ))}
@@ -193,10 +180,10 @@ export default function SellPage() {
 
                         {/* Price */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Price (JPY)</label>
-                            <div className="mt-1 relative rounded-md shadow-sm">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                                    <span className="text-gray-500 sm:text-sm">¥</span>
+                            <label className="block text-sm font-medium text-brand-platinum mb-2">Price (JPY)</label>
+                            <div className="relative rounded-xl shadow-sm">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-20">
+                                    <span className="text-brand-platinum/50 sm:text-sm">¥</span>
                                 </div>
                                 <input
                                     type="number"
@@ -204,58 +191,58 @@ export default function SellPage() {
                                     required
                                     value={price}
                                     onChange={(e) => setPrice(e.target.value)}
-                                    className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md border py-2 relative z-10 text-gray-900"
+                                    className="block w-full pl-8 pr-12 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white placeholder-brand-platinum/30 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
                                     placeholder="5000"
                                 />
                             </div>
                         </div>
 
                         {/* Condition */}
-                        <div className="border-t border-gray-200 pt-4">
-                            <div className="flex items-center mb-4">
+                        <div className="border-t border-brand-platinum/10 pt-8">
+                            <div className="flex items-center mb-6">
                                 <input
                                     id="is_graded"
                                     type="checkbox"
                                     checked={isGraded}
                                     onChange={(e) => setIsGraded(e.target.checked)}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    className="h-5 w-5 text-brand-blue focus:ring-brand-blue border-brand-platinum/20 rounded bg-brand-dark-light/50"
                                 />
-                                <label htmlFor="is_graded" className="ml-2 block text-sm text-gray-900">
+                                <label htmlFor="is_graded" className="ml-3 block text-sm font-medium text-white">
                                     Is this card graded?
                                 </label>
                             </div>
 
                             {isGraded && (
-                                <div className="grid grid-cols-2 gap-4 pl-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-8 animate-fade-in-up">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Service</label>
+                                        <label className="block text-sm font-medium text-brand-platinum mb-2">Service</label>
                                         <select
                                             value={gradingService}
                                             onChange={(e) => setGradingService(e.target.value)}
-                                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900"
+                                            className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
                                         >
-                                            <option>PSA</option>
-                                            <option>BGS</option>
-                                            <option>CGC</option>
+                                            <option className="bg-brand-dark">PSA</option>
+                                            <option className="bg-brand-dark">BGS</option>
+                                            <option className="bg-brand-dark">CGC</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Score</label>
+                                        <label className="block text-sm font-medium text-brand-platinum mb-2">Score</label>
                                         <input
                                             type="number"
                                             step="0.5"
                                             value={gradingScore}
                                             onChange={(e) => setGradingScore(e.target.value)}
-                                            className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md border py-2 px-3 text-gray-900"
+                                            className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
                                         />
                                     </div>
-                                    <div className="col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700">Certification Number</label>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-brand-platinum mb-2">Certification Number</label>
                                         <input
                                             type="text"
                                             value={certNumber}
                                             onChange={(e) => setCertNumber(e.target.value)}
-                                            className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md border py-2 px-3 text-gray-900"
+                                            className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
                                         />
                                     </div>
                                 </div>
@@ -263,12 +250,15 @@ export default function SellPage() {
                         </div>
 
                         {/* Images */}
-                        <div className="border-t border-gray-200 pt-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
+                        <div className="border-t border-brand-platinum/10 pt-8">
+                            <label className="block text-sm font-medium text-brand-platinum mb-4">Images</label>
 
                             {/* Upload Button */}
-                            <div className="mb-4">
-                                <label className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <div className="mb-6">
+                                <label className={`inline-flex items-center px-6 py-3 border border-brand-platinum/20 text-sm font-medium rounded-xl shadow-sm text-white bg-brand-dark-light hover:bg-brand-dark-light/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue cursor-pointer transition-all ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    <svg className="w-5 h-5 mr-2 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
                                     {uploading ? 'Uploading...' : 'Upload Image'}
                                     <input
                                         type="file"
@@ -283,16 +273,16 @@ export default function SellPage() {
                             {/* Preview */}
                             <div className="grid grid-cols-2 gap-4">
                                 {images.map((url, idx) => (
-                                    <div key={idx} className="relative group">
+                                    <div key={idx} className="relative group rounded-xl overflow-hidden border border-brand-platinum/10">
                                         <img
                                             src={url}
                                             alt={`Uploaded ${idx + 1}`}
-                                            className="h-40 w-full object-cover rounded-md"
+                                            className="h-48 w-full object-cover"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
                                         >
                                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -302,17 +292,19 @@ export default function SellPage() {
                                 ))}
                             </div>
                             {images.length === 0 && (
-                                <p className="text-sm text-gray-500">No images uploaded yet.</p>
+                                <div className="border-2 border-dashed border-brand-platinum/10 rounded-xl p-8 text-center">
+                                    <p className="text-sm text-brand-platinum/40">No images uploaded yet.</p>
+                                </div>
                             )}
                         </div>
 
                         {/* Error Message */}
                         {error && (
-                            <div className="rounded-md bg-red-50 p-4">
+                            <div className="rounded-xl bg-red-500/10 p-4 border border-red-500/20">
                                 <div className="flex">
                                     <div className="ml-3">
-                                        <h3 className="text-sm font-medium text-red-800">Error</h3>
-                                        <div className="mt-2 text-sm text-red-700">
+                                        <h3 className="text-sm font-medium text-red-400">Error</h3>
+                                        <div className="mt-1 text-sm text-red-300/80">
                                             <p>{error}</p>
                                         </div>
                                     </div>
@@ -325,14 +317,15 @@ export default function SellPage() {
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`w-full flex justify-center py-4 px-6 border border-transparent rounded-xl shadow-lg text-base font-bold text-white bg-brand-blue hover:bg-brand-blue-glow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-all transform hover:scale-[1.02] ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
-                                {submitting ? 'Listing...' : 'List Item'}
+                                {submitting ? 'Listing...' : 'List Item Now'}
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
+            <Footer />
         </div>
     );
 }
