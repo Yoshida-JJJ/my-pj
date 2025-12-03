@@ -1,3 +1,26 @@
+from fastapi import FastAPI, Depends, Query, HTTPException, Path, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
+from typing import List, Optional
+import uuid
+import shutil
+import os
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
+from . import models, schemas, database, utils
+
+load_dotenv()
+
+app = FastAPI(
+    title="Baseball Card Trading Platform API",
+    version="1.0.0"
+)
+
+# DBテーブル作成はstartupイベントで行う
+@app.on_event("startup")
+def startup_event():
     models.Base.metadata.create_all(bind=database.engine)
 
 app.add_middleware(
