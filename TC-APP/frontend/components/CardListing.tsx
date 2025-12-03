@@ -40,37 +40,48 @@ export default function CardListing({ item }: ListingItemProps) {
                 </div>
 
                 {/* Content Section */}
-                <div className="p-5 flex-1 flex flex-col">
+                <div className="p-5 flex-1 flex flex-col bg-gradient-to-b from-transparent to-black/40">
                     <div className="mb-4">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-brand-blue/10 text-brand-blue border border-brand-blue/20">
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-brand-blue/20 text-brand-blue border border-brand-blue/30">
                                 {item.catalog.team}
                             </span>
                             {item.catalog.rarity && (
-                                <span className="text-xs text-brand-platinum/60 uppercase tracking-wider">
+                                <span className="text-[10px] text-brand-platinum/60 uppercase tracking-wider font-medium">
                                     {item.catalog.rarity}
                                 </span>
                             )}
                         </div>
 
-                        <h2 className="font-heading text-xl font-bold text-white mb-1 group-hover:text-brand-blue-glow transition-colors">
+                        <h2 className="font-heading text-lg font-bold text-white mb-1 group-hover:text-brand-blue-glow transition-colors truncate">
                             {item.catalog.player_name}
                         </h2>
-                        <p className="text-sm text-brand-platinum/60">
+                        <p className="text-xs text-brand-platinum/50 font-mono">
                             {item.catalog.series_name} #{item.catalog.card_number}
                         </p>
                     </div>
 
-                    <div className="mt-auto pt-4 border-t border-brand-platinum/10 flex items-center justify-between">
+                    <div className="mt-auto pt-4 border-t border-brand-platinum/10 grid grid-cols-2 gap-4">
                         <div>
-                            <p className="text-xs text-brand-platinum/50 uppercase tracking-wider">Price</p>
-                            <p className="font-heading text-2xl font-bold text-white group-hover:text-glow transition-all">
-                                ¥{item.price.toLocaleString()}
-                            </p>
+                            <p className="text-[10px] text-brand-platinum/50 uppercase tracking-wider mb-1">Current Bid</p>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-4 h-4 rounded-full bg-brand-gold flex items-center justify-center shadow-[0_0_10px_rgba(234,179,8,0.5)]">
+                                    <span className="text-[10px] text-brand-dark font-bold">¥</span>
+                                </div>
+                                <p className="font-heading text-lg font-bold text-white group-hover:text-brand-gold transition-colors">
+                                    {item.price.toLocaleString()}
+                                </p>
+                            </div>
                         </div>
-                        <span className="opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all duration-300 text-brand-blue font-bold text-sm flex items-center gap-1">
-                            View Details →
-                        </span>
+                        <div className="text-right border-l border-brand-platinum/10 pl-4">
+                            <p className="text-[10px] text-brand-platinum/50 uppercase tracking-wider mb-1">Time Left</p>
+                            <div className="flex items-center justify-end gap-1.5 text-brand-blue-glow">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="font-mono text-sm font-medium">01:33:45</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
