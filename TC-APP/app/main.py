@@ -58,23 +58,6 @@ def get_catalog_cards(
 ):
     query = db.query(models.CardCatalog)
     if team:
-        query = query.filter(models.CardCatalog.team == team)
-    if year:
-        query = query.filter(models.CardCatalog.year == year)
-    if q:
-        search = f"%{q}%"
-        query = query.filter(
-            (models.CardCatalog.player_name.ilike(search)) |
-            (models.CardCatalog.series_name.ilike(search))
-        )
-    return query.all()
-
-# --- Market Endpoints ---
-@app.get("/market/listings", response_model=List[schemas.ListingItemResponse])
-def get_market_listings(
-    catalog_id: Optional[str] = Query(None),
-    seller_id: Optional[str] = Query(None),
-    q: Optional[str] = Query(None),
     team: Optional[models.Team] = Query(None),
     sort: Optional[str] = Query("newest"),
     db: Session = Depends(get_db)

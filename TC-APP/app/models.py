@@ -37,21 +37,6 @@ class ListingStatus(str, enum.Enum):
     Draft = "Draft"
     Active = "Active"
     TransactionPending = "TransactionPending"
-    # Sold state is broken down into granular states
-    AwaitingShipment = "AwaitingShipment"
-    Shipped = "Shipped"
-    Delivered = "Delivered"
-    Completed = "Completed"
-    Cancelled = "Cancelled"
-    Dispute = "Dispute"
-
-# --- Models ---
-class CardCatalog(Base):
-    __tablename__ = "card_catalogs"
-
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-    manufacturer = Column(SAEnum(Manufacturer), nullable=False)
-    year = Column(Integer, nullable=False)
     series_name = Column(String, nullable=True)
     player_name = Column(String, nullable=False, index=True)
     team = Column(SAEnum(Team), nullable=False)

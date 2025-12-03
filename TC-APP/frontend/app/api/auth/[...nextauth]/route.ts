@@ -10,11 +10,25 @@ const handler = NextAuth({
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials, req) {
-                // Mock user for demonstration
-                if (credentials?.email === "demo@example.com" && credentials?.password === "password") {
-                    return { id: "demo-user-id-123", name: "Demo User", email: "demo@example.com" };
+                if (!credentials?.email || !credentials?.password) return null;
+
+                try {
+                    const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+                    const res = await fetch(`${backendUrl}/auth/login`, {
+                        method: 'POST',
+                        body: JSON.stringify(credentials),
+                        headers: { "Content-Type": "application/json" }
+                    });
+
+                    if (res.ok) {
+                        const user = await res.json();
+                        return user;
+                    }
+                    return null;
+                } catch (e) {
+                    console.error(e);
+                    return null;
                 }
-                return null;
             }
         })
     ],

@@ -2,6 +2,23 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Any
 from .models import Manufacturer, Team, Rarity
 
+# --- User Schemas ---
+class UserBase(BaseModel):
+    email: str
+
+class UserCreate(UserBase):
+    password: str
+    name: Optional[str] = None
+
+class UserLogin(UserBase):
+    password: str
+
+class UserResponse(UserBase):
+    id: str
+    name: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
 # --- Catalog Schemas ---
 class CardCatalogBase(BaseModel):
     manufacturer: Manufacturer
