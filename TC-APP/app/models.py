@@ -31,6 +31,46 @@ class Rarity(str, enum.Enum):
     Super_Rare = "Super Rare"
     Parallel = "Parallel"
     Autograph = "Autograph"
+    Patch = "Patch"
+
+class ListingStatus(str, enum.Enum):
+    Draft = "Draft"
+    Active = "Active"
+    TransactionPending = "TransactionPending"
+    AwaitingShipment = "AwaitingShipment"
+    Shipped = "Shipped"
+    Delivered = "Delivered"
+    Completed = "Completed"
+    Cancelled = "Cancelled"
+
+# --- Models ---
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    name = Column(String, nullable=True)
+    created_at = Column(String, default=lambda: str(uuid.uuid4()))
+
+class CardCatalog(Base):
+    __tablename__ = "card_catalogs"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    series_name = Column(String, nullable=True)
+    player_name = Column(String, nullable=False, index=True)
+    team = Column(SAEnum(Team), nullable=False)
+    card_number = Column(String, nullable=True)
+    rarity = Column(SAEnum(Rarity), nullable=True)
+    is_rookie = Column(Boolean, default=False)
+    year = Column(Integer, nullable=True)
+
+class ListingItem(Base):
+    __tablename__ = "listing_items"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    catalog_id = Column(String, ForeignKey("card_catalogs.id"), nullable=False)
     seller_id = Column(String, nullable=False)
     status = Column(SAEnum(ListingStatus), default=ListingStatus.Draft, nullable=False)
     price = Column(Integer, nullable=False)
