@@ -390,11 +390,340 @@ def deliver_order(order_id: str, db: Session = Depends(get_db)):
         if "listing_items" in table_names:
             counts["listing_items"] = db.query(models.ListingItem).count()
             
+    return listing
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        # Upload to Cloudinary
+        result = cloudinary.uploader.upload(file.file, folder="tc-app")
+        return {"url": result.get("secure_url")}
+    except Exception as e:
+        # Fallback to local storage if Cloudinary fails or is not configured
+        print(f"Cloudinary upload failed: {e}. Falling back to local storage.")
+        os.makedirs("app/static/uploads", exist_ok=True)
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = f"app/static/uploads/{unique_filename}"
+        
+        # Reset file pointer
+        await file.seek(0)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        return {"url": f"http://127.0.0.1:8000/static/uploads/{unique_filename}"}
+
+@app.get("/market/orders", response_model=List[schemas.OrderResponse])
+def get_market_orders(
+    buyer_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Order)
+    if buyer_id:
+        query = query.filter(models.Order.buyer_id == buyer_id)
+    
+    orders = query.all()
+    response = []
+    for order in orders:
+        listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+        status = listing.status if listing else "Unknown"
+        response.append(schemas.OrderResponse(
+            id=order.id,
+            listing_id=order.listing_id,
+            buyer_id=order.buyer_id,
+            status=status,
+            total_amount=order.total_amount,
+            tracking_number=order.tracking_number
+        ))
+    return response
+
+@app.post("/market/orders", response_model=schemas.OrderResponse)
+def create_order(
+    order_data: schemas.OrderCreate,
+    db: Session = Depends(get_db)
+):
+    # 1. 対象の出品を取得
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == str(order_data.listing_id)).first()
+
+    # 2. 存在チェック
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    # 3. ステータスチェック (State Machine: Active 以外は購入不可)
+    if listing.status != models.ListingStatus.Active:
+        raise HTTPException(
+            status_code=409, # Conflict
+            detail="Item is not available for purchase (Already sold or pending)"
+        )
+
+    # 4. トランザクション処理
+    try:
+        # ステータス更新: Active -> TransactionPending (在庫ロック)
+        listing.status = models.ListingStatus.TransactionPending
+        
+        buyer_id = order_data.buyer_id if order_data.buyer_id else str(uuid.uuid4())
+        
+        # 注文レコード作成
+        new_order = models.Order(
+            listing_id=str(listing.id),
+            buyer_id=buyer_id, 
+            payment_method_id=order_data.payment_method_id,
+            total_amount=listing.price
+        )
+        
+        db.add(new_order)
+        db.commit()
+        db.refresh(new_order)
+        
+        return schemas.OrderResponse(
+            id=new_order.id,
+            listing_id=listing.id,
+            buyer_id=new_order.buyer_id,
+            status=listing.status,
+            total_amount=new_order.total_amount,
+            tracking_number=new_order.tracking_number
+        )
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Transaction Flow Endpoints ---
+
+@app.post("/market/orders/{order_id}/capture", response_model=schemas.OrderResponse)
+def capture_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.TransactionPending:
+         raise HTTPException(status_code=400, detail="Invalid status for capture")
+
+    listing.status = models.ListingStatus.AwaitingShipment
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.post("/market/orders/{order_id}/fail", response_model=schemas.OrderResponse)
+def fail_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.TransactionPending:
+         raise HTTPException(status_code=400, detail="Invalid status for failure")
+
+    listing.status = models.ListingStatus.Active # Revert to Active
+    # Note: In a real system, we might want to mark the order as failed instead of just reverting the listing
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.post("/market/orders/{order_id}/ship", response_model=schemas.OrderResponse)
+def ship_order(
+    order_id: str, 
+    shipment: schemas.ShipmentCreate,
+    db: Session = Depends(get_db)
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.AwaitingShipment:
+         raise HTTPException(status_code=400, detail="Invalid status for shipping")
+
+    listing.status = models.ListingStatus.Shipped
+    order.tracking_number = shipment.tracking_number
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.post("/market/orders/{order_id}/deliver", response_model=schemas.OrderResponse)
+def deliver_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
+    if listing.status != models.ListingStatus.Shipped:
+         raise HTTPException(status_code=400, detail="Invalid status for delivery")
+
+    listing.status = models.ListingStatus.Delivered
+    db.commit()
+    return schemas.OrderResponse(
+        id=order.id,
+        listing_id=listing.id,
+        buyer_id=order.buyer_id,
+        status=listing.status,
+        total_amount=order.total_amount,
+        tracking_number=order.tracking_number
+    )
+
+@app.get("/debug/health")
+def health_check(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    try:
+        # Test connection
+        db.execute(text("SELECT 1"))
+        
+        # Check tables (PostgreSQL specific query, fallback for SQLite if needed)
+        try:
+            tables = db.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")).fetchall()
+            table_names = [t[0] for t in tables]
+        except:
+            # Fallback for SQLite
+            tables = db.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
+            table_names = [t[0] for t in tables]
+        
+        # Check row counts
+        counts = {}
+        if "card_catalogs" in table_names:
+            counts["card_catalogs"] = db.query(models.CardCatalog).count()
+        if "listing_items" in table_names:
+            counts["listing_items"] = db.query(models.ListingItem).count()
+            
         return {
             "status": "ok",
             "tables": table_names,
             "counts": counts,
             "database_url_set": bool(os.getenv("DATABASE_URL"))
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "detail": str(e),
+            "type": type(e).__name__
+        }
+
+@app.get("/debug/seed", include_in_schema=False)
+def seed_data(db: Session = Depends(get_db)):
+    # Import here to avoid circular imports if any
+    from seed_db import seed_db
+    try:
+        seed_db()
+        return {"message": "Database seeded successfully!"}
+    except Exception as e:
+        return {"message": f"Seeding failed: {str(e)}"}
+
+@app.get("/debug/seed_premium", include_in_schema=False)
+def seed_premium_data(db: Session = Depends(get_db)):
+    try:
+        # Create a Premium Ohtani Card
+        # Check if exists first
+        existing = db.query(models.CardCatalog).filter_by(
+            player_name="Shohei Ohtani",
+            series_name="Topps Chrome Black"
+        ).first()
+
+        if existing:
+            return {"message": "Premium card already exists."}
+
+        # Catalog
+        catalog = models.CardCatalog(
+            manufacturer=models.Manufacturer.Topps,
+            year=2024,
+            series_name="Topps Chrome Black",
+            player_name="Shohei Ohtani",
+            team=models.Team.Dodgers,
+            card_number="CBA-SO",
+            rarity=models.Rarity.Autograph,
+            is_rookie=False
+        )
+        db.add(catalog)
+        db.commit()
+        db.refresh(catalog)
+
+        # Listing
+        listing = models.ListingItem(
+            catalog_id=str(catalog.id),
+            seller_id=str(uuid.uuid4()),
+            price=5000000, # 5 Million JPY
+            status=models.ListingStatus.Active,
+            images=[
+                "https://baseball-card-api.onrender.com/static/uploads/ohtani_front.png",
+                "https://baseball-card-api.onrender.com/static/uploads/ohtani_back.png"
+            ],
+            condition_grading={
+                "is_graded": True,
+                "service": "PSA",
+                "score": 10,
+                "certification_number": "88888888"
+            }
+        )
+        db.add(listing)
+        db.commit()
+        
+        return {"message": "Premium Ohtani card created successfully!"}
+    except Exception as e:
+        db.rollback()
+        return {"message": f"Premium seeding failed: {str(e)}"}
+
+@app.get("/debug/validate_listings")
+def debug_validate_listings(db: Session = Depends(get_db)):
+    try:
+        items = db.query(models.ListingItem).join(models.CardCatalog).all()
+        results = []
+        for item in items:
+            try:
+                # Manually validate against schema
+                schema_item = schemas.ListingItemResponse.model_validate(item)
+                results.append({"id": item.id, "status": "valid"})
+            except Exception as e:
+                results.append({"id": item.id, "status": "invalid", "error": str(e)})
+        return results
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/debug/check_data")
+def debug_check_data(db: Session = Depends(get_db)):
+    try:
+        catalogs = db.query(models.CardCatalog).all()
+        listings = db.query(models.ListingItem).all()
+        
+        return {
+            "catalog_count": len(catalogs),
+            "listing_count": len(listings),
+            "catalogs_sample": [
+                {"id": str(c.id), "player": c.player_name} for c in catalogs[:5]
+            ],
+            "listings_sample": [
+                {
+                    "id": str(l.id), 
+                    "catalog_id": l.catalog_id, 
+                    "status": str(l.status),
+                    "price": l.price
+                } for l in listings[:5]
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/debug/migrate_enums")
+def debug_migrate_enums(db: Session = Depends(get_db)):
+    from sqlalchemy import text
+    messages = []
     
     # List of enums and values to add
     # (Enum Type Name, Value to Add)
