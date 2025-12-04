@@ -2,43 +2,6 @@ import uuid
 import enum
 from sqlalchemy import Column, String, Integer, Boolean, Enum as SAEnum, ForeignKey, Float, JSON
 from sqlalchemy.orm import relationship
-from .database import Base
-
-# --- Enums ---
-class Manufacturer(str, enum.Enum):
-    BBM = "BBM"
-    Calbee = "Calbee"
-    Epoch = "Epoch"
-    Topps_Japan = "Topps_Japan"
-
-class Team(str, enum.Enum):
-    Giants = "Giants"
-    Tigers = "Tigers"
-    Dragons = "Dragons"
-    Swallows = "Swallows"
-    Carp = "Carp"
-    BayStars = "BayStars"
-    Hawks = "Hawks"
-    Fighters = "Fighters"
-    Marines = "Marines"
-    Buffaloes = "Buffaloes"
-    Eagles = "Eagles"
-    Lions = "Lions"
-    Dodgers = "Dodgers"
-
-class Rarity(str, enum.Enum):
-    Common = "Common"
-    Rare = "Rare"
-    Super_Rare = "Super Rare"
-    Parallel = "Parallel"
-    Autograph = "Autograph"
-    Patch = "Patch"
-
-class ListingStatus(str, enum.Enum):
-    Draft = "Draft"
-    Active = "Active"
-    TransactionPending = "TransactionPending"
-    AwaitingShipment = "AwaitingShipment"
     Shipped = "Shipped"
     Delivered = "Delivered"
     Completed = "Completed"
