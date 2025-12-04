@@ -1,16 +1,3 @@
-import uuid
-import enum
-from sqlalchemy import Column, String, Integer, Boolean, Enum as SAEnum, ForeignKey, Float, JSON
-from sqlalchemy.orm import relationship
-    Shipped = "Shipped"
-    Delivered = "Delivered"
-    Completed = "Completed"
-    Cancelled = "Cancelled"
-
-# --- Models ---
-
-class User(Base):
-    __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     email = Column(String, unique=True, index=True, nullable=False)
