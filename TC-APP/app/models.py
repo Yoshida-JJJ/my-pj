@@ -24,6 +24,7 @@ class Team(str, enum.Enum):
     Buffaloes = "Buffaloes"
     Eagles = "Eagles"
     Lions = "Lions"
+    Dodgers = "Dodgers"
 
 class Rarity(str, enum.Enum):
     Common = "Common"
