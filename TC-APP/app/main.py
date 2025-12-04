@@ -352,15 +352,14 @@ def ship_order(
     listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
     if listing.status != models.ListingStatus.AwaitingShipment:
          raise HTTPException(status_code=400, detail="Invalid status for shipping")
-
-    listing.status = models.ListingStatus.Shipped
-    order.tracking_number = shipment.tracking_number
-    db.commit()
-    return schemas.OrderResponse(
-        id=order.id,
-        listing_id=listing.id,
-        buyer_id=order.buyer_id,
-```python
+def create_listing(
+    item: schemas.ListingItemCreate,
+    db: Session = Depends(get_db)
+):
+    if item.price < 100:
+        raise HTTPException(status_code=400, detail="Price must be at least 100 JPY")
+    if len(item.images) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 images are required")
 
     seller_id = item.seller_id if item.seller_id else str(uuid.uuid4())
 
@@ -413,7 +412,7 @@ async def upload_file(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        return {"url": f"http://127.00.0.1:8000/static/uploads/{unique_filename}"}
+        return {"url": f"http://127.0.0.1:8000/static/uploads/{unique_filename}"}
 
 @app.get("/market/orders", response_model=List[schemas.OrderResponse])
 def get_market_orders(
@@ -760,4 +759,3 @@ def debug_migrate_enums(db: Session = Depends(get_db)):
             messages.append(f"Failed to add '{value}' to '{enum_type}': {str(e)}")
             
     return {"messages": messages}
-```
