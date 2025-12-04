@@ -27,6 +27,7 @@ interface OrderItem {
     status: string;
     total_amount: number;
     tracking_number?: string;
+    listing?: ListingItem;
 }
 
 export default function MyPage() {
@@ -167,21 +168,45 @@ export default function MyPage() {
                                     <ul className="divide-y divide-brand-platinum/10">
                                         {myOrders.map((order) => (
                                             <li key={order.id} className="py-4">
-                                                <div className="flex justify-between">
-                                                    <div>
-                                                        <p className="text-sm font-medium text-white">Order ID: {order.id}</p>
-                                                        <p className="text-sm text-brand-platinum/60">Total: <span className="text-brand-platinum">¥{order.total_amount.toLocaleString()}</span></p>
+                                                <div className="flex gap-4">
+                                                    {/* Image */}
+                                                    <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-brand-platinum/10 bg-brand-dark-light/50">
+                                                        {order.listing?.images?.[0] ? (
+                                                            <img
+                                                                src={order.listing.images[0]}
+                                                                alt="Card"
+                                                                className="h-full w-full object-cover object-center"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-full w-full flex items-center justify-center text-brand-platinum/20">
+                                                                No Image
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div>
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                                                            {order.status}
-                                                        </span>
+
+                                                    <div className="flex-1 flex flex-col justify-between">
+                                                        <div className="flex justify-between">
+                                                            <div>
+                                                                <p className="text-sm font-medium text-white">Order ID: {order.id}</p>
+                                                                {order.listing && (
+                                                                    <p className="text-sm text-brand-platinum/80 mt-1">
+                                                                        {order.listing.catalog.player_name}
+                                                                    </p>
+                                                                )}
+                                                                <p className="text-sm text-brand-platinum/60 mt-1">Total: <span className="text-brand-platinum">¥{order.total_amount.toLocaleString()}</span></p>
+                                                            </div>
+                                                            <div>
+                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                                                                    {order.status}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-2 flex justify-end">
+                                                            <Link href={`/orders/${order.id}/success`} className="text-brand-blue hover:text-brand-blue-glow text-sm transition-colors">
+                                                                View Details
+                                                            </Link>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div className="mt-2">
-                                                    <Link href={`/orders/${order.id}/success`} className="text-brand-blue hover:text-brand-blue-glow text-sm transition-colors">
-                                                        View Details
-                                                    </Link>
                                                 </div>
                                             </li>
                                         ))}

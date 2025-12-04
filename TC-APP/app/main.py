@@ -1,22 +1,19 @@
-from fastapi import FastAPI, Depends, Query, HTTPException, Path, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import models, schemas, database, utils
+import os
 import uuid
 import shutil
-import os
 import cloudinary
 import cloudinary.uploader
 from dotenv import load_dotenv
-from . import models, schemas, database, utils
 
 load_dotenv()
 
-app = FastAPI(
-    title="Baseball Card Trading Platform API",
-    version="1.0.0"
-)
+app = FastAPI()
 
 # DBテーブル作成はstartupイベントで行う
 @app.on_event("startup")
@@ -233,13 +230,19 @@ def get_market_orders(
     for order in orders:
         listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
         status = listing.status if listing else "Unknown"
+        
+        listing_response = None
+        if listing:
+            listing_response = schemas.ListingItemResponse.model_validate(listing)
+
         response.append(schemas.OrderResponse(
             id=order.id,
             listing_id=order.listing_id,
             buyer_id=order.buyer_id,
             status=status,
             total_amount=order.total_amount,
-            tracking_number=order.tracking_number
+            tracking_number=order.tracking_number,
+            listing=listing_response
         ))
     return response
 
@@ -500,67 +503,3 @@ def debug_validate_listings(db: Session = Depends(get_db)):
         return results
     except Exception as e:
         return {"error": str(e)}
-
-@app.get("/debug/check_data")
-def debug_check_data(db: Session = Depends(get_db)):
-    try:
-        catalogs = db.query(models.CardCatalog).all()
-        listings = db.query(models.ListingItem).all()
-        
-        return {
-            "catalog_count": len(catalogs),
-            "listing_count": len(listings),
-            "catalogs_sample": [
-                {"id": str(c.id), "player": c.player_name} for c in catalogs[:5]
-            ],
-            "listings_sample": [
-                {
-                    "id": str(l.id), 
-                    "catalog_id": l.catalog_id, 
-                    "status": str(l.status),
-                    "price": l.price
-                } for l in listings[:5]
-            ]
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/debug/migrate_enums")
-def debug_migrate_enums(db: Session = Depends(get_db)):
-    from sqlalchemy import text
-    messages = []
-    
-    # List of enums and values to add
-    # (Enum Type Name, Value to Add)
-    migrations = [
-        ("team", "Dodgers"),
-        ("rarity", "Rookie"),
-        ("rarity", "Legend"),
-        ("manufacturer", "Topps"),
-        ("manufacturer", "Topps_Japan") # Just in case
-    ]
-    
-    for enum_type, value in migrations:
-        try:
-            # PostgreSQL specific command to add value to enum
-            # We use a transaction block for safety, but ALTER TYPE cannot run inside a transaction block 
-            # that has other statements in some versions. However, autocommit=False in session.
-            # We'll try to execute it. If it fails because it exists, we catch it.
-            
-            # Note: We need to commit any pending transaction first
-            db.commit()
-            
-            # Use connection directly for isolation level if needed, but simple execute might work
-            # ALTER TYPE ... ADD VALUE IF NOT EXISTS is supported in PG 12+
-            # Render likely supports it.
-            
-            sql = f"ALTER TYPE {enum_type} ADD VALUE IF NOT EXISTS '{value}'"
-            db.execute(text(sql))
-            db.commit()
-            messages.append(f"Added '{value}' to '{enum_type}'")
-            
-        except Exception as e:
-            db.rollback()
-            messages.append(f"Failed to add '{value}' to '{enum_type}': {str(e)}")
-            
-    return {"messages": messages}
