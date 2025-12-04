@@ -370,37 +370,6 @@ def deliver_order(order_id: str, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
-    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
-    if listing.status != models.ListingStatus.Shipped:
-         raise HTTPException(status_code=400, detail="Invalid status for delivery")
-
-    listing.status = models.ListingStatus.Delivered
-    db.commit()
-    return schemas.OrderResponse(
-        id=order.id,
-        listing_id=listing.id,
-        buyer_id=order.buyer_id,
-    
-    listing = db.query(models.ListingItem).filter(models.ListingItem.id == order.listing_id).first()
-    if listing.status != models.ListingStatus.Delivered:
-         raise HTTPException(status_code=400, detail="Invalid status for completion")
-
-    listing.status = models.ListingStatus.Completed
-    db.commit()
-    return schemas.OrderResponse(
-        id=order.id,
-        listing_id=listing.id,
-        buyer_id=order.buyer_id,
-        status=listing.status,
-        total_amount=order.total_amount,
-        tracking_number=order.tracking_number
-    )
-
-# --- Debug Endpoints ---
-@app.get("/debug/db")
-def debug_db(db: Session = Depends(get_db)):
-    from sqlalchemy import text
     try:
         # Test connection
         db.execute(text("SELECT 1"))
