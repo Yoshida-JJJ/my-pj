@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Footer from '../../components/Footer';
 import { CardCatalog } from '../../types';
+import PremiumCardImage from '../../components/PremiumCardImage';
 
 export default function SellPage() {
     const { data: session, status } = useSession();
@@ -307,10 +308,10 @@ export default function SellPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                 {images.map((url, idx) => (
                                     <div key={idx} className="relative group rounded-xl overflow-hidden border border-brand-platinum/10 aspect-[3/4]">
-                                        <img
+                                        <PremiumCardImage
                                             src={url}
                                             alt={`Uploaded ${idx + 1}`}
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                            className="w-full h-full"
                                         />
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <button

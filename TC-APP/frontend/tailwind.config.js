@@ -48,6 +48,10 @@ module.exports = {
                     "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-5px)" },
                     "20%, 40%, 60%, 80%": { transform: "translateX(5px)" },
                 },
+                "shimmer-diagonal": {
+                    "0%": { transform: "translate(-100%, -100%) rotate(45deg)" },
+                    "100%": { transform: "translate(100%, 100%) rotate(45deg)" },
+                },
             },
             animation: {
                 "fade-in-up": "fadeInUp 0.5s ease-out forwards",
@@ -57,6 +61,7 @@ module.exports = {
                 "shimmer": "shimmer 3s linear infinite",
                 "rotate-slow": "rotate-slow 10s linear infinite",
                 "shake": "shake 0.5s cubic-bezier(.36,.07,.19,.97) both",
+                "shimmer-diagonal": "shimmer-diagonal 3s ease-in-out infinite",
             },
         },
     },
