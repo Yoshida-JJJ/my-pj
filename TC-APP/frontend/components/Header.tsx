@@ -1,14 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
-import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
+import { createClient } from '../utils/supabase/client';
 
 export default function Header() {
-    const { data: session } = useSession();
+    const [user, setUser] = useState<any>(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
+    const supabase = createClient();
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+        };
+        getUser();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        setUser(null);
+        router.push('/');
+        router.refresh();
+    };
 
     return (
         <header className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
@@ -58,19 +82,24 @@ export default function Header() {
                         <button
                             className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all"
                         >
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-platinum to-brand-platinum/50 overflow-hidden">
-                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${session?.user?.email || 'Guest'}`} alt="User" />
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-platinum to-brand-platinum/50 overflow-hidden relative">
+                                <Image
+                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'Guest'}`}
+                                    alt="User"
+                                    fill
+                                    className="object-cover"
+                                />
                             </div>
                         </button>
 
                         {/* Dropdown Menu (Desktop) */}
                         <div className="absolute top-full right-0 mt-2 w-48 bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
                             <div className="p-2 space-y-1">
-                                {session ? (
+                                {user ? (
                                     <>
                                         <div className="px-3 py-2 text-xs text-brand-platinum/60 border-b border-white/5 mb-1">
                                             Signed in as<br />
-                                            <span className="text-white font-bold truncate block">{session.user?.name}</span>
+                                            <span className="text-white font-bold truncate block">{user.email}</span>
                                         </div>
                                         <Link href="/profile" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
                                             Profile
@@ -79,7 +108,7 @@ export default function Header() {
                                             My Collection
                                         </Link>
                                         <button
-                                            onClick={() => signOut()}
+                                            onClick={handleSignOut}
                                             className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-red-400 hover:text-red-300 transition-colors"
                                         >
                                             Sign out
@@ -121,12 +150,12 @@ export default function Header() {
                     <Link href="/market" className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MARKETPLACE</Link>
                     <Link href="/collection" className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY COLLECTION</Link>
                     <Link href="/auctions" className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">AUCTIONS</Link>
-                    {session && (
+                    {user && (
                         <Link href="/profile" className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
                     )}
                     <Link href="/sell" className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">START SELLING</Link>
-                    {session ? (
-                        <button onClick={() => signOut()} className="p-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-sm text-center border border-red-500/20 mt-2">LOGOUT</button>
+                    {user ? (
+                        <button onClick={handleSignOut} className="p-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-sm text-center border border-red-500/20 mt-2">LOGOUT</button>
                     ) : (
                         <Link href="/login" className="p-3 rounded-xl bg-brand-blue/10 text-brand-blue font-bold text-sm text-center border border-brand-blue/20 mt-2">LOGIN</Link>
                     )}

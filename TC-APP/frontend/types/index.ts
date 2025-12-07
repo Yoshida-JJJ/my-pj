@@ -24,7 +24,7 @@ export interface ConditionGrading {
 export interface ListingItem {
     id: string;
     catalog_id: string;
-    price: number;
+    price: number | null;
     images: string[];
     condition_grading: ConditionGrading;
     seller_id: string;

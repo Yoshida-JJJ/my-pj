@@ -2,19 +2,27 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ListingItem } from '../types';
 
+import { createClient } from '../utils/supabase/client';
+
 export default function HeroSection() {
     const [featuredCard, setFeaturedCard] = useState<ListingItem | null>(null);
 
     useEffect(() => {
         const fetchFeatured = async () => {
             try {
-                // Fetch listings sorted by price descending to get the most expensive one
-                const res = await fetch('/api/proxy/market/listings?sort=price_desc&limit=1');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.length > 0) {
-                        setFeaturedCard(data[0]);
-                    }
+                const supabase = createClient();
+                const { data, error } = await supabase
+                    .from('listing_items')
+                    .select('*, catalog:card_catalogs(*)')
+                    .eq('status', 'Active')
+                    .not('price', 'is', null)
+                    .order('price', { ascending: false })
+                    .limit(1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    setFeaturedCard(data[0] as any);
                 }
             } catch (error) {
                 console.error("Failed to fetch featured card:", error);
@@ -80,7 +88,7 @@ export default function HeroSection() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-brand-gold text-gold-glow text-lg font-bold">
-                                                ¥{featuredCard.price.toLocaleString()}
+                                                ¥{featuredCard.price?.toLocaleString() ?? '---'}
                                             </p>
                                             {featuredCard.condition_grading?.is_graded && (
                                                 <p className="text-brand-platinum/60 text-[10px] uppercase">

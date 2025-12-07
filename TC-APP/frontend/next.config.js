@@ -9,6 +9,22 @@ const nextConfig = {
             },
         ];
     },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: '**.supabase.co',
+            },
+            {
+                protocol: 'https',
+                hostname: 'placehold.co',
+            },
+            {
+                protocol: 'https',
+                hostname: 'api.dicebear.com',
+            }
+        ],
+    },
     eslint: {
         ignoreDuringBuilds: true,
     },

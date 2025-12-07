@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 
@@ -28,14 +28,14 @@ function LoginForm() {
         setLoading(true);
 
         try {
-            const result = await signIn('credentials', {
+            const supabase = createClient();
+            const { error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
-                redirect: false,
             });
 
-            if (result?.error) {
-                setError('Invalid email or password');
+            if (error) {
+                setError(error.message);
             } else {
                 router.push('/');
                 router.refresh();

@@ -1,54 +1,103 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
+// import { createClient } from '@/utils/supabase/client';
 
 export default function ProfilePage() {
-    const { data: session, status } = useSession();
+    const [user, setUser] = useState<any>(null);
+    const [profile, setProfile] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState('');
     const [editEmail, setEditEmail] = useState('');
+    const [editPostalCode, setEditPostalCode] = useState('');
+    const [editAddressLine1, setEditAddressLine1] = useState('');
+    const [editAddressLine2, setEditAddressLine2] = useState('');
+    const [editPhoneNumber, setEditPhoneNumber] = useState('');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (status === 'unauthenticated') {
-            router.push('/login');
-        }
-        if (session?.user) {
-            setEditName(session.user.name || '');
-            setEditEmail(session.user.email || '');
-        }
-    }, [status, router, session]);
+        const fetchUserAndProfile = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
 
-    const handleSave = async () => {
-        if (!session?.user?.id) return;
-        setSaving(true);
-        try {
-            const res = await fetch(`/api/proxy/auth/users/${session.user.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: editName,
-                    email: editEmail,
-                }),
-            });
-
-            if (!res.ok) {
-                throw new Error('Failed to update profile');
+            if (!user) {
+                router.push('/login');
+                return;
             }
 
-            const updatedUser = await res.json();
-            // In a real app, we should update the session here.
-            // For now, we'll just toggle off editing and maybe show a success message.
+            setUser(user);
+            setEditEmail(user.email || '');
+
+            // Fetch profile
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (profileData) {
+                setProfile(profileData);
+                setEditName(profileData.name || user.user_metadata?.name || '');
+                setEditPostalCode(profileData.postal_code || '');
+                setEditAddressLine1(profileData.address_line1 || '');
+                setEditAddressLine2(profileData.address_line2 || '');
+                setEditPhoneNumber(profileData.phone_number || '');
+            } else {
+                setEditName(user.user_metadata?.name || '');
+            }
+
+            setLoading(false);
+        };
+
+        fetchUserAndProfile();
+    }, [router]);
+
+    const handleSave = async () => {
+        if (!user?.id) return;
+        setSaving(true);
+        try {
+            const supabase = createClient();
+
+            // Update Profile Table
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    name: editName,
+                    email: user.email,
+                    postal_code: editPostalCode,
+                    address_line1: editAddressLine1,
+                    address_line2: editAddressLine2,
+                    phone_number: editPhoneNumber,
+                });
+
+            if (profileError) throw profileError;
+
+            // Update Auth Metadata (optional, but good for consistency)
+            const { error: authError } = await supabase.auth.updateUser({
+                data: { name: editName },
+                // email: editEmail // Updating email requires confirmation flow usually
+            });
+
+            if (authError) throw authError;
+
+            setProfile({
+                ...profile,
+                name: editName,
+                postal_code: editPostalCode,
+                address_line1: editAddressLine1,
+                address_line2: editAddressLine2,
+                phone_number: editPhoneNumber
+            });
             setIsEditing(false);
-            alert('Profile updated successfully! Please sign out and sign in again to see changes in the header.');
+            alert('Profile updated successfully!');
 
         } catch (error) {
             console.error(error);
@@ -58,7 +107,7 @@ export default function ProfilePage() {
         }
     };
 
-    if (status === 'loading') {
+    if (loading) {
         return (
             <div className="min-h-screen bg-brand-dark flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-blue"></div>
@@ -66,7 +115,7 @@ export default function ProfilePage() {
         );
     }
 
-    if (!session) {
+    if (!user) {
         return null;
     }
 
@@ -89,13 +138,13 @@ export default function ProfilePage() {
                         {/* Background Decoration */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-blue/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none group-hover:bg-brand-blue/20 transition-all duration-700"></div>
 
-                        <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                        <div className="relative z-10 flex flex-col md:flex-row items-start gap-8">
                             {/* Avatar */}
-                            <div className="relative">
+                            <div className="relative flex-shrink-0 mx-auto md:mx-0">
                                 <div className="w-32 h-32 rounded-full bg-gradient-to-br from-brand-blue to-brand-blue-glow p-[2px] shadow-lg shadow-brand-blue/20">
                                     <div className="w-full h-full rounded-full bg-brand-dark-light overflow-hidden">
                                         <img
-                                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user?.email || 'Guest'}`}
+                                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'Guest'}`}
                                             alt="Profile"
                                             className="w-full h-full object-cover"
                                         />
@@ -110,33 +159,94 @@ export default function ProfilePage() {
                             <div className="flex-1 text-center md:text-left space-y-4 w-full">
                                 {isEditing ? (
                                     <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Name</label>
-                                            <input
-                                                type="text"
-                                                value={editName}
-                                                onChange={(e) => setEditName(e.target.value)}
-                                                className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
-                                            />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={editName}
+                                                    onChange={(e) => setEditName(e.target.value)}
+                                                    className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Email</label>
+                                                <input
+                                                    type="email"
+                                                    value={editEmail}
+                                                    onChange={(e) => setEditEmail(e.target.value)}
+                                                    disabled
+                                                    className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white/50 cursor-not-allowed focus:outline-none"
+                                                />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Email</label>
-                                            <input
-                                                type="email"
-                                                value={editEmail}
-                                                onChange={(e) => setEditEmail(e.target.value)}
-                                                className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
-                                            />
+
+                                        <div className="border-t border-brand-platinum/10 pt-4 mt-4">
+                                            <h3 className="text-white font-bold mb-3">Shipping Address</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Postal Code</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editPostalCode}
+                                                        onChange={(e) => setEditPostalCode(e.target.value)}
+                                                        placeholder="123-4567"
+                                                        className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Phone Number</label>
+                                                    <input
+                                                        type="tel"
+                                                        value={editPhoneNumber}
+                                                        onChange={(e) => setEditPhoneNumber(e.target.value)}
+                                                        placeholder="090-1234-5678"
+                                                        className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 1 (Prefecture, City)</label>
+                                                <input
+                                                    type="text"
+                                                    value={editAddressLine1}
+                                                    onChange={(e) => setEditAddressLine1(e.target.value)}
+                                                    placeholder="Tokyo, Minato-ku"
+                                                    className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 2 (Street, Building)</label>
+                                                <input
+                                                    type="text"
+                                                    value={editAddressLine2}
+                                                    onChange={(e) => setEditAddressLine2(e.target.value)}
+                                                    placeholder="Roppongi 1-2-3, Hills Tower 4F"
+                                                    className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
                                     <div>
                                         <h2 className="text-2xl font-bold text-white mb-1">
-                                            {editName || session.user?.name || 'Trading Card Collector'}
+                                            {editName || profile?.name || user?.user_metadata?.name || 'Trading Card Collector'}
                                         </h2>
-                                        <p className="text-brand-platinum/60 font-mono text-sm">
-                                            {editEmail || session.user?.email}
+                                        <p className="text-brand-platinum/60 font-mono text-sm mb-4">
+                                            {editEmail || user?.email}
                                         </p>
+
+                                        {(profile?.address_line1 || profile?.postal_code) && (
+                                            <div className="bg-brand-dark-light/30 p-4 rounded-xl border border-brand-platinum/10 text-left">
+                                                <h3 className="text-xs font-bold text-brand-platinum uppercase tracking-wider mb-2">Shipping Address</h3>
+                                                <p className="text-white text-sm">
+                                                    〒{profile.postal_code}<br />
+                                                    {profile.address_line1}<br />
+                                                    {profile.address_line2}<br />
+                                                    {profile.phone_number && <span className="text-brand-platinum/60 mt-1 block">{profile.phone_number}</span>}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

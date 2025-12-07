@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { Providers } from "./providers";
+// import { Providers } from "./providers";
 import Header from "../components/Header";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -21,10 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${outfit.variable} font-sans text-white antialiased`}>
-        <Providers>
-          <Header />
-          <main>{children}</main>
-        </Providers>
+        {/* <Providers> */}
+        <Header />
+        <main>{children}</main>
+        {/* </Providers> */}
       </body>
     </html>
   );

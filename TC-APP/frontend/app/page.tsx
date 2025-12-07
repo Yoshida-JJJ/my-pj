@@ -5,7 +5,10 @@ import Link from 'next/link';
 import HeroSection from '../components/HeroSection';
 import CardListing from '../components/CardListing';
 import Footer from '../components/Footer';
+import SkeletonCard from '../components/SkeletonCard';
 import { ListingItem, Team } from '../types';
+
+import { createClient } from '../utils/supabase/client';
 
 export default function Home() {
   const [listings, setListings] = useState<ListingItem[]>([]);
@@ -31,18 +34,72 @@ export default function Home() {
     const fetchListings = async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams();
-        if (debouncedSearch) params.append('q', debouncedSearch);
-        if (selectedTeam) params.append('team', selectedTeam);
-        if (sortOrder) params.append('sort', sortOrder);
+        const supabase = createClient();
+        let query = supabase
+          .from('listing_items')
+          .select('*, catalog:card_catalogs(*)')
+          .eq('status', 'Active');
 
-        const response = await fetch(`/api/proxy/market/listings?${params.toString()}`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch listings: ${response.status} ${response.statusText} - ${errorText}`);
+        if (debouncedSearch) {
+          // Note: This is a simple search. For better search, use text search capabilities or join with catalog
+          // Since we can't easily filter on joined table fields with simple syntax in one go without embedding, 
+          // we might need to rely on client side filtering or more complex queries.
+          // For now, let's assume we filter by catalog fields if possible, but Supabase JS client filtering on joined tables is tricky.
+          // A common workaround is !inner join or text search.
+          // Let's try to filter by player_name in catalog if possible, but standard select doesn't support filtering on joined relation easily in top level.
+          // We will fetch all and filter client side for search if it's small, or use a specific RPC or search index.
+          // Given the constraints, let's try to use the 'search' param if we had an RPC, but we don't.
+          // Let's just fetch active listings and filter client side for the demo if the dataset is small, 
+          // OR use the text search on a view.
+          // For this migration, I'll implement a basic fetch and client-side filter for the search text to be safe, 
+          // or try to use `!inner` to filter by catalog team/player.
+
+          // Using !inner to filter by catalog properties
+          // query = query.not('catalog', 'is', null); // Ensure catalog exists
         }
-        const data = await response.json();
-        setListings(data);
+
+        if (selectedTeam) {
+          // This requires filtering on the joined 'catalog' table.
+          // Supabase supports this with: .eq('catalog.team', selectedTeam) if using JSON or specific syntax, 
+          // but strictly typed client might complain.
+          // Let's use the !inner hint if we can, or just fetch and filter.
+          // For simplicity and reliability in this migration without changing schema:
+          // We will fetch more and filter in memory, OR we assume the user has set up RLS/Views.
+          // Actually, let's try to use the foreign key filter syntax:
+          // .eq('catalog.team', selectedTeam) works if we use !inner in select: select('*, catalog!inner(*)')
+          // But let's stick to a simpler approach: Fetch active items and filter.
+        }
+
+        // Sorting
+        if (sortOrder === 'newest') {
+          query = query.order('created_at', { ascending: false });
+        } else if (sortOrder === 'price_asc') {
+          query = query.order('price', { ascending: true });
+        } else if (sortOrder === 'price_desc') {
+          query = query.order('price', { ascending: false });
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        let filteredData = data as any[];
+
+        // Client-side filtering for Search and Team (since simple join filtering is complex in JS client without specific setup)
+        if (debouncedSearch) {
+          const lowerSearch = debouncedSearch.toLowerCase();
+          filteredData = filteredData.filter(item =>
+            item.catalog.player_name.toLowerCase().includes(lowerSearch) ||
+            item.catalog.manufacturer.toLowerCase().includes(lowerSearch) ||
+            item.catalog.series_name.toLowerCase().includes(lowerSearch)
+          );
+        }
+
+        if (selectedTeam) {
+          filteredData = filteredData.filter(item => item.catalog.team === selectedTeam);
+        }
+
+        setListings(filteredData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {
@@ -124,8 +181,10 @@ export default function Home() {
           </div>
 
           {loading ? (
-            <div className="min-h-[400px] flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-blue"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+              {[...Array(8)].map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
           ) : error ? (
             <div className="min-h-[400px] flex items-center justify-center">

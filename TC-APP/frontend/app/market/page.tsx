@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { createClient } from '../../utils/supabase/client';
 import CardListing from '../../components/CardListing';
 import Footer from '../../components/Footer';
 import { ListingItem, Team } from '../../types';
@@ -30,18 +31,41 @@ export default function MarketPage() {
         const fetchListings = async () => {
             setLoading(true);
             try {
-                const params = new URLSearchParams();
-                if (debouncedSearch) params.append('q', debouncedSearch);
-                if (selectedTeam) params.append('team', selectedTeam);
-                if (sortOrder) params.append('sort', sortOrder);
+                const supabase = createClient();
+                let query = supabase
+                    .from('listing_items')
+                    .select('*, catalog:card_catalogs!inner(*)')
+                    .eq('status', 'Active'); // Only show Active listings in Marketplace
 
-                const response = await fetch(`/api/proxy/market/listings?${params.toString()}`);
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Failed to fetch listings: ${response.status} ${response.statusText} - ${errorText}`);
+                if (debouncedSearch) {
+                    // Search in catalog fields. Note: This requires the joined table to be filtered.
+                    // Supabase JS client allows filtering on joined tables with dot notation if !inner is used.
+                    // However, OR across multiple columns in joined table is tricky.
+                    // For simplicity, let's search by player_name.
+                    query = query.ilike('catalog.player_name', `%${debouncedSearch}%`);
                 }
-                const data = await response.json();
-                setListings(data);
+
+                if (selectedTeam) {
+                    query = query.eq('catalog.team', selectedTeam);
+                }
+
+                if (sortOrder === 'newest') {
+                    query = query.order('created_at', { ascending: false });
+                } else if (sortOrder === 'price_asc') {
+                    query = query.order('price', { ascending: true, nullsFirst: false });
+                } else if (sortOrder === 'price_desc') {
+                    query = query.order('price', { ascending: false, nullsFirst: false });
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    throw error;
+                }
+
+                // Transform data to match ListingItem type if necessary
+                // The type definition expects catalog to be nested, which Supabase returns.
+                setListings(data as any); // Type assertion might be needed depending on generated types
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An unknown error occurred');
             } finally {

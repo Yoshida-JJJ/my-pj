@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 
 interface PremiumCardImageProps {
     src: string;
@@ -10,10 +11,12 @@ const PremiumCardImage: React.FC<PremiumCardImageProps> = ({ src, alt, className
     return (
         <div className={`relative overflow-hidden rounded-xl group ${className}`}>
             {/* Base Image with Filters */}
-            <img
+            <Image
                 src={src}
                 alt={alt}
-                className="w-full h-full object-cover filter contrast-110 saturate-125"
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover filter contrast-110 saturate-125"
             />
 
             {/* Gold Frame Overlay */}

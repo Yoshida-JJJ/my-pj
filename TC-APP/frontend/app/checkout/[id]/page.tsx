@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { createClient } from '../../../utils/supabase/client';
 
 // Types (Duplicate from page.tsx for now)
 type Manufacturer = "BBM" | "Calbee" | "Epoch" | "Topps_Japan";
@@ -41,7 +41,7 @@ interface ListingItem {
 }
 
 export default function CheckoutPage() {
-    const { data: session } = useSession();
+    const [user, setUser] = useState<any>(null);
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -51,17 +51,45 @@ export default function CheckoutPage() {
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const [shippingAddress, setShippingAddress] = useState('');
+
     useEffect(() => {
-        const fetchListing = async () => {
+        const init = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+
+            if (user) {
+                // Fetch profile for address
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profile) {
+                    const addressParts = [
+                        profile.postal_code ? `〒${profile.postal_code}` : '',
+                        profile.address_line1,
+                        profile.address_line2,
+                        profile.phone_number ? `Tel: ${profile.phone_number}` : ''
+                    ].filter(Boolean).join('\n');
+
+                    setShippingAddress(addressParts);
+                }
+            }
+
             if (!id) return;
 
             try {
-                const response = await fetch(`/api/proxy/market/listings/${id}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch listing');
-                }
-                const data = await response.json();
-                setListing(data);
+                const { data, error } = await supabase
+                    .from('listing_items')
+                    .select('*, catalog:card_catalogs(*)')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+                setListing(data as any);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An unknown error occurred');
             } finally {
@@ -69,50 +97,49 @@ export default function CheckoutPage() {
             }
         };
 
-        fetchListing();
+        init();
     }, [id]);
 
     const handlePlaceOrder = async () => {
         if (!listing) return;
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+
+        if (!shippingAddress.trim()) {
+            setError('Please enter a shipping address.');
+            return;
+        }
+
         setProcessing(true);
         setError(null);
 
         try {
-            // 1. Create Order
-            const orderRes = await fetch('/api/proxy/market/orders', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    listing_id: listing.id,
-                    payment_method_id: 'pm_card_visa', // Mock payment method
-                    buyer_id: session?.user?.id // Send authenticated user ID
-                }),
-            });
+            const supabase = createClient();
 
-            if (!orderRes.ok) {
-                const errorData = await orderRes.json();
-                throw new Error(errorData.detail || 'Failed to create order');
+            // Call the secure RPC function
+            const { data: orderId, error: rpcError } = await supabase
+                .rpc('purchase_item', {
+                    p_listing_id: listing.id,
+                    p_buyer_id: user.id,
+                    p_total_amount: listing.price,
+                    p_payment_method_id: 'stripe_mock', // Mock payment method ID
+                    p_shipping_address: shippingAddress
+                });
+
+            if (rpcError) {
+                throw rpcError;
             }
 
-            const orderData = await orderRes.json();
+            // Redirect to Success Page
+            router.push(`/orders/${orderId}/success`);
 
-            // 2. Capture Payment (Simulate immediate capture)
-            const captureResponse = await fetch(`/api/proxy/market/orders/${orderData.id}/capture`, {
-                method: 'POST',
-            });
-
-            if (!captureResponse.ok) {
-                const errorData = await captureResponse.json();
-                throw new Error(errorData.detail || 'Failed to capture payment');
-            }
-
-            // 3. Redirect to Success Page
-            router.push(`/orders/${orderData.id}/success`);
-
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Transaction failed');
+        } catch (err: any) {
+            console.error('Purchase Error:', err);
+            // Supabase errors are not always Error instances
+            const errorMessage = err?.message || err?.error_description || 'Transaction failed';
+            setError(errorMessage);
             setProcessing(false);
         }
     };
@@ -139,7 +166,7 @@ export default function CheckoutPage() {
     if (!listing) return null;
 
     return (
-        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-brand-dark">
             <div className="max-w-3xl mx-auto">
                 <h1 className="text-3xl font-heading font-bold text-white mb-8">Checkout</h1>
 
@@ -171,6 +198,29 @@ export default function CheckoutPage() {
                     </div>
                 </div>
 
+                {/* Shipping Address Section */}
+                <div className="glass-panel-premium shadow-2xl overflow-hidden rounded-2xl mb-6 p-6">
+                    <h3 className="text-lg leading-6 font-medium text-white mb-4">Shipping Address</h3>
+                    <div className="mb-4">
+                        <label htmlFor="address" className="block text-sm font-medium text-brand-platinum/60 mb-2">
+                            Confirm or edit your shipping address:
+                        </label>
+                        <textarea
+                            id="address"
+                            rows={4}
+                            value={shippingAddress}
+                            onChange={(e) => setShippingAddress(e.target.value)}
+                            className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-brand-blue transition-colors"
+                            placeholder="Enter your full shipping address here..."
+                        />
+                        {!shippingAddress && (
+                            <p className="mt-2 text-sm text-brand-gold">
+                                * Please enter a shipping address to proceed. You can save this in your profile for future purchases.
+                            </p>
+                        )}
+                    </div>
+                </div>
+
                 {error && (
                     <div className="bg-red-500/10 border border-red-500/20 p-4 mb-6 rounded-xl">
                         <div className="flex">
@@ -187,8 +237,8 @@ export default function CheckoutPage() {
                     </Link>
                     <button
                         onClick={handlePlaceOrder}
-                        disabled={processing}
-                        className={`inline-flex justify-center px-6 py-3 border border-transparent shadow-lg text-sm font-medium rounded-xl text-white bg-brand-blue hover:bg-brand-blue-glow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-all transform hover:scale-[1.02] ${processing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={processing || !shippingAddress.trim()}
+                        className={`inline-flex justify-center px-6 py-3 border border-transparent shadow-lg text-sm font-medium rounded-xl text-white bg-brand-blue hover:bg-brand-blue-glow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-all transform hover:scale-[1.02] ${processing || !shippingAddress.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {processing ? 'Processing...' : 'Confirm Purchase'}
                     </button>

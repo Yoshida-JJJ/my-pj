@@ -1,0 +1,1 @@
+ALTER TABLE listing_items ADD COLUMN is_live_moment BOOLEAN DEFAULT FALSE;
