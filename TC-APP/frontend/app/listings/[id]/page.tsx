@@ -84,7 +84,7 @@ export default function ListingDetail() {
                 <div className="glass-panel-premium rounded-2xl shadow-2xl overflow-hidden border border-white/10">
                     <div className="md:flex">
                         {/* Image Gallery Section */}
-                        <div className="md:w-1/2 p-4 md:p-8 bg-brand-dark-light/50">
+                        <div className="md:w-1/2 p-2 md:p-8 bg-brand-dark-light/50">
                             <div className="mb-6 aspect-[2/3] relative rounded-xl bg-brand-dark border border-brand-platinum/5 group perspective-[1000px]">
                                 <div className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${selectedImage === listing.images[1] ? '[transform:rotateY(180deg)]' : ''}`}>
                                     {/* Front Image (Image 0) */}
@@ -95,7 +95,7 @@ export default function ListingDetail() {
                                                 alt={listing.catalog.player_name}
                                                 fill
                                                 sizes="(max-width: 768px) 100vw, 50vw"
-                                                className="object-contain p-2 md:p-4 bg-brand-dark-light/50"
+                                                className="object-contain p-0 md:p-4 bg-brand-dark-light/50"
                                             />
                                         ) : (
                                             <div className="flex items-center justify-center h-full text-brand-platinum/30">No Image</div>
