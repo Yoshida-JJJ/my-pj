@@ -2,15 +2,13 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from './utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-    // Staging Basic Auth Protection - DISABLED TEMPORARILY FOR DEBUGGING
-    /*
+    // Staging Basic Auth Protection
     if (process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging') {
         const basicAuth = request.headers.get('authorization')
 
-        // DISTINCT LOG TO CONFIRM NEW VERSION
-        console.log('!!! CHECKING HEADERS (VERSION 3) !!!')
-        console.log('All Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
-        console.log('Auth Header Direct Get:', basicAuth)
+        // DEBUG LOGS - Check if Auth Header reaches middleware
+        // console.log('!!! CHECKING HEADERS (AUTH ENABLED) !!!')
+        // console.log('Auth Header Direct Get:', basicAuth ? 'PRESENT' : 'MISSING')
 
         if (basicAuth) {
             const authValue = basicAuth.split(' ')[1]
@@ -19,25 +17,23 @@ export async function middleware(request: NextRequest) {
             const validUser = process.env.STAGING_USER || 'admin'
             const validPass = process.env.STAGING_PASSWORD || 'password'
 
-            console.log('Decoded User:', user)
-            console.log('Expected User:', validUser)
-            // Do not log full password for security, just length match or equality
-            console.log('Password Match:', pwd === validPass)
-
             if (user === validUser && pwd === validPass) {
                 return await updateSession(request)
             }
+
+            console.log('Basic Auth: Credential Mismatch')
+        } else {
+            console.log('Basic Auth: Missing Header')
         }
 
-        console.log('Basic Auth Failed or Missing Header')
         return new NextResponse('Authentication required', {
             status: 401,
             headers: {
-                'WWW-Authenticate': 'Basic realm="Secure Area"',
+                // Changing realm to force re-prompt
+                'WWW-Authenticate': 'Basic realm="TC App Staging"',
             },
         })
     }
-    */
 
     return await updateSession(request)
 }
