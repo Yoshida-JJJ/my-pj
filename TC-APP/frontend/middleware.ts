@@ -13,11 +13,20 @@ export async function middleware(request: NextRequest) {
             const validUser = process.env.STAGING_USER || 'admin'
             const validPass = process.env.STAGING_PASSWORD || 'password'
 
+            // DEBUG LOGS (Temporary)
+            console.log('--- BASIC AUTH DEBUG ---')
+            console.log('Provided User:', user)
+            console.log('Expected User:', validUser)
+            console.log('Password Match:', pwd === validPass)
+            console.log('Environment:', process.env.NEXT_PUBLIC_ENVIRONMENT)
+            console.log('------------------------')
+
             if (user === validUser && pwd === validPass) {
                 return await updateSession(request)
             }
         }
 
+        console.log('Basic Auth Failed or Missing Header')
         return new NextResponse('Authentication required', {
             status: 401,
             headers: {
