@@ -32,7 +32,7 @@ export default function HeroSection() {
     }, []);
 
     return (
-        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark pt-20">
+        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark pt-32">
             {/* Spotlight Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {/* Main Top Spotlight */}
