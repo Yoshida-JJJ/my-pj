@@ -166,11 +166,11 @@ export default function CheckoutPage() {
     if (!listing) return null;
 
     return (
-        <div className="min-h-screen pt-32 pb-32 px-4 sm:px-6 lg:px-8 bg-brand-dark">
+        <div className="min-h-screen pt-32 pb-48 px-4 sm:px-6 lg:px-8 bg-brand-dark overflow-y-auto">
             <div className="max-w-3xl mx-auto">
                 <h1 className="text-3xl font-heading font-bold text-white mb-8">Checkout</h1>
 
-                <div className="glass-panel-premium shadow-2xl overflow-hidden rounded-2xl mb-6">
+                <div className="glass-panel-premium shadow-2xl rounded-2xl mb-6">
                     <div className="px-6 py-5 border-b border-brand-platinum/10">
                         <h3 className="text-lg leading-6 font-medium text-white">Order Summary</h3>
                     </div>
@@ -199,7 +199,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Shipping Address Section */}
-                <div className="glass-panel-premium shadow-2xl overflow-hidden rounded-2xl mb-6 p-6">
+                <div className="glass-panel-premium shadow-2xl rounded-2xl mb-6 p-6">
                     <h3 className="text-lg leading-6 font-medium text-white mb-4">Shipping Address</h3>
                     <div className="mb-4">
                         <label htmlFor="address" className="block text-sm font-medium text-brand-platinum/60 mb-2">
