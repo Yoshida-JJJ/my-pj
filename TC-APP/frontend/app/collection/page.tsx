@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Link from 'next/link';
+import Footer from '../../components/Footer';
 import { createClient } from '../../utils/supabase/client';
-import AddToShowcaseModal from '../../components/AddToShowcaseModal';
 import ShowcaseCard from '../../components/ShowcaseCard';
 import PurchaseAnimation from '../../components/PurchaseAnimation';
 import SkeletonCard from '../../components/SkeletonCard';
@@ -248,8 +249,8 @@ export default function MyPage() {
     if (!user && !loading) return null;
 
     return (
-        <div className="min-h-screen pt-32 pb-32 px-4 sm:px-6 lg:px-8 bg-brand-dark">
-            <div className="max-w-6xl mx-auto">
+        <div className="min-h-screen bg-brand-dark flex flex-col">
+            <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-heading font-bold text-white">My Collection</h1>
                     <div className="flex gap-4">
@@ -522,6 +523,7 @@ export default function MyPage() {
                     </div >
                 </div >
             </div >
+            <Footer />
             <AddToShowcaseModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
