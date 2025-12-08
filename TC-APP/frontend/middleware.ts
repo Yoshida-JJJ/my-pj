@@ -6,10 +6,10 @@ export async function middleware(request: NextRequest) {
     if (process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging') {
         const basicAuth = request.headers.get('authorization')
 
-        console.log('--- MIDDLEWARE ENTRY ---')
-        console.log('Env Var:', process.env.NEXT_PUBLIC_ENVIRONMENT)
-        console.log('Auth Header Present:', !!basicAuth)
-        console.log('Auth Header Value (First 10 chars):', basicAuth ? basicAuth.substring(0, 10) : 'NULL')
+        // DISTINCT LOG TO CONFIRM NEW VERSION
+        console.log('!!! CHECKING HEADERS (VERSION 3) !!!')
+        console.log('All Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())))
+        console.log('Auth Header Direct Get:', basicAuth)
 
         if (basicAuth) {
             const authValue = basicAuth.split(' ')[1]
