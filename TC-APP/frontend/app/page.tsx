@@ -114,6 +114,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-brand-dark flex flex-col">
+      {/* DEBUG OVERLAY - REMOVE AFTER FIX */}
+      <div className="fixed top-0 left-0 bg-black/80 text-white p-2 z-[9999] text-xs font-mono w-full">
+        <p>Debug Status: {loading ? 'LOADING' : 'IDLE'}</p>
+        <p>Error: {error || 'None'}</p>
+        <p>Listings: {listings.length}</p>
+        <p>Env URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Defined' : 'MISSING'}</p>
+        <p>Env Key: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Defined' : 'MISSING'}</p>
+      </div>
       <HeroSection />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 flex-1 w-full">
