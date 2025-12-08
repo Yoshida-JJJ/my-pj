@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import ShowcaseCard from '@/components/ShowcaseCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import Image from 'next/image';
+import Footer from '../../../components/Footer';
 
 export default function ProfilePage() {
     const params = useParams();
@@ -98,12 +99,12 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="min-h-screen pt-32 pb-12 px-4 sm:px-6 lg:px-8 bg-brand-dark relative overflow-hidden">
+        <div className="min-h-screen bg-brand-dark flex flex-col relative overflow-hidden">
             {/* Background Elements */}
             <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-brand-blue/10 to-transparent pointer-events-none"></div>
             <div className="absolute -top-20 -right-20 w-96 h-96 bg-brand-gold/5 rounded-full blur-3xl pointer-events-none"></div>
 
-            <div className="max-w-6xl mx-auto relative z-10">
+            <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12 relative z-10">
                 {/* Profile Header */}
                 <div className="flex flex-col md:flex-row items-center md:items-end gap-8 mb-12 p-8 rounded-2xl bg-white/5 border border-white/10 shadow-2xl backdrop-blur-md relative overflow-hidden group">
                     {/* Header Background Glow */}
@@ -228,6 +229,7 @@ export default function ProfilePage() {
                     </div>
                 </div>
             </div>
+            <Footer />
         </div>
     );
 }
