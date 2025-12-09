@@ -196,7 +196,7 @@ export default function ProfilePage() {
                                     <ShowcaseCard
                                         key={idx}
                                         item={item}
-                                        is_live_moment={item.is_live_moment}
+                                        is_live_moment={item.is_live_moment || isDebugLive}
                                     // No action props passed, so buttons will be hidden
                                     />
                                 ))}
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                                     <ShowcaseCard
                                         key={idx}
                                         item={item}
-                                        is_live_moment={item.is_live_moment}
+                                        is_live_moment={item.is_live_moment || isDebugLive}
                                     // No action props passed, so buttons will be hidden
                                     />
                                 ))}
