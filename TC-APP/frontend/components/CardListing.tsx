@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
-import { ListingItem } from '../types'; // We'll need to ensure types are exported or defined here
+import { motion } from 'framer-motion';
+import { ListingItem } from '../types';
 
 interface ListingItemProps {
     item: ListingItem;
+    isLiveMoment?: boolean; // Debug/Live prop
 }
 
-export default function CardListing({ item }: ListingItemProps) {
+export default function CardListing({ item, isLiveMoment = false }: ListingItemProps) {
     const isSold = item.status !== 'Active';
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
@@ -19,7 +21,39 @@ export default function CardListing({ item }: ListingItemProps) {
     };
 
     const Content = () => (
-        <div className={`glass-panel rounded-xl overflow-hidden card-hover h-full flex flex-col relative ${isSold ? 'grayscale-[0.5]' : ''}`}>
+        <motion.div
+            className={`glass-panel rounded-xl overflow-hidden card-hover h-full flex flex-col relative ${isSold ? 'grayscale-[0.5]' : ''}`}
+            animate={isLiveMoment ? {
+                boxShadow: [
+                    "0 0 15px rgba(255, 215, 0, 0.2)",
+                    "0 0 30px rgba(255, 215, 0, 0.5)",
+                    "0 0 15px rgba(255, 215, 0, 0.2)"
+                ],
+                borderColor: [
+                    "rgba(255, 215, 0, 0.4)",
+                    "rgba(255, 215, 0, 1)",
+                    "rgba(255, 215, 0, 0.4)"
+                ]
+            } : {}}
+            transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+            }}
+            style={{
+                borderColor: isLiveMoment ? '#FFD700' : ''
+            }}
+        >
+            {/* Live Moment Badge */}
+            {isLiveMoment && (
+                <div className="absolute top-0 left-0 z-30 w-full overflow-hidden h-full pointer-events-none">
+                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 z-50">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                        LIVE
+                    </div>
+                </div>
+            )}
+
             {/* Image Section */}
             <div className="relative h-72 bg-brand-dark-light group/image perspective-[1000px]">
                 <div className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${isFlipped && hasBackImage ? '[transform:rotateY(180deg)]' : ''}`}>
@@ -32,12 +66,15 @@ export default function CardListing({ item }: ListingItemProps) {
                                 fill
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                 className="object-cover"
-                            // onError handling in next/image uses placeholder/blur or state, simplifying for now
                             />
                         ) : (
                             <div className="flex items-center justify-center h-full text-brand-platinum/30">
                                 No Image
                             </div>
+                        )}
+                        {/* Live Moment Inner Glow */}
+                        {isLiveMoment && (
+                            <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(255,215,0,0.3)] mix-blend-overlay pointer-events-none" />
                         )}
                     </div>
 
@@ -137,7 +174,7 @@ export default function CardListing({ item }: ListingItemProps) {
 
             {/* Hover Glow Effect */}
             <div className="absolute inset-0 border-2 border-brand-blue/0 group-hover:border-brand-blue/50 rounded-xl transition-all duration-300 pointer-events-none"></div>
-        </div>
+        </motion.div>
     );
 
     if (isSold) {

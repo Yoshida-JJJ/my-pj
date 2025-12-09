@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation'; // Added
 import HeroSection from '../components/HeroSection';
 import CardListing from '../components/CardListing';
 import Footer from '../components/Footer';
@@ -11,6 +12,9 @@ import { ListingItem, Team } from '../types';
 import { createClient } from '../utils/supabase/client';
 
 export default function Home() {
+  const searchParams = useSearchParams(); // Added
+  const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
+
   const [listings, setListings] = useState<ListingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -194,7 +198,7 @@ export default function Home() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                 {listings.map((item) => (
-                  <CardListing key={item.id} item={item} />
+                  <CardListing key={item.id} item={item} isLiveMoment={isDebugLive} />
                 ))}
               </div>
 
