@@ -35,6 +35,14 @@ export default function Header() {
     };
 
     return (
+    const NAV_ITEMS = [
+            { name: 'MARKETPLACE', path: '/market' },
+            { name: 'MY COLLECTION', path: '/collection' },
+            { name: 'AUCTIONS', path: '/auctions' },
+            { name: 'COMMUNITY', path: '/community' },
+        ];
+
+    return (
         <header className="fixed top-0 left-0 w-full z-50 p-4 md:p-6 pointer-events-none flex flex-col items-center">
             <div className="pointer-events-auto w-full md:max-w-4xl bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 shadow-2xl flex items-center justify-between">
                 {/* Logo */}
@@ -49,12 +57,7 @@ export default function Header() {
 
                 {/* Desktop Navigation */}
                 <nav className="hidden md:flex items-center gap-1">
-                    {[
-                        { name: 'MARKETPLACE', path: '/market' },
-                        { name: 'MY COLLECTION', path: '/collection' },
-                        { name: 'AUCTIONS', path: '/auctions' },
-                        { name: 'COMMUNITY', path: '/community' },
-                    ].map((item) => (
+                    {NAV_ITEMS.map((item) => (
                         <Link
                             key={item.name}
                             href={item.path}
@@ -150,10 +153,16 @@ export default function Header() {
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
                 <div className="pointer-events-auto w-full md:max-w-4xl mt-2 bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl md:hidden flex flex-col gap-2 animate-fade-in-up">
-                    <Link href="/market" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MARKETPLACE</Link>
-                    <Link href="/collection" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY COLLECTION</Link>
-                    <Link href="/auctions" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">AUCTIONS</Link>
-                    <Link href="/community" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">COMMUNITY</Link>
+                    {NAV_ITEMS.map((item) => (
+                        <Link
+                            key={item.name}
+                            href={item.path}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm"
+                        >
+                            {item.name}
+                        </Link>
+                    ))}
                     {user && (
                         <>
                             <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
