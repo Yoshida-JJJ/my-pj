@@ -41,7 +41,7 @@ export default function HeroSection() {
     }, []);
 
     return (
-        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center bg-brand-dark pt-32">
+        <section className="relative w-full min-h-[90vh] flex flex-col items-center justify-center bg-brand-dark pt-32 pb-48">
             {/* Spotlight Effects */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 {/* Main Top Spotlight */}
@@ -140,24 +140,32 @@ export default function HeroSection() {
                     Verify, trade, and showcase your assets in a premium ecosystem.
                 </p>
 
-                <p className="text-red-500 font-bold mb-4">
-                    Visual Debug: Buttons should be below. z-index boosted.
-                </p>
-
-                <div style={{ position: 'relative', zIndex: 9999, backgroundColor: 'rgba(255, 0, 0, 0.5)', padding: '20px', border: '5px solid yellow', display: 'flex', gap: '20px', justifyContent: 'center' }}>
-                    {/* DEBUG: FORCE RENDER GUEST BUTTONS WITH A TAGS & INLINE STYLES */}
-                    <a
-                        href="/register"
-                        style={{ display: 'block', padding: '15px 30px', backgroundColor: 'gold', color: 'black', fontWeight: 'bold', borderRadius: '30px' }}
-                    >
-                        SIGN UP NOW (INLINE)
-                    </a>
-                    <a
-                        href="/login"
-                        style={{ display: 'block', padding: '15px 30px', backgroundColor: 'white', color: 'black', fontWeight: 'bold', borderRadius: '30px' }}
-                    >
-                        SIGN IN (INLINE)
-                    </a>
+                <div className="flex flex-col md:flex-row gap-6 justify-center">
+                    {user ? (
+                        <Link
+                            href="/market"
+                            className="group relative px-8 py-4 bg-brand-blue text-white font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                            <span className="relative z-10">EXPLORE MARKETPLACE</span>
+                        </Link>
+                    ) : (
+                        <>
+                            <Link
+                                href="/register"
+                                className="group relative px-8 py-4 bg-brand-gold text-brand-dark font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(234,179,8,0.3)]"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                                <span className="relative z-10">SIGN UP NOW</span>
+                            </Link>
+                            <Link
+                                href="/login"
+                                className="px-8 py-4 bg-white/5 text-white font-bold rounded-full border border-white/10 hover:bg-white/10 transition-all hover:scale-105 backdrop-blur-md"
+                            >
+                                SIGN IN
+                            </Link>
+                        </>
+                    )}
                 </div>
             </div>
         </section>
