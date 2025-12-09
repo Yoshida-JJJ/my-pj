@@ -35,8 +35,8 @@ export default function Header() {
     };
 
     return (
-        <header className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-            <div className="pointer-events-auto bg-brand-dark-light/80 backdrop-blur-xl border border-white/10 rounded-full px-4 md:px-6 py-3 shadow-2xl flex items-center gap-4 md:gap-8 max-w-[95%] md:max-w-4xl w-full justify-between">
+        <header className="fixed top-4 md:top-6 left-0 right-0 z-50 flex justify-center pointer-events-none">
+            <div className="pointer-events-auto bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 shadow-2xl flex items-center justify-between w-[92vw] md:w-full md:max-w-4xl gap-4">
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2 group">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-blue-glow flex items-center justify-center shadow-lg shadow-brand-blue/20 group-hover:shadow-brand-blue/40 transition-all">
