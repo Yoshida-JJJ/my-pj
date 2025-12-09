@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
 import CardListing from '../../components/CardListing';
 import Footer from '../../components/Footer';
 import { ListingItem, Team } from '../../types';
 
 export default function MarketPage() {
+    const searchParams = useSearchParams();
+    const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
+
     const [listings, setListings] = useState<ListingItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -161,7 +165,7 @@ export default function MarketPage() {
                         <>
                             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
                                 {listings.map((item) => (
-                                    <CardListing key={item.id} item={item} />
+                                    <CardListing key={item.id} item={item} isLiveMoment={isDebugLive} />
                                 ))}
                             </div>
 
