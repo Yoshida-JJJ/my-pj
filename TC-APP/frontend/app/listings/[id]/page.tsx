@@ -1,22 +1,27 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '../../../utils/supabase/client';
 import Footer from '../../../components/Footer';
 import { ListingItem } from '../../../types';
 
 export default function ListingDetail() {
     const params = useParams();
+    const searchParams = useSearchParams();
     const id = params?.id as string;
+    const isLiveMoment = searchParams.get('live') === 'true'; // Debug/Demo Mode
+
     const [user, setUser] = useState<any>(null);
     const [listing, setListing] = useState<ListingItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+    // ... (rest of useEffect logic remains similar, skipping modification unless needed) ...
     useEffect(() => {
         const fetchListingAndUser = async () => {
             const supabase = createClient();
@@ -87,22 +92,73 @@ export default function ListingDetail() {
                     </Link>
                 </nav>
 
-                <div className="glass-panel-premium rounded-2xl shadow-2xl overflow-hidden border border-white/10">
+                <div className={`glass-panel-premium rounded-2xl shadow-2xl overflow-hidden border ${isLiveMoment ? 'border-brand-gold/50' : 'border-white/10'} transition-colors duration-500`}>
                     <div className="md:flex">
                         {/* Image Gallery Section */}
-                        <div className="md:w-1/2 p-2 md:p-8 bg-brand-dark-light/50">
-                            <div className="mb-6 aspect-[2/3] relative rounded-xl bg-brand-dark border border-brand-platinum/5 group perspective-[1000px]">
+                        <div className="md:w-1/2 p-2 md:p-8 bg-brand-dark-light/50 relative overflow-hidden">
+                            {/* Live Moment Ambient Background */}
+                            {isLiveMoment && (
+                                <div className="absolute inset-0 z-0">
+                                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-brand-gold/5 to-transparent mix-blend-overlay pointer-events-none" />
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-brand-gold/10 blur-[100px] animate-pulse-slow pointer-events-none" />
+                                </div>
+                            )}
+
+                            <motion.div
+                                className={`mb-6 aspect-[2/3] relative rounded-xl bg-brand-dark group perspective-[1000px] z-10`}
+                                animate={isLiveMoment ? {
+                                    boxShadow: [
+                                        "0 0 20px rgba(255, 215, 0, 0.3)",
+                                        "0 0 50px rgba(255, 215, 0, 0.6)",
+                                        "0 0 20px rgba(255, 215, 0, 0.3)"
+                                    ],
+                                    borderColor: [
+                                        "rgba(255, 215, 0, 0.4)",
+                                        "rgba(255, 215, 0, 1)",
+                                        "rgba(255, 215, 0, 0.4)"
+                                    ]
+                                } : {}}
+                                transition={{
+                                    duration: 3,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
+                                style={{
+                                    borderWidth: isLiveMoment ? '2px' : '1px',
+                                    borderStyle: 'solid',
+                                    borderColor: isLiveMoment ? '#FFD700' : 'rgba(255, 255, 255, 0.05)'
+                                }}
+                            >
+                                {/* Live Moment Badge */}
+                                {isLiveMoment && (
+                                    <div className="absolute top-4 left-4 z-50">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-brand-gold blur-lg opacity-50 animate-pulse"></div>
+                                            <div className="relative px-3 py-1 bg-gradient-to-r from-brand-gold to-brand-gold-glow text-brand-dark text-[10px] font-bold tracking-widest uppercase rounded shadow-lg border border-white/30 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                                                LIVE MOMENT
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${selectedImage === listing.images[1] ? '[transform:rotateY(180deg)]' : ''}`}>
                                     {/* Front Image (Image 0) */}
                                     <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-xl overflow-hidden shadow-2xl">
                                         {listing.images && listing.images.length > 0 ? (
-                                            <Image
-                                                src={listing.images[0]}
-                                                alt={listing.catalog.player_name}
-                                                fill
-                                                sizes="(max-width: 768px) 100vw, 50vw"
-                                                className="object-contain p-0 md:p-4 bg-brand-dark-light/50"
-                                            />
+                                            <>
+                                                <Image
+                                                    src={listing.images[0]}
+                                                    alt={listing.catalog.player_name}
+                                                    fill
+                                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                                    className="object-contain p-0 md:p-4 bg-brand-dark-light/50"
+                                                />
+                                                {/* Inner Glow Overlay */}
+                                                {isLiveMoment && (
+                                                    <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(255,215,0,0.3)] rounded-xl mix-blend-overlay" />
+                                                )}
+                                            </>
                                         ) : (
                                             <div className="flex items-center justify-center h-full text-brand-platinum/30">No Image</div>
                                         )}
@@ -122,22 +178,9 @@ export default function ListingDetail() {
                                     )}
                                 </div>
 
-                                {/* Flip Button */}
-                                {listing.images && listing.images.length > 1 && (
-                                    <button
-                                        onClick={() => setSelectedImage(selectedImage === listing.images[0] ? listing.images[1] : listing.images[0])}
-                                        className="absolute bottom-4 right-4 z-20 p-3 rounded-full bg-black/60 text-white hover:bg-brand-blue hover:text-white transition-colors backdrop-blur-sm border border-white/10 shadow-lg"
-                                        title="Flip Card"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                    </button>
-                                )}
-
-                                {/* Glow Effect Behind Image */}
-                                <div className="absolute inset-0 bg-brand-blue/5 blur-3xl -z-10"></div>
-                            </div>
+                                {/* Glow Effect Behind Image (Enhanced for Live Moment) */}
+                                <div className={`absolute inset-0 blur-3xl -z-10 ${isLiveMoment ? 'bg-brand-gold/20' : 'bg-brand-blue/5'}`}></div>
+                            </motion.div>
 
                             {/* Thumbnails */}
                             {listing.images && listing.images.length > 1 && (
