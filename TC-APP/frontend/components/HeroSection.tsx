@@ -144,19 +144,19 @@ export default function HeroSection() {
                     Visual Debug: Buttons should be below. z-index boosted.
                 </p>
 
-                <div className="flex flex-col md:flex-row gap-6 justify-center border border-white/10 p-4 rounded-xl relative z-50 bg-gray-900/80">
-                    {/* DEBUG: FORCE RENDER GUEST BUTTONS WITH A TAGS */}
+                <div style={{ position: 'relative', zIndex: 9999, backgroundColor: 'rgba(255, 0, 0, 0.5)', padding: '20px', border: '5px solid yellow', display: 'flex', gap: '20px', justifyContent: 'center' }}>
+                    {/* DEBUG: FORCE RENDER GUEST BUTTONS WITH A TAGS & INLINE STYLES */}
                     <a
                         href="/register"
-                        className="group relative px-8 py-4 bg-yellow-500 text-black font-bold rounded-full transition-all hover:scale-105 shadow-lg flex items-center justify-center cursor-pointer"
+                        style={{ display: 'block', padding: '15px 30px', backgroundColor: 'gold', color: 'black', fontWeight: 'bold', borderRadius: '30px' }}
                     >
-                        <span className="relative z-10">SIGN UP NOW (HTML)</span>
+                        SIGN UP NOW (INLINE)
                     </a>
                     <a
                         href="/login"
-                        className="px-8 py-4 bg-white/10 text-white font-bold rounded-full border border-white/20 hover:bg-white/20 transition-all hover:scale-105 backdrop-blur-md flex items-center justify-center cursor-pointer"
+                        style={{ display: 'block', padding: '15px 30px', backgroundColor: 'white', color: 'black', fontWeight: 'bold', borderRadius: '30px' }}
                     >
-                        SIGN IN (HTML)
+                        SIGN IN (INLINE)
                     </a>
                 </div>
             </div>
