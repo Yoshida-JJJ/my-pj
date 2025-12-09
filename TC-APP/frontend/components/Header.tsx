@@ -79,8 +79,8 @@ export default function Header() {
                         </Link>
                     )}
 
-                    {/* User Profile / Mobile Menu Toggle */}
-                    <div className="relative group">
+                    {/* User Profile (Desktop Only) */}
+                    <div className="relative group hidden md:block">
                         <button
                             className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all"
                         >
@@ -133,9 +133,10 @@ export default function Header() {
                     {/* Mobile Menu Toggle (Visible on Mobile only) */}
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className="md:hidden w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all"
+                        className="md:hidden w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all bg-brand-dark text-white"
+                        aria-label="Menu"
                     >
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {isMobileMenuOpen ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             ) : (
