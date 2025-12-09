@@ -65,16 +65,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 borderColor: isLiveMoment ? '#FFD700' : ''
             }}
         >
-            {/* Live Moment Badge */}
-            {isLiveMoment && (
-                <div className="absolute top-0 left-0 z-30 w-full overflow-hidden h-full pointer-events-none">
-                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 z-50">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
-                        LIVE
-                        <span className="ml-1 pl-1 border-l border-brand-dark/20 font-mono">{timeLeft}</span>
-                    </div>
-                </div>
-            )}
+
 
             {/* Image Section */}
             <div className="relative h-72 bg-brand-dark-light group/image perspective-[1000px]">
@@ -193,6 +184,17 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                     )}
                 </div>
             </div>
+
+            {/* Live Moment Badge (Moved to bottom for stacking) */}
+            {isLiveMoment && (
+                <div className="absolute top-0 left-0 z-50 w-full overflow-hidden h-full pointer-events-none">
+                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                        LIVE
+                        <span className="ml-1 pl-1 border-l border-brand-dark/20 font-mono">{timeLeft}</span>
+                    </div>
+                </div>
+            )}
 
             {/* Hover Glow Effect */}
             <div className="absolute inset-0 border-2 border-brand-blue/0 group-hover:border-brand-blue/50 rounded-xl transition-all duration-300 pointer-events-none"></div>
