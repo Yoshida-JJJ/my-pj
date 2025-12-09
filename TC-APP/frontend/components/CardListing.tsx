@@ -41,7 +41,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
         setIsFlipped(!isFlipped);
     };
 
-    const Content = () => (
+    const cardContent = (
         <motion.div
             className={`glass-panel rounded-xl overflow-hidden card-hover h-full flex flex-col relative ${isSold ? 'grayscale-[0.5]' : ''}`}
             animate={isLiveMoment ? {
@@ -65,8 +65,6 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 borderColor: isLiveMoment ? '#FFD700' : ''
             }}
         >
-
-
             {/* Image Section */}
             <div className="relative h-72 bg-brand-dark-light group/image perspective-[1000px]">
                 <div className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${isFlipped && hasBackImage ? '[transform:rotateY(180deg)]' : ''}`}>
@@ -185,10 +183,10 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 </div>
             </div>
 
-            {/* Live Moment Badge (Moved to bottom for stacking) */}
+            {/* Live Moment Badge (Moved to bottom for stacking and high Z-index) */}
             {isLiveMoment && (
                 <div className="absolute top-0 left-0 z-50 w-full overflow-hidden h-full pointer-events-none">
-                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5">
+                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5 backdrop-blur-md">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
                         LIVE
                         <span className="ml-1 pl-1 border-l border-brand-dark/20 font-mono">{timeLeft}</span>
@@ -204,14 +202,14 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
     if (isSold) {
         return (
             <div className="block group cursor-not-allowed opacity-80">
-                <Content />
+                {cardContent}
             </div>
         );
     }
 
     return (
         <Link href={`/listings/${item.id}`} className="block group">
-            <Content />
+            {cardContent}
         </Link>
     );
 }
