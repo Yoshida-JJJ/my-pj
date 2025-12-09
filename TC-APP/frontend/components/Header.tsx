@@ -153,6 +153,7 @@ export default function Header() {
                     <Link href="/market" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MARKETPLACE</Link>
                     <Link href="/collection" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY COLLECTION</Link>
                     <Link href="/auctions" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">AUCTIONS</Link>
+                    <Link href="/community" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">COMMUNITY</Link>
                     {user && (
                         <>
                             <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
