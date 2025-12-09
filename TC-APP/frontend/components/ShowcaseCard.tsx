@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 
 interface ShowcaseItemProps {
     item: {
@@ -29,9 +30,6 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
     const [isFlipped, setIsFlipped] = useState(false);
     const hasBackImage = item.images && item.images.length > 1;
     // Use prop if provided, otherwise fallback to variant (for backward compatibility or explicit override)
-    // But the requirement is to use the flag.
-    // Let's make isLiveMoment depend on the flag OR the variant 'live-moment' (if passed explicitly for demo)
-    // Actually, let's prioritize the flag if it exists in the item data or prop.
     const isLiveMoment = is_live_moment || variant === 'live-moment';
 
     const handleFlip = (e: React.MouseEvent) => {
@@ -41,17 +39,37 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
     };
 
     return (
-        <div className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-500
-            ${isLiveMoment
-                ? 'border-brand-gold bg-gradient-to-br from-brand-dark-light/80 to-brand-gold/10 shadow-[0_0_15px_rgba(255,215,0,0.2)] hover:shadow-[0_0_30px_rgba(255,215,0,0.4)] hover:border-brand-gold hover:scale-[1.02]'
-                : 'border-brand-platinum/10 bg-brand-dark-light/50 hover:border-brand-blue/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]'
-            }`}>
+        <motion.div
+            className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-500 bg-brand-dark-light/50`}
+            animate={isLiveMoment ? {
+                boxShadow: [
+                    "0 0 15px rgba(255, 215, 0, 0.2)",
+                    "0 0 30px rgba(255, 215, 0, 0.5)",
+                    "0 0 15px rgba(255, 215, 0, 0.2)"
+                ],
+                borderColor: [
+                    "rgba(255, 215, 0, 0.4)",
+                    "rgba(255, 215, 0, 1)",
+                    "rgba(255, 215, 0, 0.4)"
+                ]
+            } : {}}
+            transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+            }}
+            whileHover={{ scale: 1.02 }}
+            style={{
+                borderColor: isLiveMoment ? '#FFD700' : 'rgba(255, 255, 255, 0.1)'
+            }}
+        >
 
             {/* Live Moment Badge */}
             {isLiveMoment && (
                 <div className="absolute top-0 left-0 z-30 w-full overflow-hidden h-full pointer-events-none">
-                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 animate-pulse">
-                        LIVE MOMENT
+                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-brand-gold text-brand-dark text-[10px] font-bold tracking-wider rounded shadow-lg shadow-brand-gold/20 border border-white/20 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                        LIVE
                     </div>
                     {/* Corner Glow Effect */}
                     <div className="absolute -top-10 -left-10 w-20 h-20 bg-brand-gold/30 blur-2xl rounded-full"></div>
@@ -73,6 +91,10 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-brand-platinum/20">No Image</div>
+                        )}
+                        {/* Live Moment Inner Glow */}
+                        {isLiveMoment && (
+                            <div className="absolute inset-0 shadow-[inset_0_0_30px_rgba(255,215,0,0.3)] mix-blend-overlay pointer-events-none" />
                         )}
                     </div>
 
@@ -265,6 +287,6 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
                     )}
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }
