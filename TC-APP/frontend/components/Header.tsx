@@ -35,7 +35,7 @@ export default function Header() {
     };
 
     return (
-        <header className="fixed top-0 left-0 w-full z-50 p-4 md:p-6 pointer-events-none flex justify-center">
+        <header className="fixed top-0 left-0 w-full z-50 p-4 md:p-6 pointer-events-none flex flex-col items-center">
             <div className="pointer-events-auto w-full md:max-w-4xl bg-brand-dark-light/95 backdrop-blur-xl border border-white/10 rounded-full px-4 py-3 shadow-2xl flex items-center justify-between">
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2 group">
