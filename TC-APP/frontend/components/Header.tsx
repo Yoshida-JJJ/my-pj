@@ -34,13 +34,12 @@ export default function Header() {
         router.refresh();
     };
 
-    return (
     const NAV_ITEMS = [
-            { name: 'MARKETPLACE', path: '/market' },
-            { name: 'MY COLLECTION', path: '/collection' },
-            { name: 'AUCTIONS', path: '/auctions' },
-            { name: 'COMMUNITY', path: '/community' },
-        ];
+        { name: 'MARKETPLACE', path: '/market' },
+        { name: 'MY COLLECTION', path: '/collection' },
+        { name: 'AUCTIONS', path: '/auctions' },
+        { name: 'COMMUNITY', path: '/community' },
+    ];
 
     return (
         <header className="fixed top-0 left-0 w-full z-50 p-4 md:p-6 pointer-events-none flex flex-col items-center">
