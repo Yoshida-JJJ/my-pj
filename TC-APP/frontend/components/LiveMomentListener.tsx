@@ -25,7 +25,7 @@ export default function LiveMomentListener() {
                     table: "live_moments",
                 },
                 (payload) => {
-                    //   console.log("Realtime Event Received!", payload);
+                    console.log("🔔 Realtime Event Received!", payload);
                     const newMoment = payload.new as LiveMomentData;
 
                     // Trigger Toast
@@ -37,10 +37,13 @@ export default function LiveMomentListener() {
                     }, 8000);
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log("🔌 Realtime Subscription Status:", status);
+            });
 
         // Cleanup subscription
         return () => {
+            console.log("🔌 Realtime Unsubscribing...");
             supabase.removeChannel(channel);
         };
     }, [supabase]);

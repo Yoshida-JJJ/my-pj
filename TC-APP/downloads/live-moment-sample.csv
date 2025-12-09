@@ -1,0 +1,7 @@
+player_name,type,title,description,intensity,metadata
+"山本 由伸","VICTORY","山本、7回無失点で今季10勝目！","ドジャースタジアムでの圧巻のピッチング。12奪三振を記録。",4,"{""inning"": ""Final"", ""opponent"": ""Yankees"", ""video_url"": """", ""related_card_ids"": []}"
+"村上 宗隆","HOMERUN","村上、特大の逆転3ラン！","神宮の夜空に描く美しいアーチ。チームを勝利に導く一撃。",5,"{""inning"": ""8th Bottom"", ""opponent"": ""Giants"", ""video_url"": """", ""related_card_ids"": []}"
+"佐々木 朗希","BIG_PLAY","佐々木、165km/hで三者連続三振！","日本人最速タイ記録をマーク。球場がどよめきに包まれる。",5,"{""inning"": ""1st Top"", ""opponent"": ""Fighters"", ""video_url"": """", ""related_card_ids"": []}"
+"鈴木 誠也","BIG_PLAY","鈴木、フェンス激突のスーパーキャッチ！","抜ければ長打の当たりを好捕。先発投手を救うビッグプレー。",3,"{""inning"": ""5th Bottom"", ""opponent"": ""Cubs"", ""video_url"": """", ""related_card_ids"": []}"
+"運営事務局","system_notice","【メンテナンス完了】サーバー強化のお知らせ","サーバー増強メンテナンスが完了しました。より快適に取引いただけます。",1,"{""category"": ""Maintenance""}"
+"Aaron Judge","HOMERUN","Judge hits 62nd HR! AL Record!","History is made at Yankee Stadium. The crowd goes wild.",5,"{""inning"": ""1st Bottom"", ""opponent"": ""Rangers"", ""video_url"": """", ""related_card_ids"": []}"
