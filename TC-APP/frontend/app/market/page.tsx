@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
@@ -8,7 +8,7 @@ import CardListing from '../../components/CardListing';
 import Footer from '../../components/Footer';
 import { ListingItem, Team } from '../../types';
 
-export default function MarketPage() {
+function MarketPageContent() {
     const searchParams = useSearchParams();
     const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
 
@@ -187,5 +187,13 @@ export default function MarketPage() {
 
             <Footer />
         </div>
+    );
+}
+
+export default function MarketPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-brand-dark flex items-center justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin"></div></div>}>
+            <MarketPageContent />
+        </Suspense>
     );
 }

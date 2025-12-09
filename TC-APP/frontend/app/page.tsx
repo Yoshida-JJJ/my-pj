@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation'; // Added
 import HeroSection from '../components/HeroSection';
@@ -11,7 +11,7 @@ import { ListingItem, Team } from '../types';
 
 import { createClient } from '../utils/supabase/client';
 
-export default function Home() {
+function HomeContent() {
   const searchParams = useSearchParams(); // Added
   const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
 
@@ -220,5 +220,13 @@ export default function Home() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-brand-dark flex items-center justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin"></div></div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

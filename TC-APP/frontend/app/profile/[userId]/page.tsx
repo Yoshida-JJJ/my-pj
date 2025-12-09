@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useParams, useSearchParams } from 'next/navigation';
 import ShowcaseCard from '@/components/ShowcaseCard';
@@ -8,7 +8,7 @@ import SkeletonCard from '@/components/SkeletonCard';
 import Image from 'next/image';
 import Footer from '../../../components/Footer';
 
-export default function ProfilePage() {
+function ProfilePageContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
@@ -234,5 +234,13 @@ export default function ProfilePage() {
             </div>
             <Footer />
         </div>
+    );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-brand-dark flex items-center justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin"></div></div>}>
+            <ProfilePageContent />
+        </Suspense>
     );
 }

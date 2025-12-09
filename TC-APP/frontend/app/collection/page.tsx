@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
@@ -36,7 +36,7 @@ interface OrderItem {
     listing?: ListingItem;
 }
 
-export default function MyPage() {
+function MyPageContent() {
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -542,5 +542,13 @@ export default function MyPage() {
                 />
             )}
         </div >
+    );
+}
+
+export default function MyPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-brand-dark flex items-center justify-center"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin"></div></div>}>
+            <MyPageContent />
+        </Suspense>
     );
 }
