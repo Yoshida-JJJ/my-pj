@@ -140,7 +140,7 @@ export default function HeroSection() {
                     Verify, trade, and showcase your assets in a premium ecosystem.
                 </p>
 
-                <div className="flex flex-col md:flex-row gap-6 justify-center animate-fade-in-up delay-300">
+                <div className="flex flex-col md:flex-row gap-6 justify-center">
                     {user ? (
                         <Link
                             href="/market"
