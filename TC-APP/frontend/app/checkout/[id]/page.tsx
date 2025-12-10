@@ -113,39 +113,38 @@ export default function CheckoutPage() {
             return;
         }
 
-        if (!shippingAddress.trim()) {
-            setError('Please enter a shipping address.');
-            return;
-        }
+        // Optional: In a real app, you might want to save the shipping Address to the profile here
+        // or pass it to the API to store in the order (if the schema supported it).
+        // For now, we assume the profile address is up to date or we rely on Stripe to collect it if enabled.
 
         setProcessing(true);
         setError(null);
 
         try {
-            const supabase = createClient();
+            const response = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    listingId: listing.id,
+                    returnUrl: window.location.origin, // Pass origin just in case
+                }),
+            });
 
-            // Call the secure RPC function
-            const { data: orderId, error: rpcError } = await supabase
-                .rpc('purchase_item', {
-                    p_listing_id: listing.id,
-                    p_buyer_id: user.id,
-                    p_total_amount: listing.price,
-                    p_payment_method_id: 'stripe_mock', // Mock payment method ID
-                    p_shipping_address: shippingAddress
-                });
-
-            if (rpcError) {
-                throw rpcError;
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Payment initialization failed');
             }
 
-            // Redirect to Success Page
-            router.push(`/orders/${orderId}/success`);
+            const { url } = await response.json();
+
+            // Redirect to Stripe Checkout
+            window.location.href = url;
 
         } catch (err: any) {
             console.error('Purchase Error:', err);
-            // Supabase errors are not always Error instances
-            const errorMessage = err?.message || err?.error_description || 'Transaction failed';
-            setError(errorMessage);
+            setError(err.message || 'Transaction failed');
             setProcessing(false);
         }
     };
