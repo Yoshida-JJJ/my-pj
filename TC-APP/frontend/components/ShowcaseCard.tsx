@@ -252,7 +252,7 @@ export default function ShowcaseCard({ item, type, variant = 'default', is_live_
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    onToggleDisplay(item.id, item.status);
+                                    onToggleDisplay(item.id, item.status || '');
                                 }}
                                 className={`p-2 rounded-lg border transition-all duration-300 ${item.status === 'Display'
                                     ? 'bg-brand-blue/10 border-brand-blue/40 text-brand-blue hover:bg-brand-blue/20 hover:border-brand-blue'
