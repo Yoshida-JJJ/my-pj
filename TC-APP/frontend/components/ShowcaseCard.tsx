@@ -140,7 +140,7 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
                     {hasBackImage && (
                         <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-brand-dark-light relative">
                             <Image
-                                src={item.images[1]}
+                                src={(item.images && item.images[1]) || ''}
                                 alt={`${item.player_name || ''} Back`}
                                 fill
                                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
