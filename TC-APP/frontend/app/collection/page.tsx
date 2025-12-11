@@ -13,7 +13,7 @@ import SkeletonCard from '../../components/SkeletonCard';
 // Types
 interface ListingItem {
     id: string;
-    catalog_id: string;
+
     price: number;
     images: string[];
     status: string;
