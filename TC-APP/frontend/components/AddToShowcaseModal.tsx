@@ -44,7 +44,16 @@ const collectionSchema = z.object({
     certificationNumber: z.string().optional(),
     condition: z.string().optional(),
     images: z.array(z.string()).min(1, "At least one image is required"),
+    status: z.enum(['Draft', 'Active', 'Display', 'Sold']).optional().default('Draft'),
+    price: z.string().optional(),
 }).superRefine((data, ctx) => {
+    if (data.status === 'Active' && (!data.price || isNaN(parseInt(data.price)))) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Price is required for active listings",
+            path: ["price"],
+        });
+    }
     if (!data.isGraded && !data.condition) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -100,8 +109,12 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
             certificationNumber: '',
             condition: '',
             images: [],
+            status: 'Draft',
+            price: '',
         }
     });
+
+    const status = watch('status');
 
     const isGraded = watch('isGraded');
 
@@ -114,15 +127,13 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
 
             if (mode === 'edit' && initialData) {
                 // Populate for Edit with Catalog Fallback
-                const catalog = initialData.catalog || {};
-
-                setValue('playerName', initialData.player_name || catalog.player_name || '');
-                setValue('team', initialData.team || catalog.team || '');
-                setValue('year', (initialData.year || catalog.year || '').toString());
-                setValue('brand', initialData.manufacturer || catalog.manufacturer || 'Unknown');
+                setValue('playerName', initialData.player_name || '');
+                setValue('team', initialData.team || '');
+                setValue('year', (initialData.year || '').toString());
+                setValue('brand', initialData.manufacturer || 'Unknown');
                 setValue('variation', initialData.variation || ''); // Variation usually not in catalog base
                 setValue('serialNumber', initialData.serial_number || '');
-                setValue('isRookie', initialData.is_rookie || catalog.is_rookie || false);
+                setValue('isRookie', initialData.is_rookie || false);
                 setValue('isAutograph', initialData.is_autograph || false);
 
                 // Images
@@ -131,8 +142,6 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                 setValue('images', existingImages);
 
                 // Grading / Condition
-                // Note: Condition logic might need check. Catalog items typically don't have individual condition.
-                // So we rely on listing_item data for condition.
                 if (initialData.condition_grading?.is_graded) {
                     setValue('isGraded', true);
                     setValue('gradingCompany', initialData.condition_grading.service || 'PSA');
@@ -142,6 +151,10 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                     setValue('isGraded', false);
                     setValue('condition', initialData.condition_rating || '');
                 }
+
+                // Status & Price
+                setValue('status', initialData.status as any || 'Draft');
+                setValue('price', initialData.price ? initialData.price.toString() : '');
             } else {
                 // Reset for Add
                 setImages([]);
@@ -302,7 +315,7 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
 
             const listingData = {
                 seller_id: user.id,
-                catalog_id: null, // Decoupled
+                // catalog_id: null, // Removed
                 player_name: formData.playerName,
                 team: formData.team,
                 year: parseInt(formData.year || '0') || null,
@@ -312,8 +325,10 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                 is_rookie: formData.isRookie || false,
                 is_autograph: formData.isAutograph || false,
                 images: formData.images,
-                status: 'Draft', // Default for Collection
-                price: null,
+                is_autograph: formData.isAutograph || false,
+                images: formData.images,
+                status: formData.status,
+                price: formData.price ? parseInt(formData.price) : null,
                 condition_grading: {
                     is_graded: formData.isGraded || false,
                     service: formData.isGraded ? formData.gradingCompany : "None",
@@ -391,8 +406,7 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                         {uploading && <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-gold"></div></div>}
                     </label>
 
-// Show dropzone initially, but if in edit mode and has image, maybe we want to just show images?
-                    // User requirement: "keep dropzone visible", so we keep it always.
+
 
                     {/* Thumbnails Grid */}
                     {(images.length > 0 || (mode === 'edit' && images.length > 0)) && (
@@ -590,6 +604,35 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                             )}
                         </div>
 
+                        {/* Status and Price Section */}
+                        <div className="border-t border-brand-platinum/10 pt-6">
+                            <h3 className="text-sm font-bold text-white mb-4">Listing Status & Price</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-brand-platinum mb-1.5 uppercase tracking-wider">Status</label>
+                                    <div className="relative">
+                                        <select {...register('status')} className="w-full bg-black/40 border border-brand-platinum/10 rounded-xl px-4 py-3 text-white appearance-none focus:ring-2 focus:ring-brand-gold/50 transition-all">
+                                            <option value="Draft">Draft (Private)</option>
+                                            <option value="Display">Showcase (Public Display)</option>
+                                            <option value="Active">Active Listing (For Sale)</option>
+                                        </select>
+                                        <div className="absolute right-3 top-3.5 pointer-events-none text-brand-platinum/50">▼</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-brand-platinum mb-1.5 uppercase tracking-wider">Price (¥) {status === 'Active' && <span className="text-red-400">*</span>}</label>
+                                    <input
+                                        type="number"
+                                        {...register('price')}
+                                        disabled={status !== 'Active'}
+                                        placeholder={status === 'Active' ? "Required" : "Optional"}
+                                        className={`w-full bg-black/40 border border-brand-platinum/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-brand-gold/50 transition-all placeholder:text-brand-platinum/30 ${status !== 'Active' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    />
+                                    {errors.price && <p className="text-red-400 text-xs mt-1">{errors.price.message}</p>}
+                                </div>
+                            </div>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={isSubmitting}
@@ -599,7 +642,7 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                                 <div className="flex items-center justify-center gap-2">
                                     <span>{mode === 'edit' ? 'Save Changes' : 'Adding...'}</span>
                                 </div>
-                            ) : (mode === 'edit' ? 'Save Changes' : 'Add to Collection')}
+                            ) : (mode === 'edit' ? 'Save Changes' : (status === 'Active' ? 'List for Sale' : 'Add to Collection'))}
                         </button>
                     </form>
                 )}

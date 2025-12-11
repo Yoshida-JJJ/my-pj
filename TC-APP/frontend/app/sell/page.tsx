@@ -383,7 +383,7 @@ function SellContent() {
         try {
             const supabase = createClient();
             const listingData = {
-                catalog_id: null,
+                // catalog_id: null, // Removed
                 player_name: formData.playerName,
                 team: formData.team,
                 year: parseInt(formData.year || '') || null, // Handle Unknown/Empty as null

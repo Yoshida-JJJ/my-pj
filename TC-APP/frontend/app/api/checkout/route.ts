@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
         // 2. Fetch Listing Details
         const { data: listing, error: listingError } = await supabase
             .from('listing_items')
-            .select('*, catalog:card_catalogs(*)')
+            .select('*')
             .eq('id', listingId)
             .single();
 
@@ -93,12 +93,11 @@ export async function POST(req: NextRequest) {
                     price_data: {
                         currency: 'jpy',
                         product_data: {
-                            name: `${listing.catalog.player_name} - ${listing.catalog.rarity}`,
-                            description: `${listing.catalog.series_name} (#${listing.catalog.card_number})`,
+                            name: `${listing.player_name || 'Card'}`,
+                            description: `${listing.series_name || ''} (#${listing.card_number || '---'})`,
                             images: listing.images && listing.images.length > 0 ? [listing.images[0]] : [],
                             metadata: {
                                 listing_id: listingId,
-                                catalog_id: listing.catalog_id
                             }
                         },
                         unit_amount: listing.price,

@@ -37,24 +37,28 @@ export interface Profile {
 
 export interface ListingItem {
     id: string;
-    catalog_id: string;
+    // catalog_id: string; // Removed
     price: number | null;
     images: string[];
     condition_grading: ConditionGrading;
     seller_id: string;
     status: string;
-    // Decoupled / Manual Entry Fields
-    player_name?: string | null;
-    team?: string | null;
-    year?: number | null;
-    manufacturer?: string | null;
+
+    // Flat Fields (Backfilled from Catalog)
+    player_name: string | null; // Made nullable but effectively populated
+    team: string | null;
+    year: number | null;
+    manufacturer: string | null;
+    series_name?: string | null;
+    card_number?: string | null;
     variation?: string | null;
     serial_number?: string | null;
     is_rookie?: boolean;
     is_autograph?: boolean;
     description?: string | null;
     condition_rating?: string | null;
-    catalog: CardCatalog | null; // Can now be null
+
+    // catalog: CardCatalog | null; // Removed
     seller: Profile;
     is_live_moment?: boolean;
 }

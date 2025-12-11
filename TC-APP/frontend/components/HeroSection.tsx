@@ -22,7 +22,7 @@ export default function HeroSection() {
             try {
                 const { data, error } = await supabase
                     .from('listing_items')
-                    .select('*, catalog:card_catalogs(*)')
+                    .select('*')
                     .eq('status', 'Active')
                     .not('price', 'is', null)
                     .order('price', { ascending: false })
@@ -70,7 +70,7 @@ export default function HeroSection() {
                                 {featuredCard.images?.[0] && (
                                     <img
                                         src={featuredCard.images[0]}
-                                        alt={featuredCard.player_name || featuredCard.catalog?.player_name || 'Card Image'}
+                                        alt={featuredCard.player_name || 'Card Image'}
                                         className="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100"
                                     />
                                 )}
@@ -86,13 +86,13 @@ export default function HeroSection() {
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-brand-gold text-xs font-bold tracking-widest mb-1 uppercase">
-                                                {featuredCard.catalog?.rarity || 'PREMIUM'}
+                                                {'PREMIUM'}
                                             </p>
                                             <h3 className="text-white font-heading text-xl font-bold leading-tight">
-                                                {featuredCard.player_name || featuredCard.catalog?.player_name || 'Unknown Player'}
+                                                {featuredCard.player_name || 'Unknown Player'}
                                             </h3>
                                             <p className="text-brand-platinum/80 text-xs mt-1">
-                                                {featuredCard.year || featuredCard.catalog?.year || ''} {featuredCard.manufacturer || featuredCard.catalog?.manufacturer || ''}
+                                                {featuredCard.year || ''} {featuredCard.manufacturer || ''}
                                             </p>
                                         </div>
                                         <div className="text-right">

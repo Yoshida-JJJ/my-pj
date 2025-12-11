@@ -51,11 +51,11 @@ function MarketPageContent() {
                 const buildBaseQuery = () => {
                     let q = supabase
                         .from('listing_items')
-                        .select('*, catalog:card_catalogs(*)')
+                        .select('*')
                         .eq('status', 'Active');
 
                     if (selectedTeam) {
-                        q = q.eq('catalog.team', selectedTeam);
+                        q = q.eq('team', selectedTeam);
                     }
                     return q;
                 };
@@ -66,16 +66,15 @@ function MarketPageContent() {
                     // --- Priority Logic ---
 
                     // A. Fetch Priority Listings (Matches Active Players)
-                    // Does implicit inner join on catalog if we filter by catalog.player_name
+                    // A. Fetch Priority Listings (Matches Active Players)
                     let pQuery = buildBaseQuery()
-                        .in('catalog.player_name', activePlayers)
+                        .in('player_name', activePlayers)
                         .order('created_at', { ascending: false });
 
-                    // B. Fetch Regular Listings (Non-Active Players OR No Catalog)
-                    // We need to be careful not to exclude null catalogs when using "not.in" on catalog field
+                    // B. Fetch Regular Listings (Non-Active Players)
                     const activePlayersList = `(${activePlayers.map(p => `"${p}"`).join(',')})`;
                     let rQuery = buildBaseQuery()
-                        .or(`catalog_id.is.null,catalog.player_name.not.in.${activePlayersList}`)
+                        .not('player_name', 'in', activePlayersList)
                         .order('created_at', { ascending: false });
 
                     // Execute in parallel
@@ -107,9 +106,9 @@ function MarketPageContent() {
                 if (debouncedSearch) {
                     const lowerSearch = debouncedSearch.toLowerCase();
                     finalData = finalData.filter((item: any) =>
-                        item.catalog.player_name.toLowerCase().includes(lowerSearch) ||
-                        item.catalog.manufacturer.toLowerCase().includes(lowerSearch) ||
-                        item.catalog.series_name.toLowerCase().includes(lowerSearch)
+                        (item.player_name || '').toLowerCase().includes(lowerSearch) ||
+                        (item.manufacturer || '').toLowerCase().includes(lowerSearch) ||
+                        (item.series_name || '').toLowerCase().includes(lowerSearch)
                     );
                 }
 

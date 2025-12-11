@@ -81,7 +81,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                         {item.images && item.images.length > 0 ? (
                             <Image
                                 src={item.images[0]}
-                                alt={item.player_name || item.catalog?.player_name || 'Card Image'}
+                                alt={item.player_name || 'Card Image'}
                                 fill
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                 className="object-cover"
@@ -102,7 +102,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                         <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-brand-dark-light">
                             <Image
                                 src={item.images[1]}
-                                alt={`${item.player_name || item.catalog?.player_name} Back`}
+                                alt={`${item.player_name || ''} Back`}
                                 fill
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                 className="object-cover"
@@ -136,9 +136,9 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 {/* Badges */}
                 <div className="absolute top-3 right-3 flex flex-col gap-2 items-end z-10 [backface-visibility:hidden]">
                     <span className="bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded border border-white/10">
-                        {item.year || item.catalog?.year} {item.manufacturer || item.catalog?.manufacturer}
+                        {item.year} {item.manufacturer}
                     </span>
-                    {(item.is_rookie || item.catalog?.is_rookie) && (
+                    {item.is_rookie && (
                         <span className="bg-brand-gold text-brand-dark text-xs font-bold px-2 py-1 rounded shadow-lg shadow-brand-gold/20 animate-pulse-slow">
                             RC
                         </span>
@@ -151,7 +151,7 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                 <div className="mb-4">
                     <div className="flex justify-between items-start mb-2">
                         <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-brand-blue/20 text-brand-blue border border-brand-blue/30">
-                            {item.team || item.catalog?.team}
+                            {item.team}
                         </span>
                         {item.catalog?.rarity && (
                             <span className="text-[10px] text-brand-platinum/60 uppercase tracking-wider font-medium">
@@ -161,10 +161,10 @@ export default function CardListing({ item, isLiveMoment = false }: ListingItemP
                     </div>
 
                     <h2 className="font-heading text-lg font-bold text-white mb-1 group-hover:text-brand-blue-glow transition-colors truncate">
-                        {item.player_name || item.catalog?.player_name}
+                        {item.player_name}
                     </h2>
                     <p className="text-xs text-brand-platinum/50 font-mono">
-                        {item.variation || item.catalog?.series_name} {item.catalog?.card_number ? `#${item.catalog.card_number}` : ''}
+                        {item.variation || item.series_name} {item.card_number ? `#${item.card_number}` : ''}
                     </p>
                 </div>
 

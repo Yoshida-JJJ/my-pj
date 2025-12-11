@@ -41,7 +41,7 @@ function HomeContent() {
         const supabase = createClient();
         let query = supabase
           .from('listing_items')
-          .select('*, catalog:card_catalogs(*)')
+          .select('*')
           .eq('status', 'Active');
 
         if (debouncedSearch) {
@@ -93,9 +93,9 @@ function HomeContent() {
         if (debouncedSearch) {
           const lowerSearch = debouncedSearch.toLowerCase();
           filteredData = filteredData.filter(item => {
-            const playerName = item.player_name || item.catalog?.player_name || '';
-            const manufacturer = item.manufacturer || item.catalog?.manufacturer || '';
-            const series = item.variation || item.catalog?.series_name || '';
+            const playerName = item.player_name || '';
+            const manufacturer = item.manufacturer || '';
+            const series = item.variation || item.series_name || '';
 
             return (
               playerName.toLowerCase().includes(lowerSearch) ||
@@ -107,7 +107,7 @@ function HomeContent() {
 
         if (selectedTeam) {
           filteredData = filteredData.filter(item => {
-            const team = item.team || item.catalog?.team;
+            const team = item.team;
             return team === selectedTeam;
           });
         }

@@ -11,17 +11,7 @@ type Manufacturer = "BBM" | "Calbee" | "Epoch" | "Topps_Japan";
 type Team = "Giants" | "Tigers" | "Dragons" | "Swallows" | "Carp" | "BayStars" | "Hawks" | "Fighters" | "Marines" | "Buffaloes" | "Eagles" | "Lions";
 type Rarity = "Common" | "Rare" | "Super Rare" | "Parallel" | "Autograph" | "Patch";
 
-interface CardCatalog {
-    id: string;
-    manufacturer: Manufacturer;
-    year: number;
-    series_name?: string;
-    player_name: string;
-    team: Team;
-    card_number?: string;
-    rarity?: Rarity;
-    is_rookie: boolean;
-}
+
 
 interface ConditionGrading {
     is_graded: boolean;
@@ -32,13 +22,19 @@ interface ConditionGrading {
 
 interface ListingItem {
     id: string;
-    catalog_id: string;
     price: number;
     images: string[];
     condition_grading: ConditionGrading;
     seller_id: string;
     status: string;
-    catalog: CardCatalog;
+
+    // Backfilled Fields
+    player_name?: string | null;
+    team?: string | null;
+    year?: number | null;
+    manufacturer?: string | null;
+    series_name?: string | null;
+    card_number?: string | null;
 }
 
 export default function CheckoutPage() {
@@ -90,7 +86,7 @@ export default function CheckoutPage() {
             try {
                 const { data, error } = await supabase
                     .from('listing_items')
-                    .select('*, catalog:card_catalogs(*)')
+                    .select('*')
                     .eq('id', id)
                     .single();
 
@@ -184,7 +180,7 @@ export default function CheckoutPage() {
                             <div className="bg-brand-dark-light/30 px-6 py-5 sm:grid sm:grid-cols-3 sm:gap-4">
                                 <dt className="text-sm font-medium text-brand-platinum">Item</dt>
                                 <dd className="mt-1 text-sm text-white sm:mt-0 sm:col-span-2">
-                                    {listing.catalog.player_name} ({listing.catalog.year} {listing.catalog.manufacturer})
+                                    {listing.player_name || 'Unknown Item'} ({listing.year || '----'} {listing.manufacturer || ''})
                                 </dd>
                             </div>
                             <div className="bg-transparent px-6 py-5 sm:grid sm:grid-cols-3 sm:gap-4">

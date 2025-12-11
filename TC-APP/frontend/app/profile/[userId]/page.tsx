@@ -40,7 +40,7 @@ function ProfilePageContent() {
                 // Fetch Public Items (Display & Active)
                 const { data: itemsData, error: itemsError } = await supabase
                     .from('listing_items')
-                    .select('*, catalog:card_catalogs(*)')
+                    .select('*')
                     .eq('seller_id', userId)
                     .in('status', ['Display', 'Active']);
 

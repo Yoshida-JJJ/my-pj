@@ -3,27 +3,25 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
+interface ICard {
+    id: string;
+    // catalog_id, catalog removed
+    player_name?: string | null;
+    year?: number | null;
+    manufacturer?: string | null;
+    team?: string | null;
+    images?: string[];
+    is_rookie?: boolean;
+    is_autograph?: boolean;
+    price?: number | null;
+    status?: string | null;
+    variation?: string | null;
+    series_name?: string | null;
+    card_number?: string | null;
+}
 interface ShowcaseItemProps {
-    item: {
-        id: string;
-        type?: 'listed' | 'purchased'; // To distinguish in aggregated view
-        catalog_id: string;
-        price: number | null;
-        images: string[];
-        status: string;
-        catalog: {
-            player_name: string;
-            year: number;
-            manufacturer: string;
-            series_name?: string;
-            team: string;
-        } | null;
-        // Decoupled fields
-        player_name?: string;
-        year?: number;
-        manufacturer?: string;
-        team?: string;
-    };
+    item: ICard;
+    type?: 'listed' | 'purchased'; // To distinguish in aggregated view
     variant?: 'default' | 'live-moment';
     is_live_moment?: boolean; // Added flag
     onDelete?: (id: string) => void;
@@ -124,7 +122,7 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
                         {item.images && item.images[0] ? (
                             <Image
                                 src={item.images[0]}
-                                alt={item.player_name || item.catalog?.player_name || 'Card Image'}
+                                alt={item.player_name || 'Card Image'}
                                 fill
                                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                                 className="object-cover"
@@ -143,7 +141,7 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
                         <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-brand-dark-light relative">
                             <Image
                                 src={item.images[1]}
-                                alt={`${item.player_name || item.catalog?.player_name || ''} Back`}
+                                alt={`${item.player_name || ''} Back`}
                                 fill
                                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
                                 className="object-cover"
@@ -210,8 +208,8 @@ export default function ShowcaseCard({ item, variant = 'default', is_live_moment
             <div className="p-3 bg-brand-dark-light border-t border-brand-platinum/5 flex flex-col gap-2">
                 {/* Info */}
                 <div>
-                    <p className="text-white font-bold text-sm truncate" title={item.player_name || item.catalog?.player_name || 'Unknown'}>{item.player_name || item.catalog?.player_name || 'Unknown'}</p>
-                    <p className="text-brand-platinum/70 text-xs truncate">{item.year || item.catalog?.year || ''} {item.manufacturer || item.catalog?.manufacturer || ''}</p>
+                    <p className="text-white font-bold text-sm truncate" title={item.player_name || 'Unknown'}>{item.player_name || 'Unknown'}</p>
+                    <p className="text-brand-platinum/70 text-xs truncate">{item.year || ''} {item.manufacturer || ''}</p>
                 </div>
 
                 {/* Status & Price */}

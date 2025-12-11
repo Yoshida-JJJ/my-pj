@@ -18,18 +18,14 @@ interface ListingItem {
     images: string[];
     status: string;
     is_live_moment?: boolean; // Added flag
-    catalog: {
-        player_name: string;
-        year: number;
-        manufacturer: string;
-        series_name?: string;
-        team: string;
-    } | null;
+
     // Decoupled fields
-    player_name?: string;
-    team?: string;
-    year?: number;
-    manufacturer?: string;
+    player_name?: string | null;
+    team?: string | null;
+    year?: number | null;
+    manufacturer?: string | null;
+    series_name?: string | null;
+    card_number?: string | null;
 }
 
 interface OrderItem {
@@ -74,7 +70,7 @@ function MyPageContent() {
             // Fetch All My Items (Listings + Collection)
             const { data: listingsData } = await supabase
                 .from('listing_items')
-                .select('*, catalog:card_catalogs(*)')
+                .select('*')
                 .eq('seller_id', user.id);
 
             // Selling Tab: Active Transactions only
@@ -92,7 +88,7 @@ function MyPageContent() {
             // Buying Tab: Active Transactions only
             const { data: ordersData } = await supabase
                 .from('orders')
-                .select('*, listing:listing_items(*, catalog:card_catalogs(*))')
+                .select('*, listing:listing_items(*)')
                 .eq('buyer_id', user.id);
 
             const activeMyOrders = ordersData?.filter(order =>
@@ -380,7 +376,7 @@ function MyPageContent() {
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-start">
                                                     <div>
-                                                        <h3 className="text-white font-bold">{item.player_name || item.catalog?.player_name || 'Unknown Item'}</h3>
+                                                        <h3 className="text-white font-bold">{item.player_name || 'Unknown Item'}</h3>
                                                         <p className="text-brand-platinum/60 text-sm">{item.status}</p>
                                                     </div>
                                                     <div className="flex gap-2">
@@ -416,7 +412,7 @@ function MyPageContent() {
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-start">
                                                     <div>
-                                                        <h3 className="text-white font-bold">{order.listing?.player_name || order.listing?.catalog?.player_name || 'Unknown Item'}</h3>
+                                                        <h3 className="text-white font-bold">{order.listing?.player_name || 'Unknown Item'}</h3>
                                                         <p className="text-brand-platinum/60 text-sm">
                                                             {order.listing?.status === 'Shipped' ? 'Shipped - On the way' :
                                                                 order.listing?.status === 'Completed' ? 'Delivered & Completed' :
@@ -482,7 +478,7 @@ function MyPageContent() {
                                                     <div className="flex-1">
                                                         <div className="flex justify-between items-center">
                                                             <div>
-                                                                <h3 className="text-white font-bold">{item.player_name || item.catalog?.player_name || 'Unknown Item'}</h3>
+                                                                <h3 className="text-white font-bold">{item.player_name || 'Unknown Item'}</h3>
                                                                 <p className="text-brand-platinum/60 text-sm">Sold - Completed</p>
                                                             </div>
                                                             <div className="text-brand-gold font-bold">
@@ -507,7 +503,7 @@ function MyPageContent() {
                                                     <div className="flex-1">
                                                         <div className="flex justify-between items-center">
                                                             <div>
-                                                                <h3 className="text-white font-bold">{order.listing?.player_name || order.listing?.catalog?.player_name || 'Unknown Item'}</h3>
+                                                                <h3 className="text-white font-bold">{order.listing?.player_name || 'Unknown Item'}</h3>
                                                                 <p className="text-brand-platinum/60 text-sm">Purchased - Completed</p>
                                                             </div>
                                                             <div className="text-brand-gold font-bold">

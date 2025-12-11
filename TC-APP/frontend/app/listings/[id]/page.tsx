@@ -75,7 +75,7 @@ export default function ListingDetail() {
             try {
                 const { data, error } = await supabase
                     .from('listing_items')
-                    .select('*, catalog:card_catalogs(*), seller:profiles(*)')
+                    .select('*, seller:profiles(*)')
                     .eq('id', id)
                     .single();
 
@@ -201,7 +201,7 @@ export default function ListingDetail() {
                                             <>
                                                 <Image
                                                     src={listing.images[0]}
-                                                    alt={listing.player_name || listing.catalog?.player_name || "Card Image"}
+                                                    alt={listing.player_name || "Card Image"}
                                                     fill
                                                     sizes="(max-width: 768px) 100vw, 50vw"
                                                     className="object-contain p-0 md:p-4 bg-brand-dark-light/50"
@@ -221,7 +221,7 @@ export default function ListingDetail() {
                                         <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-xl overflow-hidden shadow-2xl bg-brand-dark-light/50">
                                             <Image
                                                 src={listing.images[1]}
-                                                alt={`${listing.player_name || listing.catalog?.player_name || ''} Back`}
+                                                alt={`${listing.player_name || ''} Back`}
                                                 fill
                                                 sizes="(max-width: 768px) 100vw, 50vw"
                                                 className="object-contain p-4"
@@ -263,9 +263,9 @@ export default function ListingDetail() {
                             <div className="mb-8">
                                 <div className="flex items-center space-x-3 mb-4">
                                     <span className="px-3 py-1 rounded-full text-xs font-bold bg-brand-blue/10 text-brand-blue border border-brand-blue/20 uppercase tracking-wider">
-                                        {listing.team || listing.catalog?.team || 'Unknown Team'}
+                                        {listing.team || 'Unknown Team'}
                                     </span>
-                                    {(listing.is_rookie || listing.catalog?.is_rookie) && (
+                                    {listing.is_rookie && (
                                         <span className="px-3 py-1 rounded-full text-xs font-bold bg-brand-gold/10 text-brand-gold border border-brand-gold/20 uppercase tracking-wider animate-pulse-slow">
                                             Rookie Card
                                         </span>
@@ -276,10 +276,10 @@ export default function ListingDetail() {
                                         </span>
                                     )}
                                 </div>
-                                <h1 className="text-4xl md:text-5xl font-heading font-bold text-white mb-2 text-glow">{listing.player_name || listing.catalog?.player_name || 'Unknown Player'}</h1>
-                                <p className="text-xl text-brand-platinum/80 font-light">{listing.year || listing.catalog?.year} {listing.manufacturer || listing.catalog?.manufacturer} {listing.catalog?.series_name || ''}</p>
+                                <h1 className="text-4xl md:text-5xl font-heading font-bold text-white mb-2 text-glow">{listing.player_name || 'Unknown Player'}</h1>
+                                <p className="text-xl text-brand-platinum/80 font-light">{listing.year} {listing.manufacturer} {listing.series_name || ''}</p>
                                 <p className="text-brand-platinum/50 mt-2 text-sm">
-                                    Card #{listing.catalog?.card_number || '---'}
+                                    Card #{listing.card_number || '---'}
                                     {listing.serial_number && ` • SN: ${listing.serial_number}`}
                                     {listing.variation && ` • ${listing.variation}`}
                                 </p>
@@ -309,15 +309,15 @@ export default function ListingDetail() {
                                 <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
                                     <div className="col-span-1">
                                         <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Team</dt>
-                                        <dd className="font-medium text-white">{listing.team || listing.catalog?.team || '---'}</dd>
+                                        <dd className="font-medium text-white">{listing.team || '---'}</dd>
                                     </div>
                                     <div className="col-span-1">
                                         <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Year</dt>
-                                        <dd className="font-medium text-white">{listing.year || listing.catalog?.year || '---'}</dd>
+                                        <dd className="font-medium text-white">{listing.year || '---'}</dd>
                                     </div>
                                     <div className="col-span-1">
                                         <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Brand</dt>
-                                        <dd className="font-medium text-white">{listing.manufacturer || listing.catalog?.manufacturer || '---'}</dd>
+                                        <dd className="font-medium text-white">{listing.manufacturer || '---'}</dd>
                                     </div>
                                     {listing.variation && (
                                         <div className="col-span-1">
