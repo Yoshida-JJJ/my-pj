@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '../../../utils/supabase/client';
 import Footer from '../../../components/Footer';
 import { ListingItem } from '../../../types';
+import AddToShowcaseModal from '../../../components/AddToShowcaseModal';
 
 export default function ListingDetail() {
     const params = useParams();
@@ -20,6 +21,7 @@ export default function ListingDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     // Live Moment Logic
     const [timeLeft, setTimeLeft] = useState<string>('60:00');
@@ -64,7 +66,7 @@ export default function ListingDetail() {
             const supabase = createClient();
 
             // Fetch User
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } = { user: null } } = await supabase.auth.getUser();
             setUser(user);
 
             // Use the id from the outer scope (useParams hook)
@@ -94,6 +96,16 @@ export default function ListingDetail() {
 
         fetchListingAndUser();
     }, [id]);
+
+    const handleEditSuccess = () => {
+        setIsEditModalOpen(false);
+        // Refresh data
+        // We can expose fetchListingAndUser outside useEffect or just trigger reload for simplicity, 
+        // but cleaner is to just re-run the fetch.
+        // Since fetchListingAndUser is inside useEffect, we can't call it directly.
+        // Let's reload page for now to ensure fresh state, or we can refactor.
+        window.location.reload();
+    };
 
     if (loading) {
         return (
@@ -383,8 +395,11 @@ export default function ListingDetail() {
                                 {user?.id === listing.seller_id ? (
                                     <div className="bg-brand-dark-light/50 p-6 rounded-xl text-center border border-brand-platinum/10">
                                         <p className="text-brand-platinum font-medium">You are the seller of this item.</p>
-                                        <button className="mt-4 text-brand-blue hover:text-brand-blue-glow text-sm font-bold uppercase tracking-wider transition-colors">
-                                            Edit Listing (Mock)
+                                        <button
+                                            onClick={() => setIsEditModalOpen(true)}
+                                            className="mt-4 text-brand-blue hover:text-brand-blue-glow text-sm font-bold uppercase tracking-wider transition-colors"
+                                        >
+                                            Edit Listing
                                         </button>
                                     </div>
                                 ) : (
@@ -416,7 +431,16 @@ export default function ListingDetail() {
                     </div>
                 </div>
             </div>
+
             <Footer />
-        </div>
+
+            <AddToShowcaseModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onAdded={handleEditSuccess}
+                mode="edit"
+                initialData={listing}
+            />
+        </div >
     );
 }

@@ -60,9 +60,11 @@ interface AddToShowcaseModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAdded: () => void;
+    mode?: 'add' | 'edit';
+    initialData?: any;
 }
 
-export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToShowcaseModalProps) {
+export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'add', initialData }: AddToShowcaseModalProps) {
     const [images, setImages] = useState<string[]>([]);
     const [selectedImageIndices, setSelectedImageIndices] = useState<number[]>([]);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -106,13 +108,43 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToSh
     useEffect(() => {
         if (isOpen) {
             reset();
-            setImages([]);
-            setSelectedImageIndices([]);
             setHasAnalyzed(false);
             setSuggestedData(null);
             setCountry('USA');
+
+            if (mode === 'edit' && initialData) {
+                // Populate for Edit
+                setValue('playerName', initialData.player_name || '');
+                setValue('team', initialData.team || '');
+                setValue('year', initialData.year?.toString() || '');
+                setValue('brand', initialData.manufacturer || 'Unknown');
+                setValue('variation', initialData.variation || '');
+                setValue('serialNumber', initialData.serial_number || '');
+                setValue('isRookie', initialData.is_rookie || false);
+                setValue('isAutograph', initialData.is_autograph || false);
+
+                // Images
+                const existingImages = initialData.images || [];
+                setImages(existingImages);
+                setValue('images', existingImages);
+
+                // Grading / Condition
+                if (initialData.condition_grading?.is_graded) {
+                    setValue('isGraded', true);
+                    setValue('gradingCompany', initialData.condition_grading.service || 'PSA');
+                    setValue('grade', initialData.condition_grading.score?.toString() || '10');
+                    setValue('certificationNumber', initialData.condition_grading.certification_number || '');
+                } else {
+                    setValue('isGraded', false);
+                    setValue('condition', initialData.condition_rating || '');
+                }
+            } else {
+                // Reset for Add
+                setImages([]);
+                setSelectedImageIndices([]);
+            }
         }
-    }, [isOpen, reset]);
+    }, [isOpen, reset, mode, initialData, setValue]);
 
     const uploadFiles = async (files: FileList) => {
         setUploading(true);
@@ -264,7 +296,7 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToSh
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            const { error } = await supabase.from('listing_items').insert({
+            const listingData = {
                 seller_id: user.id,
                 catalog_id: null, // Decoupled
                 player_name: formData.playerName,
@@ -285,9 +317,22 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToSh
                     certification_number: formData.isGraded ? formData.certificationNumber : null
                 },
                 condition_rating: !formData.isGraded ? formData.condition : null,
-            });
+            };
 
-            if (error) throw error;
+            if (mode === 'edit' && initialData?.id) {
+                // UPDATE
+                const { error } = await supabase
+                    .from('listing_items')
+                    .update(listingData)
+                    .eq('id', initialData.id);
+
+                if (error) throw error;
+            } else {
+                // INSERT
+                const { error } = await supabase.from('listing_items').insert(listingData);
+                if (error) throw error;
+            }
+
             onAdded();
             onClose();
         } catch (err: any) {
@@ -320,7 +365,7 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToSh
 
                 <h2 className="text-2xl font-heading font-bold text-white mb-6 flex items-center gap-3">
                     <span className="w-1 h-8 bg-brand-gold rounded-full shadow-[0_0_10px_rgba(234,179,8,0.5)]"></span>
-                    Add to Collection
+                    {mode === 'edit' ? 'Edit Collection Item' : 'Add to Collection'}
                 </h2>
 
                 {/* --- Image Upload (Step 1) --- */}
@@ -342,8 +387,11 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToSh
                         {uploading && <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-sm flex items-center justify-center rounded-xl"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-gold"></div></div>}
                     </label>
 
+// Show dropzone initially, but if in edit mode and has image, maybe we want to just show images?
+                    // User requirement: "keep dropzone visible", so we keep it always.
+
                     {/* Thumbnails Grid */}
-                    {images.length > 0 && (
+                    {(images.length > 0 || (mode === 'edit' && images.length > 0)) && (
                         <div className="grid grid-cols-5 gap-2 mt-4">
                             {images.map((img, idx) => (
                                 <div
@@ -392,8 +440,8 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToSh
                     )}
                 </div>
 
-                {/* --- Form (Revealed after Analysis) --- */}
-                {hasAnalyzed && (
+                {/* --- Form (Revealed after Analysis or in Edit Mode) --- */}
+                {(hasAnalyzed || mode === 'edit') && (
                     <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6 animate-fade-in-up">
                         {/* Basic Info */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -545,10 +593,9 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded }: AddToSh
                         >
                             {isSubmitting ? (
                                 <div className="flex items-center justify-center gap-2">
-                                    <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                                    <span>Saving...</span>
+                                    <span>{mode === 'edit' ? 'Save Changes' : 'Adding...'}</span>
                                 </div>
-                            ) : 'Add to Collection'}
+                            ) : (mode === 'edit' ? 'Save Changes' : 'Add to Collection')}
                         </button>
                     </form>
                 )}
