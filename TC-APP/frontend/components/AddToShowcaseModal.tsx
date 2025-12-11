@@ -44,7 +44,7 @@ const collectionSchema = z.object({
     certificationNumber: z.string().optional(),
     condition: z.string().optional(),
     images: z.array(z.string()).min(1, "At least one image is required"),
-    status: z.enum(['Draft', 'Active', 'Display', 'Sold']).default('Draft'),
+    status: z.enum(['Draft', 'Active', 'Display', 'Sold']),
     price: z.string().optional(),
 }).superRefine((data, ctx) => {
     if (data.status === 'Active' && (!data.price || isNaN(parseInt(data.price)))) {
