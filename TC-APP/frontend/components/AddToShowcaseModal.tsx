@@ -113,14 +113,16 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
             setCountry('USA');
 
             if (mode === 'edit' && initialData) {
-                // Populate for Edit
-                setValue('playerName', initialData.player_name || '');
-                setValue('team', initialData.team || '');
-                setValue('year', initialData.year?.toString() || '');
-                setValue('brand', initialData.manufacturer || 'Unknown');
-                setValue('variation', initialData.variation || '');
+                // Populate for Edit with Catalog Fallback
+                const catalog = initialData.catalog || {};
+
+                setValue('playerName', initialData.player_name || catalog.player_name || '');
+                setValue('team', initialData.team || catalog.team || '');
+                setValue('year', (initialData.year || catalog.year || '').toString());
+                setValue('brand', initialData.manufacturer || catalog.manufacturer || 'Unknown');
+                setValue('variation', initialData.variation || ''); // Variation usually not in catalog base
                 setValue('serialNumber', initialData.serial_number || '');
-                setValue('isRookie', initialData.is_rookie || false);
+                setValue('isRookie', initialData.is_rookie || catalog.is_rookie || false);
                 setValue('isAutograph', initialData.is_autograph || false);
 
                 // Images
@@ -129,6 +131,8 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                 setValue('images', existingImages);
 
                 // Grading / Condition
+                // Note: Condition logic might need check. Catalog items typically don't have individual condition.
+                // So we rely on listing_item data for condition.
                 if (initialData.condition_grading?.is_graded) {
                     setValue('isGraded', true);
                     setValue('gradingCompany', initialData.condition_grading.service || 'PSA');
