@@ -325,8 +325,7 @@ export default function AddToShowcaseModal({ isOpen, onClose, onAdded, mode = 'a
                 is_rookie: formData.isRookie || false,
                 is_autograph: formData.isAutograph || false,
                 images: formData.images,
-                is_autograph: formData.isAutograph || false,
-                images: formData.images,
+
                 status: formData.status,
                 price: formData.price ? parseInt(formData.price) : null,
                 condition_grading: {
