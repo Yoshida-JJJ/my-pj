@@ -70,7 +70,7 @@ function MyPageContent() {
             // Fetch All My Items (Listings + Collection)
             const { data: listingsData } = await supabase
                 .from('listing_items')
-                .select('*')
+                .select('*, orders(*)')
                 .eq('seller_id', user.id);
 
             // Selling Tab: Active Transactions only
@@ -107,13 +107,9 @@ function MyPageContent() {
                 ['Active', 'Sold', 'Display', 'Shipped', 'Delivered', 'Draft'].includes(item.status)
             ) || [];
 
-            const workspaceOrders = ordersData?.filter(order =>
-                ['Delivered', 'Completed'].includes(order.listing?.status || '')
-            ) || [];
-
+            // We no longer include Purchased orders here. They are auto-cloned as Drafts.
             const aggregated = [
-                ...workspaceListings.map(item => ({ type: 'listed', ...item })),
-                ...workspaceOrders.map(order => ({ type: 'purchased', ...order.listing }))
+                ...workspaceListings.map(item => ({ type: 'listed', ...item }))
             ];
             setShowcaseItems(aggregated);
 
@@ -226,58 +222,12 @@ function MyPageContent() {
         fetchData();
     }, []);
 
-    const handleCloneToDisplay = async (id: string) => {
-        if (!confirm('Add this purchased item to your showcase?')) return;
-
-        const supabase = createClient();
-        try {
-            // 1. Fetch original item
-            const { data: sourceItem, error: fetchError } = await supabase
-                .from('listing_items')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (fetchError || !sourceItem) throw new Error('Failed to fetch item data');
-
-            // 2. Prepare new item data
-            const newItem = {
-                ...sourceItem,
-                id: undefined, // Let DB generate new ID
-                created_at: undefined,
-                updated_at: undefined,
-                seller_id: user.id, // I am the new owner
-                status: 'Display', // Set to Display
-                // Keep other fields (player_name, images, etc.)
-                // Maybe clear price? or keep as reference value? Let's keep it.
-            };
-
-            // 3. Insert new item
-            const { error: insertError } = await supabase
-                .from('listing_items')
-                .insert(newItem);
-
-            if (insertError) throw insertError;
-
-            fetchData();
-        } catch (error) {
-            console.error('Failed to clone item:', error);
-            alert('Failed to add to showcase');
-        }
-    };
-
-    /**
-     * Helper to check if a purchased item is already displayed to avoid duplicates?
-     * For now, simpler to just allow cloning.
-     */
-
     // Filter Logic for Workspace
     const filteredShowcaseItems = showcaseItems.filter(item => {
         if (filter === 'All') return true;
         if (filter === 'Draft') return item.status === 'Draft';
         if (filter === 'Active') return item.status === 'Active';
         if (filter === 'Display') return item.status === 'Display';
-        if (filter === 'Purchased') return ['Sold', 'Shipped', 'Delivered', 'Completed'].includes(item.status); // Include all post-sale statuses
         return true;
     });
 
@@ -367,7 +317,7 @@ function MyPageContent() {
                             <>
                                 {/* Filter Pills */}
                                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                                    {['All', 'Draft', 'Active', 'Display', 'Purchased'].map((f) => (
+                                    {['All', 'Draft', 'Active', 'Display'].map((f) => (
                                         <button
                                             key={f}
                                             onClick={() => setFilter(f as any)}
@@ -390,7 +340,6 @@ function MyPageContent() {
                                             onDelete={handleDeleteCollectionItem}
                                             onCancel={handleCancelListing}
                                             onToggleDisplay={handleToggleDisplay}
-                                            onClone={handleCloneToDisplay} // Pass Clone Handler
                                             is_live_moment={item.is_live_moment || isDebugLive}
                                         />
                                     ))}
@@ -415,31 +364,41 @@ function MyPageContent() {
                                         <p className="text-sm mt-2">Items listed for sale are in your Workspace.</p>
                                     </div>
                                 ) : (
-                                    myListings.map(item => (
-                                        <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
-                                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
-                                                <img src={item.images[0]} className="w-full h-full object-cover" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h3 className="text-white font-bold">{item.player_name || 'Unknown Item'}</h3>
-                                                        <p className="text-brand-platinum/60 text-sm">{item.status}</p>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        {(item.status === 'AwaitingShipment' || item.status === 'TransactionPending') && (
-                                                            <button
-                                                                onClick={() => handleShipItem(item.id)}
-                                                                className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-blue hover:bg-brand-blue-light rounded-lg transition-colors shadow-lg shadow-brand-blue/20"
-                                                            >
-                                                                Ship Item
-                                                            </button>
-                                                        )}
+                                    myListings.map(item => {
+                                        // Handle Supabase relation (Array vs Object)
+                                        // @ts-ignore
+                                        const order = item.orders ? (Array.isArray(item.orders) ? item.orders[0] : item.orders) : null;
+
+                                        return (
+                                            <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
+                                                <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
+                                                    <img src={item.images[0]} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h3 className="text-white font-bold">{item.player_name || 'Unknown Item'}</h3>
+                                                            <p className="text-brand-platinum/60 text-sm">{item.status}</p>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            {(item.status === 'AwaitingShipment' || item.status === 'TransactionPending' || item.status === 'Shipped') && (
+                                                                order ? (
+                                                                    <Link
+                                                                        href={`/orders/sell/${order.id}`}
+                                                                        className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-blue hover:bg-brand-blue-light rounded-lg transition-colors shadow-lg shadow-brand-blue/20"
+                                                                    >
+                                                                        Manage Order
+                                                                    </Link>
+                                                                ) : (
+                                                                    <span className="text-xs text-brand-platinum/40 italic">Syncing Order...</span>
+                                                                )
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        )
+                                    })
                                 )}
                             </div>
                         )}
@@ -468,20 +427,22 @@ function MyPageContent() {
                                                                             'Purchased'}
                                                         </p>
                                                     </div>
-                                                    {order.listing?.status === 'Shipped' ? (
-                                                        <button
-                                                            onClick={() => handleReceiveOrder(order.listing!.id)}
-                                                            className="px-3 py-1 text-xs font-bold text-brand-dark bg-brand-gold hover:bg-brand-gold-light rounded-lg transition-colors shadow-lg shadow-brand-gold/20"
+                                                    {order.listing?.status === 'Shipped' || order.listing?.status === 'Completed' || order.listing?.status === 'AwaitingShipment' || order.status === 'shipped' ? (
+                                                        <Link
+                                                            href={`/orders/buy/${order.id}`}
+                                                            className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors shadow-lg ${order.status === 'shipped'
+                                                                ? 'text-brand-dark bg-brand-gold hover:bg-brand-gold-light shadow-brand-gold/20'
+                                                                : 'text-brand-platinum/60 bg-brand-dark-light border border-brand-platinum/10'
+                                                                }`}
                                                         >
-                                                            Order Received
-                                                        </button>
+                                                            {order.status === 'shipped' ? 'View & Receive' : 'View Order'}
+                                                        </Link>
                                                     ) : (
-                                                        <button
-                                                            disabled
+                                                        <span
                                                             className="px-3 py-1 text-xs font-bold text-brand-platinum/40 bg-brand-dark-light border border-brand-platinum/10 rounded-lg cursor-not-allowed"
                                                         >
-                                                            Waiting for Shipment
-                                                        </button>
+                                                            Pending
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>

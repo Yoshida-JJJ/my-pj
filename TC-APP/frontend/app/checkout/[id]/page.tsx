@@ -281,6 +281,10 @@ export default function CheckoutPage() {
                     </div>
                 )}
 
+                <p className="text-xs text-brand-platinum/60 text-right mb-4 max-w-lg ml-auto leading-relaxed">
+                    購入を確定すると、商品の発送に必要な範囲で、あなたの配送先情報が出品者に開示されます。
+                </p>
+
                 <div className="flex justify-end space-x-4">
                     <Link href={`/listings/${listing.id}`} className="px-6 py-3 border border-brand-platinum/20 rounded-xl text-sm font-bold text-brand-platinum hover:bg-brand-platinum/10 hover:text-white transition-all">
                         Cancel

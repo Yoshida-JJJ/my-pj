@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '../../../../lib/stripe';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
+import { Resend } from 'resend';
+import { ReactElement } from 'react';
+import ShippingRequestEmail from '../../../../components/emails/ShippingRequestEmail';
+import OrderConfirmationEmail from '../../../../components/emails/OrderConfirmationEmail';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+const resend = new Resend(process.env.RESEND_API_KEY!);
 
 // This is required for the webhook to receive the raw body
 // Not needed in App Router since we consume req.text() directly? 
@@ -63,7 +70,12 @@ export async function POST(req: NextRequest) {
         // I'll stick to creating a fresh client via `createClient` from `@supabase/supabase-js`.
         // I need to import `createClient` from package, not the helper.
 
-        const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+        // 5. Create Admin Client
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('FATAL: SUPABASE_SERVICE_ROLE_KEY is missing.');
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+        }
+
         const supabaseAdmin = createSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -84,14 +96,91 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Update Listing Status to 'AwaitingShipment'
-        const { error: listingError } = await supabaseAdmin
+        // Also select seller_id, title, price for email
+        const { data: updatedListing, error: listingError } = await supabaseAdmin
             .from('listing_items')
             .update({ status: 'AwaitingShipment' })
-            .eq('id', listingId);
+            .eq('id', listingId)
+            .select('seller_id, player_name, series_name, price')
+            .single();
 
-        if (listingError) {
+        if (listingError || !updatedListing) {
             console.error('Error updating listing:', listingError);
             return NextResponse.json({ error: 'DB Error' }, { status: 500 });
+        }
+
+        // 3. Send Email to Seller (Shipping Request)
+        try {
+            const { data: sellerUser, error: sellerError } = await supabaseAdmin.auth.admin.getUserById(updatedListing.seller_id);
+
+            if (sellerUser && sellerUser.user && sellerUser.user.email) {
+                if (!process.env.RESEND_API_KEY) {
+                    console.error('RESEND_API_KEY is missing. Skipping email.');
+                } else {
+                    console.log(`Attempting to send email to ${sellerUser.user.email} from onboarding@resend.dev`);
+                    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+                    const { error: emailError } = await resend.emails.send({
+                        from: 'Stadium Card <onboarding@resend.dev>',
+                        to: [sellerUser.user.email],
+                        subject: 'Item Sold - Shipping Required',
+                        react: ShippingRequestEmail({
+                            sellerName: sellerUser.user.user_metadata?.full_name || 'Seller',
+                            productName: updatedListing.player_name || updatedListing.series_name,
+                            orderUrl: `${baseUrl}/orders/sell/${orderId}`
+                        }) as ReactElement
+                    });
+
+                    if (emailError) {
+                        console.error('Failed to send shipping request email:', emailError);
+                    } else {
+                        console.log(`Shipping request email sent to ${sellerUser.user.email}`);
+                    }
+                }
+            }
+        } catch (emailErr) {
+            console.error('Unexpected error sending email:', emailErr);
+        }
+
+        // 4. Send Email to Buyer (Order Confirmation)
+        try {
+            // Need to fetch order to get buyer_id
+            const { data: orderData } = await supabaseAdmin
+                .from('orders')
+                .select('buyer_id')
+                .eq('id', orderId)
+                .single();
+
+            if (orderData && orderData.buyer_id) {
+                const { data: buyerUser } = await supabaseAdmin.auth.admin.getUserById(orderData.buyer_id);
+
+                if (buyerUser && buyerUser.user && buyerUser.user.email) {
+                    if (process.env.RESEND_API_KEY) {
+                        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+                        console.log(`Sending buyer confirmation to ${buyerUser.user.email}`);
+
+                        const { error: buyerEmailError } = await resend.emails.send({
+                            from: 'Stadium Card <onboarding@resend.dev>',
+                            to: [buyerUser.user.email],
+                            subject: 'Order Confirmed',
+                            react: OrderConfirmationEmail({
+                                buyerName: buyerUser.user.user_metadata?.full_name || 'Collector',
+                                productName: updatedListing.player_name || updatedListing.series_name,
+                                price: updatedListing.price,
+                                orderUrl: `${baseUrl}/orders/buy/${orderId}`
+                            }) as ReactElement
+                        });
+
+                        if (buyerEmailError) {
+                            console.error('Failed to send buyer confirmation email:', buyerEmailError);
+                        } else {
+                            console.log(`Buyer confirmation email sent to ${buyerUser.user.email}`);
+                        }
+                    }
+                }
+            }
+        } catch (buyerErr) {
+            console.error('Unexpected error sending buyer email:', buyerErr);
         }
 
         console.log(`Order ${orderId} completed successfully.`);
@@ -99,3 +188,4 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true });
 }
+
