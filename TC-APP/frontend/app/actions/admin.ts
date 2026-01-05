@@ -4,10 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
 // Admin Client (Bypass RLS)
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getAdminClient = () => {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('Server Config Error: SUPABASE_SERVICE_ROLE_KEY is missing.');
+    }
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+};
 
 export async function createLiveMoment(formData: FormData) {
     const playerName = formData.get('playerName') as string;
@@ -32,7 +37,7 @@ export async function createLiveMoment(formData: FormData) {
         throw new Error('Missing required fields');
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await getAdminClient()
         .from('live_moments')
         .insert({
             player_name: playerName,
@@ -50,7 +55,7 @@ export async function createLiveMoment(formData: FormData) {
 
 export async function approvePayout(payoutId: string) {
     // 1. Mark Payout as Paid
-    const { error } = await supabaseAdmin
+    const { error } = await getAdminClient()
         .from('payouts')
         .update({
             status: 'paid',
@@ -79,7 +84,7 @@ export async function finalizeMoment(momentId: string, formData: FormData) {
     console.log(`Finalizing Moment ${momentId} with score: ${finalScore}`);
 
     // 1. Update Live Moment Record
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await getAdminClient()
         .from('live_moments')
         .update({
             match_result: finalScore,
@@ -102,7 +107,7 @@ export async function finalizeMoment(momentId: string, formData: FormData) {
     // We want rows where moment_history @> [{ "moment_id": "..." }]
     // Supabase TS: .contains('moment_history', JSON.stringify([{ moment_id: momentId }]))
 
-    const { data: items, error: fetchError } = await supabaseAdmin
+    const { data: items, error: fetchError } = await getAdminClient()
         .from('listing_items')
         .select('id, moment_history')
         .contains('moment_history', JSON.stringify([{ moment_id: momentId }]));
@@ -125,7 +130,7 @@ export async function finalizeMoment(momentId: string, formData: FormData) {
                 return h;
             });
 
-            return supabaseAdmin
+            return getAdminClient()
                 .from('listing_items')
                 .update({ moment_history: updatedHistory })
                 .eq('id', item.id);

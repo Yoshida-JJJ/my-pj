@@ -5,10 +5,15 @@ import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getAdminClient = () => {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('Server Config Error: SUPABASE_SERVICE_ROLE_KEY is missing.');
+    }
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+};
 
 /**
  * Soft delete an item
@@ -16,7 +21,7 @@ const supabaseAdmin = createClient(
 export async function deleteItem(itemId: string) {
     console.log(`[Soft Delete] Archive Request: ${itemId}`);
 
-    const { error } = await supabaseAdmin
+    const { error } = await getAdminClient()
         .from('listing_items')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', itemId);
@@ -35,7 +40,7 @@ export async function deleteItem(itemId: string) {
 export async function restoreItem(itemId: string) {
     console.log(`[Soft Delete] Restore Request: ${itemId}`);
 
-    const { error } = await supabaseAdmin
+    const { error } = await getAdminClient()
         .from('listing_items')
         .update({ deleted_at: null })
         .eq('id', itemId);
@@ -69,7 +74,7 @@ export async function addMomentMemory(itemId: string, momentIndex: number, text:
     if (!user) throw new Error('Unauthorized');
 
     // 1. Fetch Item
-    const { data: item, error: fetchError } = await supabaseAdmin
+    const { data: item, error: fetchError } = await getAdminClient()
         .from('listing_items')
         .select('seller_id, moment_history, player_name')
         .eq('id', itemId)
@@ -79,7 +84,7 @@ export async function addMomentMemory(itemId: string, momentIndex: number, text:
 
     // Permission Check: Owner OR Current Buyer
     if (item.seller_id !== user.id) {
-        const { data: order } = await supabaseAdmin
+        const { data: order } = await getAdminClient()
             .from('orders')
             .select('id')
             .eq('listing_id', itemId)
@@ -103,7 +108,7 @@ export async function addMomentMemory(itemId: string, momentIndex: number, text:
         // If not in item history, check if it's in a relevant order snapshot
         if (foundIndex === -1) {
             console.log(`[addMomentMemory] Moment ${momentId} not in item history. Checking order snapshots...`);
-            const { data: order } = await supabaseAdmin
+            const { data: order } = await getAdminClient()
                 .from('orders')
                 .select('id, moment_snapshot')
                 .eq('listing_id', itemId)
@@ -151,7 +156,7 @@ export async function addMomentMemory(itemId: string, momentIndex: number, text:
     const memories = Array.isArray(moment.memories) ? moment.memories : [];
 
     // Fetch Display Name (Nickname)
-    const { data: profile } = await supabaseAdmin
+    const { data: profile } = await getAdminClient()
         .from('profiles')
         .select('display_name, name')
         .eq('id', user.id)
@@ -179,7 +184,7 @@ export async function addMomentMemory(itemId: string, momentIndex: number, text:
     };
 
     // 4. Save
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await getAdminClient()
         .from('listing_items')
         .update({ moment_history: history })
         .eq('id', itemId);
@@ -201,7 +206,7 @@ export async function editMomentMemory(itemId: string, momentIndex: number, memo
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    const { data: item } = await supabaseAdmin.from('listing_items').select('seller_id, moment_history').eq('id', itemId).single();
+    const { data: item } = await getAdminClient().from('listing_items').select('seller_id, moment_history').eq('id', itemId).single();
     if (!item) throw new Error('Item not found');
 
     let history = [...(item.moment_history || [])];
@@ -222,7 +227,7 @@ export async function editMomentMemory(itemId: string, momentIndex: number, memo
     if (memories[memIndex].author_id !== user.id) throw new Error('You can only edit your own memories');
 
     // Refresh Display Name (Nickname) on Edit
-    const { data: profile } = await supabaseAdmin
+    const { data: profile } = await getAdminClient()
         .from('profiles')
         .select('display_name, name')
         .eq('id', user.id)
@@ -239,7 +244,7 @@ export async function editMomentMemory(itemId: string, momentIndex: number, memo
 
     history[targetIndex] = { ...moment, memories };
 
-    const { error } = await supabaseAdmin.from('listing_items').update({ moment_history: history }).eq('id', itemId);
+    const { error } = await getAdminClient().from('listing_items').update({ moment_history: history }).eq('id', itemId);
     if (error) throw new Error(error.message);
 
     revalidatePath(`/listings/${itemId}`);
@@ -256,7 +261,7 @@ export async function deleteMomentMemory(itemId: string, momentIndex: number, me
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    const { data: item } = await supabaseAdmin.from('listing_items').select('seller_id, moment_history').eq('id', itemId).single();
+    const { data: item } = await getAdminClient().from('listing_items').select('seller_id, moment_history').eq('id', itemId).single();
     if (!item) throw new Error('Item not found');
 
     let history = [...(item.moment_history || [])];
@@ -282,7 +287,7 @@ export async function deleteMomentMemory(itemId: string, momentIndex: number, me
     memories.splice(memIndex, 1);
     history[targetIndex] = { ...moment, memories };
 
-    const { error } = await supabaseAdmin.from('listing_items').update({ moment_history: history }).eq('id', itemId);
+    const { error } = await getAdminClient().from('listing_items').update({ moment_history: history }).eq('id', itemId);
     if (error) throw new Error(error.message);
 
     revalidatePath(`/listings/${itemId}`);
@@ -299,7 +304,7 @@ export async function toggleHideMomentMemory(itemId: string, momentIndex: number
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    const { data: item } = await supabaseAdmin.from('listing_items').select('seller_id, moment_history').eq('id', itemId).single();
+    const { data: item } = await getAdminClient().from('listing_items').select('seller_id, moment_history').eq('id', itemId).single();
     if (!item) throw new Error('Item not found');
 
     let history = [...(item.moment_history || [])];
@@ -323,7 +328,7 @@ export async function toggleHideMomentMemory(itemId: string, momentIndex: number
     memories[memIndex].is_hidden = !memories[memIndex].is_hidden;
     history[targetIndex] = { ...moment, memories };
 
-    const { error } = await supabaseAdmin.from('listing_items').update({ moment_history: history }).eq('id', itemId);
+    const { error } = await getAdminClient().from('listing_items').update({ moment_history: history }).eq('id', itemId);
     if (error) throw new Error(error.message);
 
     revalidatePath(`/listings/${itemId}`);
@@ -340,7 +345,7 @@ export async function toggleHideMoment(itemId: string, momentIndex: number, isHi
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    const { data: item, error: fetchError } = await supabaseAdmin
+    const { data: item, error: fetchError } = await getAdminClient()
         .from('listing_items')
         .select('seller_id, moment_history')
         .eq('id', itemId)
@@ -365,7 +370,7 @@ export async function toggleHideMoment(itemId: string, momentIndex: number, isHi
         is_hidden: isHidden
     };
 
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await getAdminClient()
         .from('listing_items')
         .update({ moment_history: history })
         .eq('id', itemId);
@@ -392,7 +397,7 @@ export async function getBuyerItemByOrder(orderId: string) {
 
     try {
         // 1. Get order details
-        const { data: order } = await supabaseAdmin
+        const { data: order } = await getAdminClient()
             .from('orders')
             .select('listing_id, buyer_id, status, moment_snapshot, listing:listing_items!listing_id(*)')
             .eq('id', orderId)
