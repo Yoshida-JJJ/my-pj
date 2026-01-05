@@ -55,7 +55,11 @@ export async function markAsShipped(orderId: string, trackingNumber?: string, ca
 
     // Verify Seller
     const listingDetail = Array.isArray(order.listing) ? order.listing[0] : order.listing;
+
+    console.log(`[Debug markAsShipped] Order: ${orderId}, User: ${user.id}, Seller: ${listingDetail?.seller_id}`);
+
     if (listingDetail.seller_id !== user.id) {
+        console.error(`[Debug markAsShipped] Mismatch! Expecting ${listingDetail.seller_id}, got ${user.id}`);
         throw new Error('Unauthorized: You are not the seller.');
     }
 
