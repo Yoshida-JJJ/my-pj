@@ -6,6 +6,11 @@ export async function middleware(request: NextRequest) {
     const basicAuthUser = process.env.BASIC_AUTH_USER;
     const basicAuthPassword = process.env.BASIC_AUTH_PASSWORD;
 
+    // Exclude Webhooks from Basic Auth
+    if (request.nextUrl.pathname.startsWith('/api/webhooks')) {
+        return await updateSession(request);
+    }
+
     if (basicAuthUser && basicAuthPassword) {
         const authHeader = request.headers.get('authorization');
 
