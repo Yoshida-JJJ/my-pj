@@ -117,8 +117,21 @@ export default function Header() {
                                                 <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
                                                 <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
                                             </svg>
-                                            Payouts (Using Wallet)
+                                            Payouts
                                         </Link>
+
+                                        {/* Admin Link (Only for authorized emails) */}
+                                        {(() => {
+                                            const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
+                                            if (user?.email && adminEmails.includes(user.email.toLowerCase())) {
+                                                return (
+                                                    <Link href="/admin" className="block px-3 py-2 rounded-lg bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-xs font-bold transition-colors mt-2 text-center border border-brand-gold/20">
+                                                        ADMIN PANEL
+                                                    </Link>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                         <button
                                             onClick={handleSignOut}
                                             className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-red-400 hover:text-red-300 transition-colors"

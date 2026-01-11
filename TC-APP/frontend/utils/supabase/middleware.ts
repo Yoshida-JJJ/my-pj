@@ -58,10 +58,22 @@ export async function updateSession(request: NextRequest) {
 
     // Admin Access Control
     if (request.nextUrl.pathname.startsWith('/admin')) {
-        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
-        const userEmail = user?.email;
+        // Exclude diagnostic routes
+        if (request.nextUrl.pathname.includes('debug')) {
+            return response;
+        }
+
+        const adminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || '';
+        const adminEmails = adminEmailsRaw
+            .split(/[,;|]+/)
+            .map(e => e.trim().toLowerCase())
+            .filter(Boolean);
+
+        const userEmail = user?.email?.toLowerCase();
 
         if (!user || !userEmail || !adminEmails.includes(userEmail)) {
+            // Internal redirect to a specific error page if needed, but for now just console/home
+            console.log(`[AUTH] Access Denied: User "${userEmail || 'none'}" not in admin list: [${adminEmails.join('|')}]`);
             return NextResponse.redirect(new URL('/', request.url))
         }
     }
