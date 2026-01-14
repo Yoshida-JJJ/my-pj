@@ -44,7 +44,7 @@ export const FutureVision = () => {
                         </p>
                         <Link href="/concept">
                             <Button variant="outline" className="border-neon-blue text-neon-blue hover:bg-neon-blue/10">
-                                進化する未来へ
+                                開発構想（ロードマップ）を見る
                             </Button>
                         </Link>
                     </motion.div>

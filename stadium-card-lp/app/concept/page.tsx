@@ -36,12 +36,18 @@ export default function ConceptPage() {
                             <span className="text-xs font-bold tracking-widest uppercase">Back to Top</span>
                         </Link>
 
-                        <h1 className="text-5xl md:text-8xl font-display font-extrabold leading-[1.1] tracking-tighter mb-8">
+                        <h1 className="text-5xl md:text-8xl font-display font-extrabold leading-[1.1] tracking-tighter mb-4">
                             Physical Weight,<br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-red">
                                 Digital Soul.
                             </span>
                         </h1>
+                        <div className="inline-flex flex-col items-start gap-2 mb-8">
+                            <div className="px-3 py-1 border border-neon-red/50 bg-neon-red/10 rounded text-neon-red text-[10px] font-bold tracking-widest uppercase shadow-[0_0_10px_rgba(255,0,0,0.2)]">
+                                Under Development / Future Roadmap
+                            </div>
+                            <p className="text-[10px] text-gray-400">※掲載されている機能は現在開発中の構想です。</p>
+                        </div>
                         <p className="text-xl md:text-2xl text-gray-400 font-light leading-relaxed max-w-xl">
                             手に取れる重みと、色褪せない魂。<br />
                             Stadium Cardは、物理的なカードの感触と、デジタルがもたらす永続的な躍動を一つに融合させます。
@@ -61,6 +67,7 @@ export default function ConceptPage() {
                                 fill
                                 className="object-contain"
                             />
+                            <p className="absolute bottom-4 right-4 text-[8px] text-gray-600 z-20">※画面は開発中のイメージです</p>
                             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-stadium-black/50" />
                         </div>
                     </motion.div>
@@ -84,8 +91,9 @@ export default function ConceptPage() {
                         </h2>
                         <p className="text-lg text-gray-400 font-light max-w-2xl mx-auto">
                             カードは人から人へ渡るたびに、単なるデータではない「物語」を蓄積していきます。<br /><br />
-                            「伝説の10.8決戦での落合博満の背中」から「2025年ワールドシリーズで見せた山本由伸の気迫」まで。オーナーが刻む独自のストーリー（メモリアル・タグ）は、ブロックチェーンによって永遠の価値となり、次なる継承者へと手渡されます。
+                            「伝説の10.8決戦での落合博満の背中」から「2025年ワールドシリーズで見せた山本由伸の気迫」まで。オーナーが刻む独自のストーリー（メモリアル・タグ）は、ブロックチェーンによって永遠の価値となり、次なる継承者へと手渡される未来を描いています。
                         </p>
+                        <p className="text-[10px] text-gray-600 mt-4 text-center">※メモリアル・タグ機能は開発構想段階です</p>
                     </div>
 
                     <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl">
@@ -118,13 +126,13 @@ export default function ConceptPage() {
                             </h3>
                             <p className="text-lg text-gray-400 font-light mb-12 leading-relaxed">
                                 物理的な制約を取り払い、カードに本当の流動性を。<br /><br />
-                                鑑定・保管庫（ボールト）への預け入れにより、カードは即座にデジタルツイン（NFT）化されます。輸送コストや紛失リスクをゼロにし、ブロックチェーン上で秒速での売買を可能にする、Web3時代の新インフラです。
+                                鑑定・保管庫（ボールト）への預け入れにより、カードは即座にデジタルツイン（NFT）化される計画です。輸送コストや紛失リスクをゼロにし、ブロックチェーン上で秒速での売買を可能にする、Web3時代の新インフラ構築を目指しています。
                             </p>
 
                             <div className="flex flex-col gap-6">
                                 {[
-                                    { icon: <Zap size={20} />, title: "Connected Collectibles", desc: "物理カードとデジタル所有権が1対1で完全に同期。" },
-                                    { icon: <ArrowRightLeft size={20} />, title: "Instant Liquidity", desc: "世界中の投資家と、秒速・低コストで国境なき取引を。" }
+                                    { icon: <Zap size={20} />, title: "Connected Collectibles", desc: "物理カードとデジタル所有権が1対1で完全に同期する仕組みを開発中。" },
+                                    { icon: <ArrowRightLeft size={20} />, title: "Instant Liquidity", desc: "世界中の投資家と、秒速・低コストで国境なき取引の実現へ。" }
                                 ].map((item, i) => (
                                     <div key={i} className="flex gap-6 p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                                         <div className="text-neon-blue">{item.icon}</div>
@@ -152,6 +160,7 @@ export default function ConceptPage() {
                                     <div className="text-2xl font-display font-extrabold leading-tight">THE VAULT ARCHIVE</div>
                                 </motion.div>
                             </div>
+                            <p className="text-[8px] text-gray-700 text-center mt-2">※ボールト機構の開発イメージ</p>
                         </div>
                     </div>
                 </div>
@@ -182,17 +191,17 @@ export default function ConceptPage() {
                             Value Unleashed:<br />DeFi & Social
                         </h3>
                         <p className="text-lg text-gray-400 font-light mb-12 leading-relaxed">
-                            カードは単なるコレクションから、活用可能な資産へと進化します。<br /><br />
-                            保管中のカードNFTを担保にしたレンディング（資金融資）や、TikTok/Instagramでのライブコマース統合。SNSの熱狂をそのまま取引へと繋げ、2.0時代の所有体験を定義します。
+                            カードは単なるコレクションから、活用可能な資産へと進化することを目指します。<br /><br />
+                            保管中のカードNFTを担保にしたレンディング（資金融資）や、TikTok/Instagramでのライブコマース統合。SNSの熱狂をそのまま取引へと繋げ、2.0時代の所有体験の定義を計画しています。
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div>
                                 <div className="text-neon-red font-bold mb-2">DeFi Integration</div>
-                                <div className="text-sm text-gray-400">コレクションを休ませない。レンディング機能で資本効率を最大化。</div>
+                                <div className="text-sm text-gray-400">コレクションを休ませない。レンディング機能で資本効率の最大化を構想。</div>
                             </div>
                             <div>
                                 <div className="text-neon-red font-bold mb-2">Social Commerce</div>
-                                <div className="text-sm text-gray-400">SNSでの衝動買いに応える、秒速のソーシャル連動取引。</div>
+                                <div className="text-sm text-gray-400">SNSでの衝動買いに応える、秒速のソーシャル連動取引の実装予定。</div>
                             </div>
                         </div>
                     </div>
@@ -214,7 +223,7 @@ export default function ConceptPage() {
                         ].map((item, i) => (
                             <div key={i}>
                                 <div className="text-neon-blue font-bold mb-3">{item.title}</div>
-                                <p className="text-sm text-gray-400 leading-relaxed">{item.desc}</p>
+                                <p className="text-sm text-gray-400 leading-relaxed">{item.desc} (開発予定)</p>
                             </div>
                         ))}
                     </div>

@@ -40,7 +40,7 @@ export const Hero = () => {
                         </Link>
                         <Link href="/concept">
                             <Button variant="outline">
-                                進化する未来へ
+                                開発構想（ロードマップ）を見る
                             </Button>
                         </Link>
                     </div>
