@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { ArrowLeft, Sparkles, History, Zap, ArrowRightLeft } from "lucide-react";
+import { ArrowLeft, Sparkles, History, Zap, ArrowRightLeft, Box, Smartphone } from "lucide-react";
 import { useRef } from "react";
 
 export default function ConceptPage() {
@@ -115,24 +115,28 @@ export default function ConceptPage() {
             </section>
 
             {/* Section 3: The Infrastructure (Vaulting & Liquidity) */}
-            <section className="relative py-48 overflow-hidden bg-stadium-black">
+            <section id="roadmap" className="relative py-48 overflow-hidden bg-stadium-black">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
                         <div className="relative">
                             <div className="absolute -top-20 -left-20 w-64 h-64 bg-neon-blue/10 rounded-full blur-[100px]" />
-                            <h2 className="text-neon-blue font-display font-bold tracking-[0.2em] mb-6 uppercase text-sm">Infrastructure</h2>
-                            <h3 className="text-4xl md:text-7xl font-display font-extrabold mb-8 tracking-tighter leading-tight">
-                                Vaulting &<br />Liquidity
+                            <div className="inline-flex items-center gap-2 mb-6">
+                                <div className="px-2 py-0.5 rounded border border-neon-blue/30 bg-neon-blue/10 text-[10px] font-bold text-neon-blue uppercase tracking-widest animate-pulse">Phygital</div>
+                            </div>
+                            <h3 className="text-4xl md:text-7xl font-display font-extrabold mb-4 tracking-tighter leading-tight">
+                                The Phygital<br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-blue [background-size:200%_auto] animate-shimmer">Evolution</span>
                             </h3>
+                            <p className="text-neon-blue font-bold mb-8 text-lg">物理(Physical)とデジタル(Digital)の融合</p>
                             <p className="text-lg text-gray-400 font-light mb-12 leading-relaxed">
-                                物理的な制約を取り払い、カードに本当の流動性を。<br /><br />
-                                鑑定・保管庫（ボールト）への預け入れにより、カードは即座にデジタルツイン（NFT）化される計画です。輸送コストや紛失リスクをゼロにし、ブロックチェーン上で秒速での売買を可能にする、Web3時代の新インフラ構築を目指しています。
+                                「持つ」喜びを、デジタルの速度で。<br /><br />
+                                専用Vault（倉庫）と連携し、物理カードを安全に保管しながら、アプリ上で瞬時に取引・管理できる「Phygital」な体験を提供します。
                             </p>
 
                             <div className="flex flex-col gap-6">
                                 {[
-                                    { icon: <Zap size={20} />, title: "Connected Collectibles", desc: "物理カードとデジタル所有権が1対1で完全に同期する仕組みを開発中。" },
-                                    { icon: <ArrowRightLeft size={20} />, title: "Instant Liquidity", desc: "世界中の投資家と、秒速・低コストで国境なき取引の実現へ。" }
+                                    { icon: <Box size={20} />, title: "Secure Vaulting", desc: "物理カードは最高峰のセキュリティを誇る専用倉庫で安全に保管。" },
+                                    { icon: <Smartphone size={20} />, title: "Instant Access", desc: "アプリを通じて、手元のカードを操作するような感覚で瞬時に取引・管理。" }
                                 ].map((item, i) => (
                                     <div key={i} className="flex gap-6 p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
                                         <div className="text-neon-blue">{item.icon}</div>

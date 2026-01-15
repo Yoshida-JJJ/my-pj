@@ -27,11 +27,16 @@ const config: Config = {
             },
             animation: {
                 "glow-pulse": "glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                "shimmer": "shimmer 3s ease-in-out infinite",
             },
             keyframes: {
                 "glow-pulse": {
                     "0%, 100%": { opacity: "1", filter: "brightness(100%)" },
                     "50%": { opacity: "0.8", filter: "brightness(150%) blur(2px)" },
+                },
+                "shimmer": {
+                    "0%, 100%": { "background-position": "200% 0" },
+                    "50%": { "background-position": "0 0" },
                 },
             },
         },
