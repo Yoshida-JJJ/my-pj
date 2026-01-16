@@ -70,6 +70,7 @@ export const HeatTrade = () => {
                             alt="Heat Trade Fever"
                             fill
                             className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 50vw"
                         />
                         {/* Fever Overlay */}
                         <motion.div

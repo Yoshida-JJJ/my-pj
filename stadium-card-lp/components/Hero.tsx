@@ -61,6 +61,7 @@ export const Hero = () => {
                             fill
                             className="object-cover"
                             priority
+                            sizes="(max-width: 768px) 100vw, 400px"
                         />
                         {/* Holographic Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />

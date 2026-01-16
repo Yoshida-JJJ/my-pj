@@ -33,15 +33,21 @@ export const Footer = () => {
                     </div>
 
                     <div className="flex justify-center gap-6 mb-16">
-                        <a href="#" className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-full border border-white/5 hover:border-neon-blue/50 hover:text-neon-blue transition-all">
-                            <Twitter size={20} />
-                        </a>
-                        <a href="#" className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-full border border-white/5 hover:border-neon-blue/50 hover:text-neon-blue transition-all">
-                            <Discord size={20} />
-                        </a>
-                        <a href="#" className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-full border border-white/5 hover:border-neon-blue/50 hover:text-neon-blue transition-all">
-                            <Github size={20} />
-                        </a>
+                        {[
+                            { icon: <Twitter size={20} />, href: "#" },
+                            { icon: <Discord size={20} />, href: "#" },
+                            { icon: <Github size={20} />, href: "#" }
+                        ].map((social, i) => (
+                            <motion.a
+                                key={i}
+                                href={social.href}
+                                whileHover={{ y: -5, scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-full border border-white/5 hover:border-neon-blue/50 hover:text-neon-blue transition-colors shadow-lg hover:shadow-neon-blue/20"
+                            >
+                                {social.icon}
+                            </motion.a>
+                        ))}
                     </div>
 
                     <div className="text-gray-600 text-xs tracking-widest font-medium uppercase">

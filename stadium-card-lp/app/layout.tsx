@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import clsx from "clsx";
 import { LayoutTransition } from "@/components/LayoutTransition";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
     title: "Stadium Card - Your Cards are Alive",
@@ -18,7 +19,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="ja">
-            <body className={clsx(inter.className, "bg-stadium-black text-white antialiased")}>
+            <body className={clsx(inter.className, outfit.variable, "bg-stadium-black text-white antialiased")}>
                 <LayoutTransition>
                     {children}
                 </LayoutTransition>

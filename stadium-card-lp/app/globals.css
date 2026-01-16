@@ -2,16 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face {
-  font-family: 'Outfit';
-  src: url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap');
-}
-
-@font-face {
-  font-family: 'Inter';
-  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-}
-
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 5, 5, 5;
@@ -30,26 +20,25 @@ body {
   overflow-x: hidden;
   background-color: #0a0a0a;
   color: #ffffff;
-  font-family: 'Inter', sans-serif;
 }
 
 .font-display {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-outfit), sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   .glass {
     @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
-  
+
   .neon-glow-blue {
     box-shadow: 0 0 15px rgba(0, 240, 255, 0.4), 0 0 30px rgba(0, 240, 255, 0.2);
   }
-  
+
   .neon-glow-red {
     box-shadow: 0 0 15px rgba(255, 0, 60, 0.4), 0 0 30px rgba(255, 0, 60, 0.2);
   }
@@ -80,4 +69,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #444;
 }
-

@@ -131,6 +131,7 @@ export const MemorialTag = () => {
                                 alt={story.title}
                                 fill
                                 className="object-cover opacity-60"
+                                sizes="(max-width: 768px) 100vw, 420px"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-stadium-black via-transparent to-transparent" />
 

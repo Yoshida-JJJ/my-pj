@@ -66,6 +66,7 @@ export const AIScanning = () => {
                             alt="AI Scanning UI"
                             fill
                             className="object-cover opacity-80"
+                            sizes="(max-width: 768px) 100vw, 420px"
                         />
                         {/* Scanning Line Animation - Refined */}
                         <motion.div

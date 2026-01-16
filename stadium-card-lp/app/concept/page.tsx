@@ -66,6 +66,8 @@ export default function ConceptPage() {
                                 alt="Baseball Concept Hero"
                                 fill
                                 className="object-contain"
+                                priority
+                                sizes="(max-width: 1024px) 100vw, 50vw"
                             />
                             <p className="absolute bottom-4 right-4 text-[8px] text-gray-600 z-20">※画面は開発中のイメージです</p>
                             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-stadium-black/50" />
@@ -102,6 +104,7 @@ export default function ConceptPage() {
                             alt="Connection Concept"
                             fill
                             className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 1024px"
                         />
                         {/* Scroll-linked overlay blur or darkening */}
                         <motion.div
@@ -184,6 +187,7 @@ export default function ConceptPage() {
                                 alt="Value Unleashed: DeFi & Social"
                                 fill
                                 className="object-cover"
+                                sizes="(max-width: 1024px) 100vw, 50vw"
                             />
                             {/* Overlay for depth */}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
