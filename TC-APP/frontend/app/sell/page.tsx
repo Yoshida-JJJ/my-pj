@@ -104,6 +104,11 @@ function SellContent() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [suggestedData, setSuggestedData] = useState<any>(null);
 
+    // Price Estimation State
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [priceEstimate, setPriceEstimate] = useState<any>(null);
+    const [estimatingPrice, setEstimatingPrice] = useState(false);
+
     // React Hook Form
     const {
         register,
@@ -221,9 +226,10 @@ function SellContent() {
                 setSelectedImageIndices([0]);
             }
 
-        } catch (err) {
-            console.error(err);
-            setFormError('Failed to upload image(s)');
+        } catch (err: any) {
+            console.error("Upload Error Details:", err);
+            const msg = err?.message || err?.error_description || JSON.stringify(err);
+            setFormError(`Upload Failed: ${msg}`);
         } finally {
             setUploading(false);
         }
@@ -305,6 +311,7 @@ function SellContent() {
         setAiFeedback(null);
         setFormError(null);
         setSuggestedData(null);
+        setPriceEstimate(null); // Reset price estimate
 
         try {
             const imageIndex = selectedImageIndices[0];
@@ -357,7 +364,39 @@ function SellContent() {
                         setValue('condition', data.condition.value);
                     }
 
-                    // Removed AI Feedback as requested
+                    // Handle Parallel/Variation logic
+                    let variationVal = data.variation?.value || '';
+                    if (data.parallelType?.value) {
+                        variationVal = variationVal ? `${variationVal} / ${data.parallelType.value}` : data.parallelType.value;
+                    }
+                    if (variationVal) setValue('variation', variationVal);
+
+                    // --- Auto-trigger Price Estimation ---
+                    setEstimatingPrice(true);
+                    try {
+                        const priceRes = await fetch('/api/estimate-price', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                playerName: data.playerName?.value,
+                                year: data.year?.value,
+                                brand: data.brand?.value,
+                                cardNumber: data.cardNumber?.value,
+                                variation: variationVal,
+                                isAutograph: data.isAutograph?.value === 'true',
+                                isGraded: data.isGraded?.value === 'true',
+                                grade: data.grade?.value
+                            })
+                        });
+                        if (priceRes.ok) {
+                            const priceJson = await priceRes.json();
+                            setPriceEstimate(priceJson);
+                        }
+                    } catch (e) {
+                        console.error('Price estimation failed', e);
+                    } finally {
+                        setEstimatingPrice(false);
+                    }
 
                 } catch (err) {
                     console.error(err);
@@ -807,6 +846,63 @@ function SellContent() {
                                     </div>
 
                                     <div>
+                                        {/* Market Price Assist UI */}
+                                        {(estimatingPrice || priceEstimate) && (
+                                            <div className="mb-6 p-6 rounded-xl bg-brand-gold/5 border border-brand-gold/20 animate-fade-in-up">
+                                                <h4 className="text-lg font-bold text-brand-gold mb-4 flex items-center gap-2">
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                                                    Market Price Analysis
+                                                </h4>
+
+                                                {estimatingPrice ? (
+                                                    <div className="flex items-center gap-2 text-brand-platinum">
+                                                        <div className="w-4 h-4 border-2 border-brand-gold border-t-transparent rounded-full animate-spin"></div>
+                                                        Searching recent sales data...
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <div className="flex flex-col md:flex-row gap-6 justify-between items-start">
+                                                            <div className="flex-1">
+                                                                <p className="text-sm text-brand-platinum mb-1">Estimated Range</p>
+                                                                <div className="text-3xl font-heading font-bold text-white mb-2">
+                                                                    ¥{priceEstimate?.estimatedPriceRange?.min?.toLocaleString()} - ¥{priceEstimate?.estimatedPriceRange?.max?.toLocaleString()}
+                                                                </div>
+                                                                <p className="text-xs text-brand-platinum/60">
+                                                                    Based on {priceEstimate?.recentSales?.length} {priceEstimate?.dataSource === 'mock' ? 'simulated' : 'actual'} sales
+                                                                    {priceEstimate?.dataSource === 'mock' && <span className="ml-2 text-brand-gold">(Mock Data)</span>}
+                                                                </p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setValue('price', Math.round((priceEstimate.estimatedPriceRange.min + priceEstimate.estimatedPriceRange.max) / 2))}
+                                                                className="px-4 py-2 bg-brand-gold/20 text-brand-gold border border-brand-gold/50 rounded-lg hover:bg-brand-gold/30 text-sm font-bold transition-all whitespace-nowrap"
+                                                            >
+                                                                Apply Avg. Price
+                                                            </button>
+                                                        </div>
+
+                                                        {priceEstimate?.recentSales?.length > 0 && (
+                                                            <div className="mt-6 pt-4 border-t border-brand-gold/10">
+                                                                <p className="text-sm font-medium text-brand-platinum mb-3">Recent Transactions</p>
+                                                                <div className="space-y-2">
+                                                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                                                    {priceEstimate.recentSales.map((sale: any, idx: number) => (
+                                                                        <div key={idx} className="flex justify-between items-center text-xs md:text-sm p-2 rounded bg-black/20">
+                                                                            <span className="truncate flex-1 pr-4 text-white/80">{sale.title}</span>
+                                                                            <div className="flex items-center gap-3">
+                                                                                <span className="text-brand-platinum">{sale.condition}</span>
+                                                                                <span className="font-bold text-brand-gold">¥{sale.price.toLocaleString()}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <label className="text-sm font-bold text-brand-gold tracking-wider mb-2 block uppercase">Price (JPY) <span className="text-red-500">*</span></label>
                                         <div className="relative">
                                             <span className="absolute left-4 top-3.5 text-brand-platinum">¥</span>

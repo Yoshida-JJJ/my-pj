@@ -28,17 +28,22 @@ export async function POST(req: Request) {
             model: google('gemini-2.0-flash-exp'),
 
             schema: z.object({
-                playerName: fieldSchema.describe('Full name of the player. STRICT RULE: For Japanese players (e.g. Ohtani, Ichiro, Darvish, Yamamoto, Senga, Yoshida, etc.), you MUST output the name in "Kanji (Romaji)" format (e.g. "大谷翔平 (Shohei Ohtani)"). If the card is in English but the player is Japanese, you MUST still provide the Kanji. Do NOT output only English for Japanese players.'),
+                playerName: fieldSchema.describe('Full name of the player. STRICT RULE: For Japanese players, you MUST output the name in "Kanji (Romaji)" format (e.g. "大谷翔平 (Shohei Ohtani)").'),
                 team: fieldSchema.describe('Team name.'),
                 year: fieldSchema.describe('Year of the card.'),
                 brand: fieldSchema.describe('Card manufacturer/brand.'),
                 cardNumber: fieldSchema.describe('Card number.'),
 
                 // Features
-                variation: fieldSchema.describe('Variation name (e.g. Refractor, Gold, Holo). Null if base card.'),
+                variation: fieldSchema.describe('Variation name or parallel type (e.g. "Pink Refractor", "Gold", "Base").'),
+                parallelType: fieldSchema.describe('Specific parallel color/type if applicable (e.g. "Orange", "Camo", "Cracked Ice"). Null if base.'),
+                isRefractor: fieldSchema.describe('Is this a Refractor/Chrome/Shiny card? "true" or "false".'),
                 serialNumber: fieldSchema.describe('Serial number if visible (e.g. 10/50).'),
+
                 isRookie: fieldSchema.describe('Is this a Rookie Card (RC)? "true" or "false".'),
+
                 isAutograph: fieldSchema.describe('Is this an Autographed card? "true" or "false".'),
+                autographType: fieldSchema.describe('Type of autograph: "On-Card", "Sticker", or "Facsimile" (printed). Null if no auto.'),
 
                 // Grading
                 isGraded: fieldSchema.describe('Is the card encased/graded? "true" or "false".'),
@@ -51,7 +56,7 @@ export async function POST(req: Request) {
                 {
                     role: 'user',
                     content: [
-                        { type: 'text', text: 'Analyze this baseball card. Extract all visible details. IMPORTANT: For Japanese players, you MUST output the name in "Kanji (Romaji)" format. Examples: "大谷翔平 (Shohei Ohtani)", "ダルビッシュ有 (Yu Darvish)", "鈴木誠也 (Seiya Suzuki)". Never output only English for Japanese players. For boolean flags (Rookie, Autograph, Graded), output "true" or "false".' },
+                        { type: 'text', text: 'Analyze this baseball card. Extract details precisely. \n1. **Parallel/Variation**: Look carefully for colors (Orange, Blue, Gold) and texture (Refractor, Wave, Mojo). \n2. **Autograph**: Distinction between real auto (ink) and facsimile (printed) is crucial. \n3. **Japanese Players**: ALWAYS output "Kanji (Romaji)" format. Example: "山本由伸 (Yoshinobu Yamamoto)". \n4. **Booleans**: Output "true"/"false" as strings.' },
                         { type: 'image', image: base64Image },
                     ],
                 },
