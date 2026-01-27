@@ -10,8 +10,8 @@ export default function LiveMomentListener() {
     // Initialize Supabase Client (Stable outside effect if possible, or memoized)
     // For simplicity and stability in App Router, we can initialize it once
     const [supabase] = useState(() => createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
     ));
 
     useEffect(() => {
