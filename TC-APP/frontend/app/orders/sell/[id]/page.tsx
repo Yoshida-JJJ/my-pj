@@ -4,38 +4,14 @@ import { useEffect, useState, use } from 'react'; // React 19: use() for params
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
 import { markAsShipped, getSellerOrderDetails } from '../../../actions/order';
+import { SellerOrderDetail } from '../../../../types/index';
 
-interface OrderDetail {
-    id: string;
-    status: string;
-    listing: {
-        title: string;
-        player_name: string;
-        images: string[];
-        price: number;
-    };
-    total_amount: number;
-    created_at: string;
-    shipping_address_snapshot: {
-        name: string;
-        postal_code: string;
-        address: string;
-        phone: string;
-    } | null;
-    shipping_name?: string; // Legacy fallback
-    shipping_address?: string;
-    shipping_postal_code?: string;
-    shipping_phone?: string;
-    tracking_number?: string;
-    carrier?: string;
-    shipped_at?: string;
-    completed_at?: string;
-}
+
 
 export default function SellerOrderPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
-    const [order, setOrder] = useState<OrderDetail | null>(null);
+    const [order, setOrder] = useState<SellerOrderDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -51,7 +27,7 @@ export default function SellerOrderPage({ params }: { params: Promise<{ id: stri
 
             try {
                 const data = await getSellerOrderDetails(id);
-                setOrder(data as any);
+                setOrder(data as SellerOrderDetail);
                 setLoading(false);
             } catch (error: any) {
                 console.error('Fetch Order Error:', error);

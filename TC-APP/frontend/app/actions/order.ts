@@ -237,7 +237,7 @@ export async function getSellerOrderDetails(orderId: string) {
     // 2. Fetch Listing (Manual Join)
     const { data: listing, error: listingError } = await getAdminClient()
         .from('listing_items')
-        .select('series_name, player_name, images, price, seller_id')
+        .select('id, series_name, player_name, images, price, seller_id')
         .eq('id', order.listing_id)
         .single();
 

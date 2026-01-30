@@ -35,8 +35,8 @@ export default function Header() {
     };
 
     const NAV_ITEMS = [
-        { name: 'MARKETPLACE', path: '/market' },
-        { name: 'MY COLLECTION', path: '/collection' },
+        { name: 'MARKET', path: '/market' },
+        { name: 'COLLECTION', path: '/collection' },
         { name: 'AUCTIONS', path: '/auctions' },
         { name: 'COMMUNITY', path: '/community' },
     ];
@@ -77,7 +77,7 @@ export default function Header() {
                             href="/sell"
                             className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-dark rounded-full text-xs font-bold hover:bg-white transition-colors shadow-lg shadow-brand-gold/20"
                         >
-                            <span>SELL</span>
+                            <span>出品する</span>
                         </Link>
                     )}
 
@@ -102,14 +102,14 @@ export default function Header() {
                                 {user ? (
                                     <>
                                         <div className="px-3 py-2 text-xs text-brand-platinum/60 border-b border-white/5 mb-1">
-                                            Signed in as<br />
+                                            ログイン中:<br />
                                             <span className="text-white font-bold truncate block">{user.email}</span>
                                         </div>
                                         <Link href="/profile" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
-                                            Profile
+                                            マイページ
                                         </Link>
                                         <Link href="/collection" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
-                                            My Collection
+                                            マイコレクション
                                         </Link>
                                         <Link href="/payouts" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors flex items-center gap-2">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -117,7 +117,7 @@ export default function Header() {
                                                 <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
                                                 <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
                                             </svg>
-                                            Payouts
+                                            売上・振込
                                         </Link>
 
                                         {/* Admin Link (Only for authorized emails) */}
@@ -126,7 +126,7 @@ export default function Header() {
                                             if (user?.email && adminEmails.includes(user.email.toLowerCase())) {
                                                 return (
                                                     <Link href="/admin" className="block px-3 py-2 rounded-lg bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-xs font-bold transition-colors mt-2 text-center border border-brand-gold/20">
-                                                        ADMIN PANEL
+                                                        管理画面
                                                     </Link>
                                                 );
                                             }
@@ -136,16 +136,16 @@ export default function Header() {
                                             onClick={handleSignOut}
                                             className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-red-400 hover:text-red-300 transition-colors"
                                         >
-                                            Sign out
+                                            ログアウト
                                         </button>
                                     </>
                                 ) : (
                                     <>
                                         <Link href="/login" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
-                                            Sign in
+                                            ログイン
                                         </Link>
                                         <Link href="/register" className="block px-3 py-2 rounded-lg hover:bg-brand-blue/10 text-sm text-brand-blue hover:text-brand-blue-glow transition-colors">
-                                            Register
+                                            新規登録
                                         </Link>
                                     </>
                                 )}
@@ -185,15 +185,15 @@ export default function Header() {
                     ))}
                     {user && (
                         <>
-                            <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
-                            <Link href="/payouts" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">PAYOUTS & EARNINGS</Link>
-                            <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">START SELLING</Link>
+                            <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">マイページ</Link>
+                            <Link href="/payouts" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">売上・振込設定</Link>
+                            <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">出品する</Link>
                         </>
                     )}
                     {user ? (
-                        <button onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }} className="p-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-sm text-center border border-red-500/20 mt-2">LOGOUT</button>
+                        <button onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }} className="p-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-sm text-center border border-red-500/20 mt-2">ログアウト</button>
                     ) : (
-                        <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-blue/10 text-brand-blue font-bold text-sm text-center border border-brand-blue/20 mt-2">LOGIN</Link>
+                        <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-blue/10 text-brand-blue font-bold text-sm text-center border border-brand-blue/20 mt-2">ログイン</Link>
                     )}
                 </div>
             )}

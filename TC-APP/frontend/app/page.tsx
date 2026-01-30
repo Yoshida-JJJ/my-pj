@@ -145,7 +145,7 @@ function HomeContent() {
                 <input
                   type="text"
                   id="search"
-                  placeholder="Search player, series, or year..."
+                  placeholder="選手名、シリーズ、年代などで検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="block w-full pl-10 pr-3 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white placeholder-brand-platinum/30 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
@@ -162,7 +162,7 @@ function HomeContent() {
                 onChange={(e) => setSelectedTeam(e.target.value)}
                 className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
               >
-                <option value="">All Teams</option>
+                <option value="">全チーム</option>
                 {teams.map((team) => (
                   <option key={team} value={team}>{team}</option>
                 ))}
@@ -178,9 +178,9 @@ function HomeContent() {
                 onChange={(e) => setSortOrder(e.target.value)}
                 className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
               >
-                <option value="newest">Newest</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
+                <option value="newest">新着順</option>
+                <option value="price_asc">価格が安い順</option>
+                <option value="price_desc">価格が高い順</option>
               </select>
             </div>
           </div>
@@ -190,7 +190,7 @@ function HomeContent() {
         <div className="mb-12">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-heading font-bold text-white">Latest Arrivals</h2>
-            <span className="text-brand-platinum/60 text-sm">{listings.length} items found</span>
+            <span className="text-brand-platinum/60 text-sm">{listings.length} 件</span>
           </div>
 
           {loading ? (
@@ -213,12 +213,12 @@ function HomeContent() {
 
               {listings.length === 0 && (
                 <div className="text-center py-20 bg-brand-dark-light/30 rounded-2xl border border-brand-platinum/5">
-                  <p className="text-brand-platinum/50 text-lg">No listings found matching your criteria.</p>
+                  <p className="text-brand-platinum/50 text-lg">条件に一致するカードが見つかりませんでした。</p>
                   <button
                     onClick={() => { setSearchQuery(''); setSelectedTeam(''); }}
                     className="mt-4 text-brand-blue hover:text-brand-blue-glow font-medium"
                   >
-                    Clear Filters
+                    条件をクリア
                   </button>
                 </div>
               )}

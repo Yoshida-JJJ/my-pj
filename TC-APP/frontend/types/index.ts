@@ -103,3 +103,37 @@ export interface MomentHistoryItem {
     owner_at_time?: string;
     status?: 'pending' | 'finalized';
 }
+
+export interface SellerOrderDetail {
+    id: string;
+    status: string;
+    listing: {
+        id: string;
+        title: string;
+        seller_id: string;
+        series_name: string;
+        player_name: string;
+        images: string[];
+        price: number;
+    };
+    total_amount: number;
+    created_at: string;
+    // Snapshot of address at time of purchase
+    shipping_address_snapshot: {
+        name: string;
+        postal_code: string;
+        address: string;
+        phone: string;
+    } | null;
+    // Legacy fallback columns
+    shipping_name?: string;
+    shipping_address?: string;
+    shipping_postal_code?: string;
+    shipping_phone?: string;
+
+    // Shipment details
+    tracking_number?: string;
+    carrier?: string;
+    shipped_at?: string;
+    completed_at?: string;
+}

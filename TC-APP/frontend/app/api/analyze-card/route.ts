@@ -24,8 +24,8 @@ export async function POST(req: Request) {
         });
 
         const { object } = await generateObject({
-            // In this simulated environment, sticking to 2.0 Flash Exp is safer than guessing 3.0 string.
-            model: google('gemini-2.0-flash-exp'),
+            // Using generic alias for best availability
+            model: google('gemini-flash-latest'),
 
             schema: z.object({
                 playerName: fieldSchema.describe('Full name of the player. STRICT RULE: For Japanese players, you MUST output the name in "Kanji (Romaji)" format (e.g. "大谷翔平 (Shohei Ohtani)").'),

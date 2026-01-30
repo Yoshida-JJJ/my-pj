@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
 import Footer from '../../components/Footer';
 import PremiumCardImage from '../../components/PremiumCardImage';
+import MarketPriceLinks from '../../components/MarketPriceLinks';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -330,7 +331,10 @@ function SellContent() {
                         body: JSON.stringify({ image: base64data }),
                     });
 
-                    if (!apiRes.ok) throw new Error('AI Analysis failed');
+                    if (!apiRes.ok) {
+                        const errorData = await apiRes.json().catch(() => ({}));
+                        throw new Error(errorData.error || `AI Analysis failed with status ${apiRes.status}`);
+                    }
                     const data = await apiRes.json();
 
                     const missingFields = [];
@@ -507,7 +511,7 @@ function SellContent() {
                     <h2 className="text-3xl font-heading font-bold leading-7 text-white sm:text-4xl sm:truncate drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
                         Create New Listing
                     </h2>
-                    <p className="mt-2 text-brand-platinum/60">Hybrid AI Listing Interface</p>
+                    <p className="mt-2 text-brand-platinum/60">AIを活用した出品インターフェース</p>
                 </div>
             </div>
 
@@ -534,14 +538,14 @@ function SellContent() {
                                 <div className="w-full h-full relative p-4 flex items-center justify-center">
                                     <PremiumCardImage src={images[0]} alt="Main upload" className="max-h-full object-contain rounded-lg shadow-2xl" />
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
-                                        <p className="text-white font-bold">Add / Change Images</p>
+                                        <p className="text-white font-bold">画像を追加 / 変更</p>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <svg className={`w-12 h-12 mb-4 transition-colors ${isDragging ? 'text-brand-gold' : 'text-brand-platinum/50 group-hover:text-brand-gold'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    <p className={`mb-2 text-lg ${isDragging ? 'text-white' : 'text-brand-platinum group-hover:text-white'}`}><span className="font-bold">Upload Card Image</span></p>
-                                    <p className="text-sm text-brand-platinum/50">Multiple images supported</p>
+                                    <p className={`mb-2 text-lg ${isDragging ? 'text-white' : 'text-brand-platinum group-hover:text-white'}`}><span className="font-bold">カード画像をアップロード</span></p>
+                                    <p className="text-sm text-brand-platinum/50">複数枚のアップロードに対応</p>
                                 </div>
                             )}
                             <input
@@ -610,7 +614,7 @@ function SellContent() {
                                         disabled={analyzing}
                                         className="bg-brand-gold text-brand-dark font-bold px-5 py-2 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2 whitespace-nowrap"
                                     >
-                                        {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AI Analytics</span>}
+                                        {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AI解析を実行</span>}
                                     </button>
                                 </div>
                             )}
@@ -624,13 +628,13 @@ function SellContent() {
                             <section>
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-brand-gold/20 flex items-center justify-center text-brand-gold text-sm">1</span>
-                                    Basic Info
+                                    Basic Info (基本情報)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Player Name */}
                                     <div className="md:col-span-2">
                                         <div className="flex justify-between mb-2 items-center">
-                                            <label className="text-sm font-medium text-brand-platinum">Player Name <span className="text-red-500">*</span></label>
+                                            <label className="text-sm font-medium text-brand-platinum">選手名 <span className="text-red-500">*</span></label>
                                             {suggestedData && renderChip("AI", suggestedData.playerName, 'playerName')}
                                         </div>
                                         <input {...register('playerName')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:ring-2 focus:ring-brand-blue" placeholder="大谷翔平 (Shohei Ohtani)" />
@@ -640,7 +644,7 @@ function SellContent() {
                                     {/* Year Dropdown */}
                                     <div>
                                         <div className="flex justify-between mb-2 items-center">
-                                            <label className="text-sm font-medium text-brand-platinum">Year <span className="text-red-500">*</span></label>
+                                            <label className="text-sm font-medium text-brand-platinum">発行年 <span className="text-red-500">*</span></label>
                                             {suggestedData && renderChip("AI", suggestedData.year, 'year')}
                                         </div>
                                         <div className="relative">
@@ -648,7 +652,7 @@ function SellContent() {
                                                 {...register('year')}
                                                 className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                             >
-                                                <option value="" disabled>Select Year...</option>
+                                                <option value="" disabled>年を選択...</option>
                                                 <option value="Unknown">Unknown (不明)</option>
                                                 {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                                             </select>
@@ -669,7 +673,7 @@ function SellContent() {
                                                 {...register('brand')}
                                                 className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                             >
-                                                <option value="" disabled>Select Brand...</option>
+                                                <option value="" disabled>ブランドを選択...</option>
                                                 {CARD_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
                                             </select>
                                             <div className="absolute right-3 top-3.5 pointer-events-none text-brand-platinum/50">
@@ -704,11 +708,11 @@ function SellContent() {
                                                     {...register('team')}
                                                     className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                                 >
-                                                    <option value="" disabled>Select Team...</option>
+                                                    <option value="" disabled>チームを選択...</option>
                                                     {(country === 'USA' ? MLB_TEAMS : NPB_TEAMS).map(team => (
                                                         <option key={team} value={team}>{team}</option>
                                                     ))}
-                                                    <option value="Other">Other (その他)</option>
+                                                    <option value="Other">その他</option>
                                                     <option value="Unknown">Unknown (不明)</option>
                                                 </select>
                                                 <div className="absolute right-3 top-3.5 pointer-events-none text-brand-platinum/50">
@@ -725,36 +729,36 @@ function SellContent() {
                             <section className="border-t border-white/5 pt-8">
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-brand-blue/20 flex items-center justify-center text-brand-blue text-sm">2</span>
-                                    Features & Rarity
+                                    Features & Rarity (特徴・レアリティ)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Variation */}
                                     <div>
                                         <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-brand-platinum">Variation</label>
+                                            <label className="text-sm font-medium text-brand-platinum">バリエーション</label>
                                             {suggestedData && renderChip("AI", suggestedData.variation, 'variation')}
                                         </div>
-                                        <input {...register('variation')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="Black Refractor" />
+                                        <input {...register('variation')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="例: Black Refractor" />
                                     </div>
 
                                     {/* Serial */}
                                     <div>
                                         <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-brand-platinum">Serial Number</label>
+                                            <label className="text-sm font-medium text-brand-platinum">シリアル番号</label>
                                             {suggestedData && renderChip("AI", suggestedData.serialNumber, 'serialNumber')}
                                         </div>
-                                        <input {...register('serialNumber')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="01/10" />
+                                        <input {...register('serialNumber')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="例: 01/10" />
                                     </div>
 
                                     {/* Flags */}
                                     <div className="md:col-span-2 flex gap-8 pt-2">
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" {...register('isRookie')} className="w-5 h-5 rounded border-brand-platinum/20 bg-brand-dark text-brand-gold focus:ring-brand-gold" />
-                                            <span className="text-white group-hover:text-brand-gold transition-colors">Rookie Card (RC)</span>
+                                            <span className="text-white group-hover:text-brand-gold transition-colors">ルーキーカード (RC)</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" {...register('isAutograph')} className="w-5 h-5 rounded border-brand-platinum/20 bg-brand-dark text-brand-gold focus:ring-brand-gold" />
-                                            <span className="text-white group-hover:text-brand-gold transition-colors">Autographed (Auto)</span>
+                                            <span className="text-white group-hover:text-brand-gold transition-colors">直筆サイン入り (Auto)</span>
                                         </label>
                                     </div>
                                 </div>
@@ -764,7 +768,7 @@ function SellContent() {
                             <section className="border-t border-white/5 pt-8">
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 text-sm">3</span>
-                                    Condition
+                                    Condition (状態)
                                 </h3>
 
                                 {/* Graded Toggle */}
@@ -772,14 +776,14 @@ function SellContent() {
                                     <div className={`w-6 h-6 rounded border flex items-center justify-center mr-4 transition-all ${isGraded ? 'bg-brand-gold border-brand-gold' : 'border-brand-platinum/30'}`}>
                                         {isGraded && <svg className="w-4 h-4 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                     </div>
-                                    <span className="text-white font-bold">Professionally Graded?</span>
+                                    <span className="text-white font-bold">鑑定済みですか？ (PSA/BGSなど)</span>
                                 </div>
 
                                 {isGraded ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
                                         <div>
                                             <div className="flex justify-between mb-2">
-                                                <label className="text-sm font-medium text-brand-platinum">Grading Company</label>
+                                                <label className="text-sm font-medium text-brand-platinum">鑑定会社</label>
                                                 {suggestedData && renderChip("AI", suggestedData.gradingCompany, 'gradingCompany')}
                                             </div>
                                             <select {...register('gradingCompany')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white">
@@ -792,7 +796,7 @@ function SellContent() {
                                         </div>
                                         <div>
                                             <div className="flex justify-between mb-2">
-                                                <label className="text-sm font-medium text-brand-platinum">Grade</label>
+                                                <label className="text-sm font-medium text-brand-platinum">グレード (点数)</label>
                                                 {suggestedData && renderChip("AI", suggestedData.grade, 'grade')}
                                             </div>
                                             <input {...register('grade')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="10" />
@@ -801,7 +805,7 @@ function SellContent() {
                                         {/* Certification Number */}
                                         <div className="md:col-span-2">
                                             <div className="flex justify-between mb-2">
-                                                <label className="text-sm font-medium text-brand-platinum">Certification Number (Optional)</label>
+                                                <label className="text-sm font-medium text-brand-platinum">証明番号 (任意)</label>
                                             </div>
                                             <input {...register('certificationNumber')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="12345678" />
                                         </div>
@@ -809,7 +813,7 @@ function SellContent() {
                                 ) : (
                                     <div className="animate-fade-in-up">
                                         <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-brand-platinum">Raw Card Condition</label>
+                                            <label className="text-sm font-medium text-brand-platinum">未鑑定カードの状態</label>
                                             {suggestedData && renderChip("AI", suggestedData.condition, 'condition')}
                                         </div>
                                         <div className="relative">
@@ -817,13 +821,13 @@ function SellContent() {
                                                 {...register('condition')}
                                                 className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                             >
-                                                <option value="" disabled>Select Condition...</option>
-                                                <option value="Gem Mint">Gem Mint</option>
-                                                <option value="Mint">Mint</option>
-                                                <option value="Near Mint">Near Mint</option>
-                                                <option value="Excellent">Excellent</option>
-                                                <option value="Very Good">Very Good</option>
-                                                <option value="Poor">Poor</option>
+                                                <option value="" disabled>状態を選択...</option>
+                                                <option value="Gem Mint">Gem Mint (完品)</option>
+                                                <option value="Mint">Mint (美品)</option>
+                                                <option value="Near Mint">Near Mint (準美品)</option>
+                                                <option value="Excellent">Excellent (良品)</option>
+                                                <option value="Very Good">Very Good (可)</option>
+                                                <option value="Poor">Poor (難あり)</option>
                                             </select>
                                             <div className="absolute right-3 top-3.5 pointer-events-none text-brand-platinum/50">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -837,12 +841,12 @@ function SellContent() {
                             <section className="border-t border-white/5 pt-8">
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-sm">4</span>
-                                    Price & Note
+                                    Price & Note (価格・詳細)
                                 </h3>
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="text-sm font-medium text-brand-platinum mb-2 block">Notes / Description</label>
-                                        <textarea {...register('description')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white h-24" placeholder="Any scratches? Print lines?" />
+                                        <label className="text-sm font-medium text-brand-platinum mb-2 block">商品説明 / 詳細メモ</label>
+                                        <textarea {...register('description')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white h-24" placeholder="傷の状態や特徴など..." />
                                     </div>
 
                                     <div>
@@ -851,25 +855,25 @@ function SellContent() {
                                             <div className="mb-6 p-6 rounded-xl bg-brand-gold/5 border border-brand-gold/20 animate-fade-in-up">
                                                 <h4 className="text-lg font-bold text-brand-gold mb-4 flex items-center gap-2">
                                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                                                    Market Price Analysis
+                                                    Market Price Analysis (相場分析)
                                                 </h4>
 
                                                 {estimatingPrice ? (
                                                     <div className="flex items-center gap-2 text-brand-platinum">
                                                         <div className="w-4 h-4 border-2 border-brand-gold border-t-transparent rounded-full animate-spin"></div>
-                                                        Searching recent sales data...
+                                                        最近の取引データを検索中...
                                                     </div>
                                                 ) : (
                                                     <div>
                                                         <div className="flex flex-col md:flex-row gap-6 justify-between items-start">
                                                             <div className="flex-1">
-                                                                <p className="text-sm text-brand-platinum mb-1">Estimated Range</p>
+                                                                <p className="text-sm text-brand-platinum mb-1">推定価格帯</p>
                                                                 <div className="text-3xl font-heading font-bold text-white mb-2">
                                                                     ¥{priceEstimate?.estimatedPriceRange?.min?.toLocaleString()} - ¥{priceEstimate?.estimatedPriceRange?.max?.toLocaleString()}
                                                                 </div>
                                                                 <p className="text-xs text-brand-platinum/60">
-                                                                    Based on {priceEstimate?.recentSales?.length} {priceEstimate?.dataSource === 'mock' ? 'simulated' : 'actual'} sales
-                                                                    {priceEstimate?.dataSource === 'mock' && <span className="ml-2 text-brand-gold">(Mock Data)</span>}
+                                                                    過去の取引データ: {priceEstimate?.recentSales?.length} 件に基づく
+                                                                    {priceEstimate?.dataSource === 'mock' && <span className="ml-2 text-brand-gold">(テストデータ)</span>}
                                                                 </p>
                                                             </div>
                                                             <button
@@ -877,13 +881,13 @@ function SellContent() {
                                                                 onClick={() => setValue('price', Math.round((priceEstimate.estimatedPriceRange.min + priceEstimate.estimatedPriceRange.max) / 2))}
                                                                 className="px-4 py-2 bg-brand-gold/20 text-brand-gold border border-brand-gold/50 rounded-lg hover:bg-brand-gold/30 text-sm font-bold transition-all whitespace-nowrap"
                                                             >
-                                                                Apply Avg. Price
+                                                                平均価格を適用
                                                             </button>
                                                         </div>
 
                                                         {priceEstimate?.recentSales?.length > 0 && (
                                                             <div className="mt-6 pt-4 border-t border-brand-gold/10">
-                                                                <p className="text-sm font-medium text-brand-platinum mb-3">Recent Transactions</p>
+                                                                <p className="text-sm font-medium text-brand-platinum mb-3">最近の取引</p>
                                                                 <div className="space-y-2">
                                                                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                                                     {priceEstimate.recentSales.map((sale: any, idx: number) => (
@@ -903,7 +907,23 @@ function SellContent() {
                                             </div>
                                         )}
 
-                                        <label className="text-sm font-bold text-brand-gold tracking-wider mb-2 block uppercase">Price (JPY) <span className="text-red-500">*</span></label>
+
+                                        {/* External Market Links */}
+                                        {suggestedData && (
+                                            <div className="mb-6">
+                                                <MarketPriceLinks
+                                                    initialQuery={[
+                                                        suggestedData.year?.value,
+                                                        suggestedData.brand?.value,
+                                                        suggestedData.playerName?.value,
+                                                        suggestedData.cardNumber?.value,
+                                                        // suggestedData.variation?.value // Optional: might be too specific
+                                                    ].filter(Boolean).join(' ')}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <label className="text-sm font-bold text-brand-gold tracking-wider mb-2 block uppercase">販売価格 (円) <span className="text-red-500">*</span></label>
                                         <div className="relative">
                                             <span className="absolute left-4 top-3.5 text-brand-platinum">¥</span>
                                             <input
@@ -946,11 +966,11 @@ function SellContent() {
                                     {submitting ? (
                                         <>
                                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            <span>Listing...</span>
+                                            <span>出品中...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <span>List Item Now</span>
+                                            <span>出品する</span>
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                                         </>
                                     )}

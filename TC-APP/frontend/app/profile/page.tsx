@@ -207,7 +207,7 @@ export default function ProfilePage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Last Name (Kanji)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Last Name (姓)</label>
                                                     <input
                                                         type="text"
                                                         value={editLastName}
@@ -217,7 +217,7 @@ export default function ProfilePage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">First Name (Kanji)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">First Name (名)</label>
                                                     <input
                                                         type="text"
                                                         value={editFirstName}
@@ -230,7 +230,7 @@ export default function ProfilePage() {
 
                                             {/* Real Name Kana Input */}
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Real Name (Katakana) <span className="text-red-400 text-xs">*Required for Payouts</span></label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Real Name (カタカナ) <span className="text-red-400 text-xs">*Required for Payouts</span></label>
                                                 <input
                                                     type="text"
                                                     value={editRealNameKana}
@@ -240,7 +240,7 @@ export default function ProfilePage() {
                                                     title="Full-width Katakana only"
                                                     className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
                                                 />
-                                                <p className="text-[10px] text-brand-platinum/50 mt-1">※ Must match your bank account holder name exactly (spaces will be auto-removed).</p>
+                                                <p className="text-[10px] text-brand-platinum/50 mt-1">※ 銀行口座名義と一致させてください (姓と名の間のスペースなし)</p>
                                             </div>
 
                                             <div>
@@ -256,10 +256,10 @@ export default function ProfilePage() {
                                         </div>
 
                                         <div className="border-t border-brand-platinum/10 pt-4 mt-4">
-                                            <h3 className="text-white font-bold mb-3">Shipping Address</h3>
+                                            <h3 className="text-white font-bold mb-3">Shipping Address (配送先住所)</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Postal Code</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Postal Code (郵便番号)</label>
                                                     <input
                                                         type="text"
                                                         value={editPostalCode}
@@ -269,7 +269,7 @@ export default function ProfilePage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Phone Number</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Phone Number (電話番号)</label>
                                                     <input
                                                         type="tel"
                                                         value={editPhoneNumber}
@@ -280,7 +280,7 @@ export default function ProfilePage() {
                                                 </div>
                                             </div>
                                             <div className="mb-4">
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 1 (Prefecture, City)</label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 1 (都道府県・市区町村)</label>
                                                 <input
                                                     type="text"
                                                     value={editAddressLine1}
@@ -290,7 +290,7 @@ export default function ProfilePage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 2 (Street, Building)</label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 2 (番地・建物名)</label>
                                                 <input
                                                     type="text"
                                                     value={editAddressLine2}
