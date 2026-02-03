@@ -4,9 +4,9 @@ export default async function DebugAdminPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const adminEmailsRaw = process.env.ADMIN_EMAILS || 'NOT SET';
-    const publicAdminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'NOT SET';
-    const adminEmailsList = adminEmailsRaw.split(',').map(e => e.trim().toLowerCase());
+    const adminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || 'NOT SET';
+    // const publicAdminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'NOT SET'; // Removed redundancy
+    const adminEmailsList = adminEmailsRaw.split(/[,;|]+/).map(e => e.trim().toLowerCase());
 
     const currentUserEmail = user?.email?.toLowerCase() || 'NOT LOGGED IN';
     const isMatched = user?.email ? adminEmailsList.includes(currentUserEmail) : false;
