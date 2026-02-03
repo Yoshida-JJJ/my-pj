@@ -1,17 +1,62 @@
 export const TEAM_GROUPS = [
     {
-        label: "MLB (メジャーリーグ)",
+        label: "ア・リーグ 東地区",
         teams: [
-            { code: "LAD", name: "ドジャース (LAD)" },
-            { code: "NYY", name: "ヤンキース (NYY)" },
-            { code: "SD", name: "パドレス (SD)" },
-            { code: "LAA", name: "エンゼルス (LAA)" },
-            { code: "TOR", name: "ブルージェイズ (TOR)" },
-            { code: "BOS", name: "レッドソックス (BOS)" },
-            { code: "NYM", name: "メッツ (NYM)" },
-            { code: "PHI", name: "フィリーズ (PHI)" },
-            { code: "ATL", name: "ブレーブス (ATL)" },
-            { code: "HOU", name: "アストロズ (HOU)" },
+            { code: 'BAL', name: 'オリオールズ' },
+            { code: 'BOS', name: 'レッドソックス' },
+            { code: 'NYY', name: 'ヤンキース' },
+            { code: 'TB', name: 'レイズ' },
+            { code: 'TOR', name: 'ブルージェイズ' },
+        ]
+    },
+    {
+        label: "ア・リーグ 中地区",
+        teams: [
+            { code: 'CWS', name: 'ホワイトソックス' },
+            { code: 'CLE', name: 'ガーディアンズ' },
+            { code: 'DET', name: 'タイガース' },
+            { code: 'KC', name: 'ロイヤルズ' },
+            { code: 'MIN', name: 'ツインズ' },
+        ]
+    },
+    {
+        label: "ア・リーグ 西地区",
+        teams: [
+            { code: 'HOU', name: 'アストロズ' },
+            { code: 'LAA', name: 'エンゼルス' },
+            { code: 'OAK', name: 'アスレチックス' },
+            { code: 'SEA', name: 'マリナーズ' },
+            { code: 'TEX', name: 'レンジャーズ' },
+        ]
+    },
+    {
+        label: "ナ・リーグ 東地区",
+        teams: [
+            { code: 'ATL', name: 'ブレーブス' },
+            { code: 'MIA', name: 'マーリンズ' },
+            { code: 'NYM', name: 'メッツ' },
+            { code: 'PHI', name: 'フィリーズ' },
+            { code: 'WSH', name: 'ナショナルズ' },
+        ]
+    },
+    {
+        label: "ナ・リーグ 中地区",
+        teams: [
+            { code: 'CHC', name: 'カブス' },
+            { code: 'CIN', name: 'レッズ' },
+            { code: 'MIL', name: 'ブリュワーズ' },
+            { code: 'PIT', name: 'パイレーツ' },
+            { code: 'STL', name: 'カージナルス' },
+        ]
+    },
+    {
+        label: "ナ・リーグ 西地区",
+        teams: [
+            { code: 'AZ', name: 'ダイヤモンドバックス' },
+            { code: 'COL', name: 'ロッキーズ' },
+            { code: 'LAD', name: 'ドジャース' },
+            { code: 'SD', name: 'パドレス' },
+            { code: 'SF', name: 'ジャイアンツ' },
         ]
     },
     {

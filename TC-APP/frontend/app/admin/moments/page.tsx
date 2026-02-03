@@ -54,6 +54,19 @@ export default async function AdminMomentsPage({
     let defaultScoreH = "";
     let defaultProgress = "";
 
+    // External Parameters (Auto-fill)
+    const extPlayer = typeof params?.player === 'string' ? params.player : '';
+    const extTitle = typeof params?.title === 'string' ? params.title : '';
+    const extDesc = typeof params?.desc === 'string' ? params.desc : '';
+    const extIntensity = typeof params?.intensity === 'string' ? params.intensity : '3';
+    const extVisitor = typeof params?.visitor === 'string' ? params.visitor : '';
+    const extHome = typeof params?.home === 'string' ? params.home : '';
+    const extVisitorScore = typeof params?.visitorScore === 'string' ? params.visitorScore : '';
+    const extHomeScore = typeof params?.homeScore === 'string' ? params.homeScore : '';
+    const extProgress = typeof params?.progress === 'string' ? params.progress : '';
+
+    const isAutoFilled = !editId && (extPlayer || extTitle || extDesc || extVisitor || extHome || extVisitorScore || extHomeScore || extProgress);
+
     if (editingMoment?.match_result) {
         try {
             const regex = /^(.+?)\s+(\d+)\s+-\s+(\d+)\s+(.+?)\s+\((.+)\)$/;
@@ -68,6 +81,14 @@ export default async function AdminMomentsPage({
         } catch (e) {
             console.error("Failed to parse match result", e);
         }
+    } else if (isAutoFilled) {
+        // Apply external params if valid
+        console.log('[AutoFill] Applying external params:', { extVisitor, extHome, extProgress });
+        defaultVisitor = extVisitor;
+        defaultHome = extHome;
+        defaultScoreV = extVisitorScore;
+        defaultScoreH = extHomeScore;
+        defaultProgress = extProgress;
     }
 
     return (
@@ -81,6 +102,12 @@ export default async function AdminMomentsPage({
                         <h3 className={`text-lg font-bold ${editingMoment ? 'text-blue-400' : 'text-[#FFD700]'}`}>
                             {editingMoment ? 'イベント登録情報の修正' : '新規イベント登録'}
                         </h3>
+                        {isAutoFilled && (
+                            <div className="ml-4 flex items-center gap-1 bg-purple-900/40 border border-purple-500/30 text-purple-300 text-xs px-2 py-1 rounded animate-pulse w-fit">
+                                <span>⚡</span>
+                                <span>外部データから自動入力</span>
+                            </div>
+                        )}
                         {editingMoment && (
                             <Link href="/admin/moments" className="text-xs text-gray-400 hover:text-white border border-gray-600 px-2 py-1 rounded">
                                 キャンセル
@@ -94,7 +121,7 @@ export default async function AdminMomentsPage({
                             <input
                                 name="playerName"
                                 required
-                                defaultValue={editingMoment?.player_name || ''}
+                                defaultValue={editingMoment?.player_name || extPlayer}
                                 className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
                                 placeholder="例: 大谷翔平 / Shohei Ohtani"
                             />
@@ -104,7 +131,7 @@ export default async function AdminMomentsPage({
                             <input
                                 name="title"
                                 required
-                                defaultValue={editingMoment?.title || ''}
+                                defaultValue={editingMoment?.title || extTitle}
                                 className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
                                 placeholder="例: Walk-off Home Run"
                             />
@@ -218,7 +245,7 @@ export default async function AdminMomentsPage({
                             <label className="block text-sm text-gray-400 mb-1">熱狂度 (Intensity 1-5)</label>
                             <select
                                 name="intensity"
-                                defaultValue={editingMoment?.intensity || '3'}
+                                defaultValue={editingMoment?.intensity || extIntensity}
                                 className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
                             >
                                 <option value="5">5 - Legendary (伝説級)</option>
@@ -233,7 +260,7 @@ export default async function AdminMomentsPage({
                             <textarea
                                 name="description"
                                 rows={5}
-                                defaultValue={editingMoment?.description || ''}
+                                defaultValue={editingMoment?.description || extDesc}
                                 className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
                                 placeholder="試合の文脈や詳細など..."
                             />
