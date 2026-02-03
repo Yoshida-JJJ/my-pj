@@ -11,7 +11,7 @@ export default async function AdminLayout({
     const { data: { user } } = await supabase.auth.getUser();
 
     // Double check (Middleware should catch this, but safe to have)
-    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
+    const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || '').split(/[,;|]+/).map(e => e.trim());
     if (!user || !user.email || !adminEmails.some(email => email.toLowerCase() === user.email?.toLowerCase())) {
         redirect('/');
     }
