@@ -73,8 +73,21 @@ export async function updateSession(request: NextRequest) {
 
         if (!user || !userEmail || !adminEmails.includes(userEmail)) {
             // Internal redirect to a specific error page if needed, but for now just console/home
+            const reason = !user
+                ? 'no_user'
+                : !userEmail
+                    ? 'no_email'
+                    : `not_in_list`;
+
+            // Create debug URL
+            const debugUrl = new URL('/', request.url);
+            debugUrl.searchParams.set('debug_error', 'admin_access_denied');
+            debugUrl.searchParams.set('debug_reason', reason);
+            debugUrl.searchParams.set('debug_email', userEmail || 'none');
+            debugUrl.searchParams.set('debug_env_len', String(adminEmails.length));
+
             console.log(`[AUTH] Access Denied: User "${userEmail || 'none'}" not in admin list: [${adminEmails.join('|')}]`);
-            return NextResponse.redirect(new URL('/', request.url))
+            return NextResponse.redirect(debugUrl)
         }
     }
 
