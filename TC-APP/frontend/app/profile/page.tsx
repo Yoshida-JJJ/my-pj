@@ -6,6 +6,7 @@ import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { getAvailableBalance } from '../../app/actions/payout';
+import OrderHistory from '../../components/OrderHistory';
 // import { createClient } from '@/utils/supabase/client';
 
 export default function ProfilePage() {
@@ -14,6 +15,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    const [activeTab, setActiveTab] = useState<'purchases' | 'sales'>('purchases');
     const [isEditing, setIsEditing] = useState(false);
     const [editDisplayName, setEditDisplayName] = useState('');
     const [editFirstName, setEditFirstName] = useState('');
@@ -415,6 +417,28 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Transaction History */}
+                    <div className="space-y-6 pt-8 border-t border-brand-platinum/10">
+                        <div className="flex items-center gap-8 border-b border-brand-platinum/10">
+                            <button
+                                onClick={() => setActiveTab('purchases')}
+                                className={`pb-3 text-sm font-bold tracking-wider transition-all border-b-2 ${activeTab === 'purchases' ? 'text-white border-brand-blue' : 'text-brand-platinum/40 border-transparent hover:text-brand-platinum'}`}
+                            >
+                                Purchases (購入履歴)
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('sales')}
+                                className={`pb-3 text-sm font-bold tracking-wider transition-all border-b-2 ${activeTab === 'sales' ? 'text-white border-brand-gold' : 'text-brand-platinum/40 border-transparent hover:text-brand-platinum'}`}
+                            >
+                                Sales (販売履歴)
+                            </button>
+                        </div>
+
+                        <div className="min-h-[200px]">
+                            <OrderHistory mode={activeTab === 'purchases' ? 'buy' : 'sell'} />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -35,10 +35,10 @@ export default function Header() {
     };
 
     const NAV_ITEMS = [
-        { name: 'MARKET', path: '/market' },
-        { name: 'COLLECTION', path: '/collection' },
-        { name: 'AUCTIONS', path: '/auctions' },
-        { name: 'COMMUNITY', path: '/community' },
+        { name: 'マーケット (Market)', path: '/market' },
+        { name: 'コレクション (Collection)', path: '/collection' },
+        { name: 'オークション (Auctions)', path: '/auctions' },
+        { name: 'コミュニティ (Community)', path: '/community' },
     ];
 
     return (
@@ -141,12 +141,14 @@ export default function Header() {
                                     </>
                                 ) : (
                                     <>
-                                        <Link href="/login" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
-                                            ログイン
-                                        </Link>
-                                        <Link href="/register" className="block px-3 py-2 rounded-lg hover:bg-brand-blue/10 text-sm text-brand-blue hover:text-brand-blue-glow transition-colors">
-                                            新規登録
-                                        </Link>
+                                        <>
+                                            <Link href="/login" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
+                                                ログイン
+                                            </Link>
+                                            <Link href="/register" className="block px-3 py-2 rounded-lg hover:bg-brand-blue/10 text-sm text-brand-blue hover:text-brand-blue-glow transition-colors">
+                                                新規登録
+                                            </Link>
+                                        </>
                                     </>
                                 )}
                             </div>

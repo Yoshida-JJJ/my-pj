@@ -280,6 +280,18 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
                         <h3 className="text-green-400 font-bold text-xl mb-2">Transaction Completed</h3>
                         <p className="text-brand-platinum/60 text-sm">Thank you for your purchase.</p>
                     </div>
+                ) : order.status === 'processing' || order.status === 'open' || order.status === 'pending' ? (
+                    <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-yellow-500 mb-4"></div>
+                        <h3 className="text-yellow-400 font-bold text-xl mb-2">Payment Processing</h3>
+                        <p className="text-brand-platinum/60 text-sm">
+                            We are confirming your payment. This typically takes a few moments.<br />
+                            Once confirmed, you will be able to record your moments.
+                        </p>
+                        <button onClick={() => window.location.reload()} className="mt-4 text-xs text-yellow-500/80 hover:text-yellow-400 underline">
+                            Check Status Again
+                        </button>
+                    </div>
                 ) : (
                     <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-xl text-center text-brand-platinum/60">
                         Waiting for seller to ship...

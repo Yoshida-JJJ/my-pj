@@ -319,3 +319,71 @@ export async function getBuyerOrderDetails(orderId: string) {
         }
     };
 }
+
+/**
+ * Fetch All Orders for Seller
+ */
+export async function getSellerOrders() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const { data, error } = await getAdminClient()
+        .from('orders')
+        .select(`
+            id,
+            status,
+            total_amount,
+            created_at,
+            listing:listing_items!listing_id (
+                title, player_name, images, series_name
+            )
+        `)
+        .eq('seller_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching seller orders:', error);
+        return [];
+    }
+
+    return data.map((order: any) => ({
+        ...order,
+        listing: Array.isArray(order.listing) ? order.listing[0] : order.listing
+    }));
+}
+
+/**
+ * Fetch All Orders for Buyer
+ */
+export async function getBuyerOrders() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const { data, error } = await getAdminClient()
+        .from('orders')
+        .select(`
+            id,
+            status,
+            total_amount,
+            created_at,
+            listing:listing_items!listing_id (
+                title, player_name, images, series_name
+            )
+        `)
+        .eq('buyer_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching buyer orders:', error);
+        return [];
+    }
+
+    return data.map((order: any) => ({
+        ...order,
+        listing: Array.isArray(order.listing) ? order.listing[0] : order.listing
+    }));
+}

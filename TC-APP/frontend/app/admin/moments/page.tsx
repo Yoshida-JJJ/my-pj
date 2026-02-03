@@ -1,162 +1,183 @@
 import { createClient } from '@supabase/supabase-js';
-import { createLiveMoment, finalizeMoment } from '@/app/actions/admin';
+import { createLiveMoment, finalizeMoment, updateLiveMoment, deleteLiveMoment } from '@/app/actions/admin';
+import { TEAM_GROUPS } from '@/lib/teams';
+import Link from 'next/link';
+import DeleteMomentButton from './DeleteMomentButton';
 
-// Admin Client for fetching list (could use standard client if Public Read policy exists)
-// But using Admin ensures we see everything regardless of policy flux.
+// Admin Client for fetching list
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function AdminMomentsPage() {
-    const { data: moments } = await supabaseAdmin
+export default async function AdminMomentsPage({
+    searchParams,
+}: {
+    searchParams: { [key: string]: string | string[] | undefined };
+}) {
+    // Handle searchParams safely
+    const params = await searchParams;
+    const editId = typeof params?.edit === 'string' ? params.edit : null;
+
+    // Fetch list
+    const { data: momentsData } = await supabaseAdmin
         .from('live_moments')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(20);
 
+    // Fetch usage counts (N+1 tolerated for Admin UI)
+    const moments = await Promise.all((momentsData || []).map(async (m) => {
+        const { count } = await supabaseAdmin
+            .from('listing_items')
+            .select('id', { count: 'exact', head: true })
+            .contains('moment_history', JSON.stringify([{ moment_id: m.id }]));
+        return { ...m, usageCount: count || 0 };
+    }));
+
+    // Fetch editing item if needed
+    let editingMoment = null;
+    if (editId) {
+        const { data } = await supabaseAdmin
+            .from('live_moments')
+            .select('*')
+            .eq('id', editId)
+            .single();
+        editingMoment = data;
+    }
+
+    // Parse existing match result to pre-fill detailed fields if editing
+    // match_result format example: "LAD 5 - 3 NYY (Top 9th)"
+    let defaultVisitor = "";
+    let defaultHome = "";
+    let defaultScoreV = "";
+    let defaultScoreH = "";
+    let defaultProgress = "";
+
+    if (editingMoment?.match_result) {
+        try {
+            const regex = /^(.+?)\s+(\d+)\s+-\s+(\d+)\s+(.+?)\s+\((.+)\)$/;
+            const match = editingMoment.match_result.match(regex);
+            if (match) {
+                defaultVisitor = match[1];
+                defaultScoreV = match[2];
+                defaultScoreH = match[3];
+                defaultHome = match[4];
+                defaultProgress = match[5];
+            }
+        } catch (e) {
+            console.error("Failed to parse match result", e);
+        }
+    }
+
     return (
         <div className="p-8">
-            <h2 className="text-2xl font-bold mb-6">Live Moment Operator</h2>
+            <h2 className="text-2xl font-bold mb-6">ライブモーメント管理 (Live Matches)</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Form Section */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 h-fit">
-                    <h3 className="text-lg font-bold mb-4 text-[#FFD700]">Create New Moment</h3>
-                    <form action={createLiveMoment} className="space-y-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className={`text-lg font-bold ${editingMoment ? 'text-blue-400' : 'text-[#FFD700]'}`}>
+                            {editingMoment ? 'イベント登録情報の修正' : '新規イベント登録'}
+                        </h3>
+                        {editingMoment && (
+                            <Link href="/admin/moments" className="text-xs text-gray-400 hover:text-white border border-gray-600 px-2 py-1 rounded">
+                                キャンセル
+                            </Link>
+                        )}
+                    </div>
+
+                    <form action={editingMoment ? updateLiveMoment.bind(null, editingMoment.id) : createLiveMoment} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Player Name</label>
-                            <input name="playerName" required className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="e.g. Shohei Ohtani" />
+                            <label className="block text-sm text-gray-400 mb-1">選手名 (Player Name)</label>
+                            <input
+                                name="playerName"
+                                required
+                                defaultValue={editingMoment?.player_name || ''}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                                placeholder="例: 大谷翔平 / Shohei Ohtani"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Title</label>
-                            <input name="title" required className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="e.g. Walk-off Home Run" />
+                            <label className="block text-sm text-gray-400 mb-1">タイトル (Title)</label>
+                            <input
+                                name="title"
+                                required
+                                defaultValue={editingMoment?.title || ''}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                                placeholder="例: Walk-off Home Run"
+                            />
                         </div>
-                        {/* matchResult replacement: Structured Inputs */}
+
+                        {/* Match Status */}
                         <div className="bg-black/30 p-3 rounded border border-white/10 space-y-3">
-                            <label className="block text-sm text-gray-400 -mb-2">Match Status</label>
+                            <label className="block text-sm text-gray-400 -mb-2">試合状況 (Match Status)</label>
 
                             {/* Visitor */}
-                            <div className="flex gap-2">
-                                <select name="teamVisitor" required className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]">
-                                    <option value="">Visitor Team</option>
-                                    <optgroup label="MLB">
-                                        <option value="LAD">LAD (Dodgers)</option>
-                                        <option value="NYY">NYY (Yankees)</option>
-                                        <option value="SD">SD (Padres)</option>
-                                        <option value="HOU">HOU (Astros)</option>
-                                        <option value="ATL">ATL (Braves)</option>
-                                        <option value="PHI">PHI (Phillies)</option>
-                                        <option value="NYM">NYM (Mets)</option>
-                                        <option value="BOS">BOS (Red Sox)</option>
-                                        <option value="LAA">LAA (Angels)</option>
-                                        <option value="CHC">CHC (Cubs)</option>
-                                        <option value="TOR">TOR (Blue Jays)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Central">
-                                        <option value="YG">Giants (Kyojin)</option>
-                                        <option value="T">Tigers (Hanshin)</option>
-                                        <option value="DB">BayStars (DeNA)</option>
-                                        <option value="C">Carp (Hiroshima)</option>
-                                        <option value="D">Dragons (Chunichi)</option>
-                                        <option value="S">Swallows (Yakult)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Pacific">
-                                        <option value="H">Hawks (SoftBank)</option>
-                                        <option value="F">Fighters (Nippon-Ham)</option>
-                                        <option value="M">Marines (Lotte)</option>
-                                        <option value="B">Buffaloes (Orix)</option>
-                                        <option value="E">Eagles (Rakuten)</option>
-                                        <option value="L">Lions (Seibu)</option>
-                                    </optgroup>
-                                    <optgroup label="National">
-                                        <option value="JPN">Samurai Japan</option>
-                                        <option value="USA">Team USA</option>
-                                        <option value="DOM">Dominican Rep</option>
-                                        <option value="VEN">Venezuela</option>
-                                        <option value="PUR">Puerto Rico</option>
-                                        <option value="MEX">Mexico</option>
-                                        <option value="CUB">Cuba</option>
-                                        <option value="CAN">Canada</option>
-                                        <option value="KOR">Korea</option>
-                                        <option value="TPE">Chinese Taipei</option>
-                                        <option value="NLD">Netherlands</option>
-                                        <option value="ITA">Italy</option>
-                                        <option value="AUS">Australia</option>
-                                        <option value="PAN">Panama</option>
-                                        <option value="COL">Colombia</option>
-                                        <option value="GBR">Great Britain</option>
-                                        <option value="CZE">Czech Republic</option>
-                                        <option value="ISR">Israel</option>
-                                        <option value="CHN">China</option>
-                                        <option value="Other">Other</option>
-                                    </optgroup>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-gray-500 w-12">ビジター</span>
+                                <select
+                                    name="teamVisitor"
+                                    required
+                                    defaultValue={defaultVisitor || ''}
+                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                                >
+                                    <option value="">チーム選択...</option>
+                                    {TEAM_GROUPS.map((group) => (
+                                        <optgroup key={group.label} label={group.label}>
+                                            {group.teams.map((team) => (
+                                                <option key={team.code} value={team.code}>{team.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
                                 </select>
-                                <input name="scoreVisitor" type="number" min="0" placeholder="0" className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]" />
+                                <input
+                                    name="scoreVisitor"
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    defaultValue={defaultScoreV || ''}
+                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
+                                />
                             </div>
 
                             {/* Home */}
-                            <div className="flex gap-2">
-                                <select name="teamHome" required className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]">
-                                    <option value="">Home Team</option>
-                                    <optgroup label="MLB">
-                                        <option value="LAD">LAD (Dodgers)</option>
-                                        <option value="NYY">NYY (Yankees)</option>
-                                        <option value="SD">SD (Padres)</option>
-                                        <option value="HOU">HOU (Astros)</option>
-                                        <option value="ATL">ATL (Braves)</option>
-                                        <option value="PHI">PHI (Phillies)</option>
-                                        <option value="NYM">NYM (Mets)</option>
-                                        <option value="BOS">BOS (Red Sox)</option>
-                                        <option value="LAA">LAA (Angels)</option>
-                                        <option value="CHC">CHC (Cubs)</option>
-                                        <option value="TOR">TOR (Blue Jays)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Central">
-                                        <option value="YG">Giants (Kyojin)</option>
-                                        <option value="T">Tigers (Hanshin)</option>
-                                        <option value="DB">BayStars (DeNA)</option>
-                                        <option value="C">Carp (Hiroshima)</option>
-                                        <option value="D">Dragons (Chunichi)</option>
-                                        <option value="S">Swallows (Yakult)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Pacific">
-                                        <option value="H">Hawks (SoftBank)</option>
-                                        <option value="F">Fighters (Nippon-Ham)</option>
-                                        <option value="M">Marines (Lotte)</option>
-                                        <option value="B">Buffaloes (Orix)</option>
-                                        <option value="E">Eagles (Rakuten)</option>
-                                        <option value="L">Lions (Seibu)</option>
-                                    </optgroup>
-                                    <optgroup label="National">
-                                        <option value="JPN">Samurai Japan</option>
-                                        <option value="USA">Team USA</option>
-                                        <option value="DOM">Dominican Rep</option>
-                                        <option value="VEN">Venezuela</option>
-                                        <option value="PUR">Puerto Rico</option>
-                                        <option value="MEX">Mexico</option>
-                                        <option value="CUB">Cuba</option>
-                                        <option value="CAN">Canada</option>
-                                        <option value="KOR">Korea</option>
-                                        <option value="TPE">Chinese Taipei</option>
-                                        <option value="NLD">Netherlands</option>
-                                        <option value="ITA">Italy</option>
-                                        <option value="AUS">Australia</option>
-                                        <option value="PAN">Panama</option>
-                                        <option value="COL">Colombia</option>
-                                        <option value="GBR">Great Britain</option>
-                                        <option value="CZE">Czech Republic</option>
-                                        <option value="ISR">Israel</option>
-                                        <option value="CHN">China</option>
-                                        <option value="Other">Other</option>
-                                    </optgroup>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-gray-500 w-12">ホーム</span>
+                                <select
+                                    name="teamHome"
+                                    required
+                                    defaultValue={defaultHome || ''}
+                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                                >
+                                    <option value="">チーム選択...</option>
+                                    {TEAM_GROUPS.map((group) => (
+                                        <optgroup key={group.label} label={group.label}>
+                                            {group.teams.map((team) => (
+                                                <option key={team.code} value={team.code}>{team.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
                                 </select>
-                                <input name="scoreHome" type="number" min="0" placeholder="0" className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]" />
+                                <input
+                                    name="scoreHome"
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    defaultValue={defaultScoreH || ''}
+                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
+                                />
                             </div>
 
                             {/* Progress */}
-                            <div>
-                                <select name="progress" className="w-full bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]">
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-gray-500 w-12">進行</span>
+                                <select
+                                    name="progress"
+                                    defaultValue={defaultProgress || 'Top 1st'}
+                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                                >
                                     <option value="Top 1st">Top 1st (1回表)</option>
                                     <option value="Bot 1st">Bot 1st (1回裏)</option>
                                     <option value="Top 2nd">Top 2nd (2回表)</option>
@@ -179,75 +200,121 @@ export default async function AdminMomentsPage() {
                                 </select>
                             </div>
                         </div>
+
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Type</label>
-                            <select name="type" className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none">
-                                <option value="HOMERUN">Homerun</option>
-                                <option value="VICTORY">Victory</option>
-                                <option value="RECORD_BREAK">Record Breaker</option>
-                                <option value="BIG_PLAY">Big Play (Highlight/Strikeout)</option>
+                            <label className="block text-sm text-gray-400 mb-1">イベントタイプ (Type)</label>
+                            <select
+                                name="type"
+                                defaultValue={editingMoment?.type || 'HOMERUN'}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                            >
+                                <option value="HOMERUN">ホームラン (Homerun)</option>
+                                <option value="VICTORY">勝利 (Victory)</option>
+                                <option value="RECORD_BREAK">記録達成 (Record Breaker)</option>
+                                <option value="BIG_PLAY">ビッグプレイ/三振 (Big Play)</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Intensity (1-5)</label>
-                            <select name="intensity" className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none">
-                                <option value="5">5 - Legendary</option>
-                                <option value="4">4 - High</option>
-                                <option value="3">3 - Medium</option>
-                                <option value="2">2 - Low</option>
-                                <option value="1">1 - Minimal</option>
+                            <label className="block text-sm text-gray-400 mb-1">熱狂度 (Intensity 1-5)</label>
+                            <select
+                                name="intensity"
+                                defaultValue={editingMoment?.intensity || '3'}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                            >
+                                <option value="5">5 - Legendary (伝説級)</option>
+                                <option value="4">4 - High (高)</option>
+                                <option value="3">3 - Medium (中)</option>
+                                <option value="2">2 - Low (低)</option>
+                                <option value="1">1 - Minimal (最小)</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Description</label>
-                            <textarea name="description" rows={5} className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="Context details..." />
+                            <label className="block text-sm text-gray-400 mb-1">詳細説明 (Description)</label>
+                            <textarea
+                                name="description"
+                                rows={5}
+                                defaultValue={editingMoment?.description || ''}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                                placeholder="試合の文脈や詳細など..."
+                            />
                         </div>
-                        <button type="submit" className="w-full bg-[#FFD700] text-black font-bold py-3 rounded hover:bg-[#F0C000] transition-colors">
-                            Broadcast Moment
+                        <button type="submit" className={`w-full font-bold py-3 rounded transition-colors ${editingMoment ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-[#FFD700] hover:bg-[#F0C000] text-black'}`}>
+                            {editingMoment ? '変更を保存 (Update)' : 'モーメントを発行 (Broadcast)'}
                         </button>
                     </form>
                 </div>
 
                 {/* List Section */}
                 <div>
-                    <h3 className="text-lg font-bold mb-4 text-gray-300">History Log</h3>
+                    <h3 className="text-lg font-bold mb-4 text-gray-300">履歴ログ (History)</h3>
                     <div className="space-y-3">
                         {moments?.map((m: any) => (
-                            <div key={m.id} className="bg-white/5 border border-white/10 p-4 rounded flex justify-between items-start">
-                                <div>
-                                    <div className="font-bold text-[#FFD700]">{m.player_name}</div>
-                                    <div className="text-sm text-white">{m.title}</div>
+                            <div key={m.id} className={`bg-white/5 border p-4 rounded flex justify-between items-start ${editingMoment?.id === m.id ? 'border-blue-500/50 bg-blue-900/10' : 'border-white/10'}`}>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="font-bold text-[#FFD700]">{m.player_name}</div>
+                                        <div className="text-xs bg-white/10 px-1.5 py-0.5 rounded text-gray-300">{m.type}</div>
+                                        {/* Usage Badge */}
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${m.usageCount > 0 ? 'bg-green-900/40 border-green-500/50 text-green-400' : 'bg-gray-800 border-gray-600 text-gray-500'}`}>
+                                            配布数: {m.usageCount || 0}枚
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-white font-medium">{m.title}</div>
                                     {m.match_result && (
                                         <div className="text-xs text-gray-400 mt-0.5">
                                             {m.match_result}
-                                            {m.is_finalized && <span className="ml-2 text-green-400 font-bold">✓ FINAL</span>}
+                                            {m.is_finalized && <span className="ml-2 text-green-400 font-bold">✓ 終了済</span>}
                                         </div>
                                     )}
-                                    <div className="text-xs text-gray-500 mt-1">{new Date(m.created_at).toLocaleString()}</div>
+                                    <div className="text-xs text-gray-500 mt-1">{new Date(m.created_at).toLocaleString('ja-JP')}</div>
+
+                                    {/* Action Buttons */}
+                                    <div className="mt-3 flex items-center gap-3">
+                                        {m.usageCount > 0 ? (
+                                            <div title="配布済み(使用中)のため編集不可" className="flex items-center gap-2 text-gray-500 cursor-not-allowed border border-transparent px-2 py-0.5">
+                                                <span className="text-xs">🔒</span>
+                                                <span className="text-xs">使用中 (不可)</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Link
+                                                    href={`/admin/moments?edit=${m.id}`}
+                                                    scroll={false}
+                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10 transition-colors"
+                                                >
+                                                    ✏️ 編集
+                                                </Link>
+
+                                                <DeleteMomentButton id={m.id} />
+                                            </>
+                                        )}
+                                    </div>
 
                                     {/* Finalize Form for Pending Moments */}
                                     {!m.is_finalized && (
-                                        <form action={finalizeMoment.bind(null, m.id)} className="mt-3 flex items-center gap-2">
+                                        <form action={finalizeMoment.bind(null, m.id)} className="mt-2 pt-2 border-t border-white/5 flex items-center gap-2">
                                             <input
                                                 name="finalScore"
                                                 required
-                                                placeholder="Final Score (e.g. 5-3)"
+                                                placeholder="最終スコア (例: 5-3)"
                                                 defaultValue={m.match_result || ''}
                                                 className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white w-32 focus:border-[#FFD700] outline-none"
                                             />
                                             <button type="submit" className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-1 rounded transition-colors">
-                                                Finalize
+                                                試合終了を記録
                                             </button>
                                         </form>
                                     )}
                                 </div>
-                                <div className="bg-white/10 px-2 py-1 rounded text-xs font-mono">
-                                    Lvl {m.intensity}
+                                <div className="ml-4 flex flex-col items-end gap-2">
+                                    <div className="bg-white/10 px-2 py-1 rounded text-xs font-mono whitespace-nowrap">
+                                        Lvl {m.intensity}
+                                    </div>
                                 </div>
                             </div>
                         ))}
                         {moments?.length === 0 && (
-                            <div className="text-gray-500 text-sm">No moments recorded yet.</div>
+                            <div className="text-gray-500 text-sm">記録されたモーメントはありません。</div>
                         )}
                     </div>
                 </div>

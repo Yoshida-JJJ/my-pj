@@ -40,7 +40,7 @@ function LoginForm() {
                 window.location.href = '/';
             }
         } catch (err) {
-            setError('An unexpected error occurred');
+            setError('予期せぬエラーが発生しました');
         } finally {
             setLoading(false);
         }
@@ -57,13 +57,13 @@ function LoginForm() {
 
                 {searchParams.get('registered') === 'true' && !error && (
                     <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl text-sm">
-                        Account created successfully. Please sign in.
+                        アカウント作成が完了しました。ログインしてください。
                     </div>
                 )}
 
                 <div>
                     <label htmlFor="email" className="block text-sm font-medium text-brand-platinum mb-2">
-                        Email address
+                        メールアドレス (Email)
                     </label>
                     <input
                         id="email"
@@ -80,7 +80,7 @@ function LoginForm() {
 
                 <div>
                     <label htmlFor="password" className="block text-sm font-medium text-brand-platinum mb-2">
-                        Password
+                        パスワード (Password)
                     </label>
                     <input
                         id="password"
@@ -101,16 +101,16 @@ function LoginForm() {
                         disabled={loading}
                         className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-brand-blue hover:bg-brand-blue-glow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-all transform hover:scale-[1.02] ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {loading ? 'Signing in...' : 'Sign in'}
+                        {loading ? 'ログイン処理中...' : 'ログイン'}
                     </button>
                 </div>
             </form>
 
             <div className="mt-6 text-center">
                 <p className="text-sm text-brand-platinum/60">
-                    Don't have an account?{' '}
+                    アカウントをお持ちでない場合は{' '}
                     <Link href="/register" className="font-medium text-brand-blue hover:text-brand-blue-glow transition-colors">
-                        Sign up
+                        新規登録
                     </Link>
                 </p>
             </div>
@@ -130,14 +130,14 @@ export default function LoginPage() {
                             </span>
                         </Link>
                         <h2 className="text-3xl font-heading font-bold text-white">
-                            Welcome back
+                            おかえりなさい
                         </h2>
                         <p className="mt-2 text-brand-platinum/60">
-                            Sign in to access your collection.
+                            コレクションにアクセスするにはログインしてください。
                         </p>
                     </div>
 
-                    <Suspense fallback={<div className="text-center text-white">Loading...</div>}>
+                    <Suspense fallback={<div className="text-center text-white">読み込み中...</div>}>
                         <LoginForm />
                     </Suspense>
                 </div>

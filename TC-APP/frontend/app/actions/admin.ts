@@ -75,10 +75,17 @@ export async function approvePayout(payoutId: string) {
  * Updates the moment result and propagates it to all stamped cards.
  */
 export async function finalizeMoment(momentId: string, formData: FormData) {
-    const finalScore = formData.get('finalScore') as string;
+    let finalScore = formData.get('finalScore') as string;
 
     if (!momentId || !finalScore) {
         throw new Error('Missing required fields');
+    }
+
+    // Auto-update inning to "9回裏" if "Game Set" button is pressed (User Requirement)
+    // Replaces pattern like "(Top 1st)" or "(1回表)" with "(9回裏)"
+    const inningPattern = /\((?:Top|Bot)\s+\d+\w+\)|\(\d+回[表裏]\)/gi;
+    if (inningPattern.test(finalScore)) {
+        finalScore = finalScore.replace(inningPattern, '(9回裏)');
     }
 
     console.log(`Finalizing Moment ${momentId} with score: ${finalScore}`);
@@ -139,6 +146,85 @@ export async function finalizeMoment(momentId: string, formData: FormData) {
         await Promise.all(updates);
         console.log('Sync complete.');
     }
+
+    revalidatePath('/admin/moments');
+}
+
+export async function updateLiveMoment(momentId: string, formData: FormData) {
+    const playerName = formData.get('playerName') as string;
+    const title = formData.get('title') as string;
+    const type = formData.get('type') as string;
+    const intensity = parseInt(formData.get('intensity') as string);
+    const description = formData.get('description') as string;
+
+    // Structured Match Data
+    const teamVisitor = formData.get('teamVisitor') as string;
+    const scoreVisitor = formData.get('scoreVisitor') as string;
+    const teamHome = formData.get('teamHome') as string;
+    const scoreHome = formData.get('scoreHome') as string;
+    const progress = formData.get('progress') as string;
+
+    let matchResult = null;
+    if (teamVisitor && teamHome) {
+        matchResult = `${teamVisitor} ${scoreVisitor || '0'} - ${scoreHome || '0'} ${teamHome} (${progress || 'Pre-Game'})`;
+    }
+
+    if (!momentId || !playerName || !title || !type) {
+        throw new Error('Missing required fields');
+    }
+
+    const admin = getAdminClient();
+
+    // Checking usage in listing_items
+    const { count } = await admin
+        .from('listing_items')
+        .select('id', { count: 'exact', head: true })
+        .contains('moment_history', JSON.stringify([{ moment_id: momentId }]));
+
+    if (count && count > 0) {
+        throw new Error("このモーメントはすでにカードに記録（配布）されているため、変更できません。");
+    }
+
+    const { error } = await admin
+        .from('live_moments')
+        .update({
+            player_name: playerName,
+            title,
+            type,
+            intensity,
+            description,
+            match_result: matchResult
+        })
+        .eq('id', momentId);
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/admin/moments');
+}
+
+export async function deleteLiveMoment(momentId: string) {
+    if (!momentId) {
+        throw new Error('Missing momentId');
+    }
+
+    const admin = getAdminClient();
+
+    // Checking usage in listing_items
+    const { count } = await admin
+        .from('listing_items')
+        .select('id', { count: 'exact', head: true })
+        .contains('moment_history', JSON.stringify([{ moment_id: momentId }]));
+
+    if (count && count > 0) {
+        throw new Error("このモーメントはすでにカードに記録（配布）されているため、削除できません。");
+    }
+
+    const { error } = await admin
+        .from('live_moments')
+        .delete()
+        .eq('id', momentId);
+
+    if (error) throw new Error(error.message);
 
     revalidatePath('/admin/moments');
 }

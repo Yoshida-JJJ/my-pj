@@ -20,7 +20,7 @@ The content is organized as follows:
   - Full contents of the file
 </file_format>
 
-<usage_guidelines>意義
+<usage_guidelines>
 - This file should be treated as read-only. Any changes should be made to the
   original repository files, not this packed version.
 - When processing this file, use the file path to distinguish
@@ -43,27 +43,57 @@ The content is organized as follows:
 downloads/
   chikamoto_back.png
   chikamoto_front.png
+  hiroto_takahashi_back_1768266219133.png
+  hiroto_takahashi_front_1768266203603.png
   ichiro_back.png
   ichiro_front.png
+  katsuya_nomura_back_1768266219134_1768282897048.png
+  katsuya_nomura_front_1768282877880.png
+  kazuhiro_kiyohara_back_final_1768383719938.png
+  kazuhiro_kiyohara_front_1768282945883.png
+  kazuma_okamoto_back_1768266187933.png
+  kazuma_okamoto_front_1768266171182.png
+  kazuyoshi_tatsunami_back_1768266236821_1768282929679.png
+  kazuyoshi_tatsunami_front_1768282911734.png
   live-moment-sample-test.csv
   maki_back.png
   maki_front.png
+  masumi_kuwata_back_final_1768383756460.png
+  masumi_kuwata_front_final_1768383738725.png
   murakami_back.png
   murakami_front.png
   roki_sasaki_back.png
   roki_sasaki_front.png
+  sadaharu_oh_back_1768282860731.png
+  sadaharu_oh_front_1768282839477.png
   sakamoto_back.png
   sakamoto_front.png
   sample-card1.zip
   sample-card2.zip
+  seiji_uebayashi_back_1768266283635.png
+  seiji_uebayashi_front_1768266268762.png
   seiya_suzuki_back.png
   seiya_suzuki_front.png
+  shigeo_nagashima_back_1768282823107.png
+  shigeo_nagashima_front_1768282806605.png
   shohei_ohtani_back.png
   shohei_ohtani_front.png
+  shota_imanaga_back_1768266152976.png
+  shota_imanaga_front_1768266137078.png
+  ultimate_phantom_ace_16_9_1768470474343.png
   yamamoto_back.png
   yamamoto_front.png
   yoshida_back.png
   yoshida_front.png
+  yu_darvish_back_1768266119714.png
+  yu_darvish_front_1768266103651.png
+  yuki_ishii_back_final_1768383796303.png
+  yuki_ishii_front_final_1768383773628.png
+  yuki_okabayashi_back_1768266253226.png
+  yuki_okabayashi_front_1768266236820.png
+  yumeto_kanamaru_back_final_1768383840757.png
+  yumeto_kanamaru_front_final_1768383819511.png
+  後半.png
 frontend/
   app/
     actions/
@@ -74,6 +104,7 @@ frontend/
       send-email.ts
     admin/
       moments/
+        DeleteMomentButton.tsx
         page.tsx
       payouts/
         page.tsx
@@ -88,11 +119,15 @@ frontend/
       debug/
         config/
           route.ts
+      debug-auth/
+        route.ts
       debug-email/
         route.ts
       dev/
         moment/
           route.ts
+      estimate-price/
+        route.ts
       ping/
         route.ts
       webhooks/
@@ -106,6 +141,8 @@ frontend/
     collection/
       page.tsx
     community/
+      page.tsx
+    debug-admin/
       page.tsx
     listings/
       [id]/
@@ -157,8 +194,10 @@ frontend/
     HeroSection.tsx
     LiveMomentListener.tsx
     LiveMomentToast.tsx
+    MarketPriceLinks.tsx
     MomentHistoryBadge.tsx
     MomentHistoryPanel.tsx
+    OrderHistory.tsx
     PremiumCardImage.tsx
     PurchaseAnimation.tsx
     ShowcaseCard.tsx
@@ -168,6 +207,7 @@ frontend/
   lib/
     resend.ts
     stripe.ts
+    teams.ts
   migrations/
     03_add_order_status.sql
     04_expand_listing_items.sql
@@ -196,10 +236,12 @@ frontend/
     29_fix_workspace_visibility.sql
     30_self_healing_complete_order.sql
     31_allow_multiple_orders_per_listing.sql
+    32_setup_storage.sql
     debug_helper.sql
     debug_indexes.sql
     debug_triggers.sql
     fix_schema_add_condition_rating.sql
+    production_setup.sql
     reset_data.sql
     Untitled-3
     Untitled-4
@@ -223,6 +265,7 @@ frontend/
     debug_moments.ts
     seed.ts
     simulate_action.ts
+    test-gemini.ts
   types/
     index.ts
   utils/
@@ -465,6 +508,85 @@ export async function finalizeMoment(momentId: string, formData: FormData) {
         await Promise.all(updates);
         console.log('Sync complete.');
     }
+
+    revalidatePath('/admin/moments');
+}
+
+export async function updateLiveMoment(momentId: string, formData: FormData) {
+    const playerName = formData.get('playerName') as string;
+    const title = formData.get('title') as string;
+    const type = formData.get('type') as string;
+    const intensity = parseInt(formData.get('intensity') as string);
+    const description = formData.get('description') as string;
+
+    // Structured Match Data
+    const teamVisitor = formData.get('teamVisitor') as string;
+    const scoreVisitor = formData.get('scoreVisitor') as string;
+    const teamHome = formData.get('teamHome') as string;
+    const scoreHome = formData.get('scoreHome') as string;
+    const progress = formData.get('progress') as string;
+
+    let matchResult = null;
+    if (teamVisitor && teamHome) {
+        matchResult = `${teamVisitor} ${scoreVisitor || '0'} - ${scoreHome || '0'} ${teamHome} (${progress || 'Pre-Game'})`;
+    }
+
+    if (!momentId || !playerName || !title || !type) {
+        throw new Error('Missing required fields');
+    }
+
+    const admin = getAdminClient();
+
+    // Checking usage in listing_items
+    const { count } = await admin
+        .from('listing_items')
+        .select('id', { count: 'exact', head: true })
+        .contains('moment_history', JSON.stringify([{ moment_id: momentId }]));
+
+    if (count && count > 0) {
+        throw new Error("このモーメントはすでにカードに記録（配布）されているため、変更できません。");
+    }
+
+    const { error } = await admin
+        .from('live_moments')
+        .update({
+            player_name: playerName,
+            title,
+            type,
+            intensity,
+            description,
+            match_result: matchResult
+        })
+        .eq('id', momentId);
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/admin/moments');
+}
+
+export async function deleteLiveMoment(momentId: string) {
+    if (!momentId) {
+        throw new Error('Missing momentId');
+    }
+
+    const admin = getAdminClient();
+
+    // Checking usage in listing_items
+    const { count } = await admin
+        .from('listing_items')
+        .select('id', { count: 'exact', head: true })
+        .contains('moment_history', JSON.stringify([{ moment_id: momentId }]));
+
+    if (count && count > 0) {
+        throw new Error("このモーメントはすでにカードに記録（配布）されているため、削除できません。");
+    }
+
+    const { error } = await admin
+        .from('live_moments')
+        .delete()
+        .eq('id', momentId);
+
+    if (error) throw new Error(error.message);
 
     revalidatePath('/admin/moments');
 }
@@ -1135,7 +1257,7 @@ export async function getSellerOrderDetails(orderId: string) {
     // 2. Fetch Listing (Manual Join)
     const { data: listing, error: listingError } = await getAdminClient()
         .from('listing_items')
-        .select('series_name, player_name, images, price, seller_id')
+        .select('id, series_name, player_name, images, price, seller_id')
         .eq('id', order.listing_id)
         .single();
 
@@ -1216,6 +1338,74 @@ export async function getBuyerOrderDetails(orderId: string) {
             title: listing.series_name || listing.player_name
         }
     };
+}
+
+/**
+ * Fetch All Orders for Seller
+ */
+export async function getSellerOrders() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const { data, error } = await getAdminClient()
+        .from('orders')
+        .select(`
+            id,
+            status,
+            total_amount,
+            created_at,
+            listing:listing_items!listing_id (
+                title, player_name, images, series_name
+            )
+        `)
+        .eq('seller_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching seller orders:', error);
+        return [];
+    }
+
+    return data.map((order: any) => ({
+        ...order,
+        listing: Array.isArray(order.listing) ? order.listing[0] : order.listing
+    }));
+}
+
+/**
+ * Fetch All Orders for Buyer
+ */
+export async function getBuyerOrders() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return [];
+
+    const { data, error } = await getAdminClient()
+        .from('orders')
+        .select(`
+            id,
+            status,
+            total_amount,
+            created_at,
+            listing:listing_items!listing_id (
+                title, player_name, images, series_name
+            )
+        `)
+        .eq('buyer_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching buyer orders:', error);
+        return [];
+    }
+
+    return data.map((order: any) => ({
+        ...order,
+        listing: Array.isArray(order.listing) ? order.listing[0] : order.listing
+    }));
 }
 </file>
 
@@ -1511,166 +1701,219 @@ export async function sendWelcomeEmail(email: string, name: string = 'Member') {
 }
 </file>
 
+<file path="frontend/app/admin/moments/DeleteMomentButton.tsx">
+'use client';
+
+import { deleteLiveMoment } from '@/app/actions/admin';
+import { useFormStatus } from 'react-dom';
+
+export default function DeleteMomentButton({ id }: { id: string }) {
+    return (
+        <form action={deleteLiveMoment.bind(null, id)}>
+            <DeleteButtonInner />
+        </form>
+    );
+}
+
+function DeleteButtonInner() {
+    const { pending } = useFormStatus();
+
+    return (
+        <button
+            type="submit"
+            disabled={pending}
+            className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 disabled:opacity-50"
+            onClick={(e) => {
+                if (!confirm('本当に削除しますか？')) e.preventDefault();
+            }}
+        >
+            {pending ? '削除中...' : '🗑️ 削除'}
+        </button>
+    );
+}
+</file>
+
 <file path="frontend/app/admin/moments/page.tsx">
 import { createClient } from '@supabase/supabase-js';
-import { createLiveMoment, finalizeMoment } from '@/app/actions/admin';
+import { createLiveMoment, finalizeMoment, updateLiveMoment, deleteLiveMoment } from '@/app/actions/admin';
+import { TEAM_GROUPS } from '@/lib/teams';
+import Link from 'next/link';
+import DeleteMomentButton from './DeleteMomentButton';
 
-// Admin Client for fetching list (could use standard client if Public Read policy exists)
-// But using Admin ensures we see everything regardless of policy flux.
+// Admin Client for fetching list
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function AdminMomentsPage() {
-    const { data: moments } = await supabaseAdmin
+export default async function AdminMomentsPage({
+    searchParams,
+}: {
+    searchParams: { [key: string]: string | string[] | undefined };
+}) {
+    // Handle searchParams safely
+    const params = await searchParams;
+    const editId = typeof params?.edit === 'string' ? params.edit : null;
+
+    // Fetch list
+    const { data: momentsData } = await supabaseAdmin
         .from('live_moments')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(20);
 
+    // Fetch usage counts (N+1 tolerated for Admin UI)
+    const moments = await Promise.all((momentsData || []).map(async (m) => {
+        const { count } = await supabaseAdmin
+            .from('listing_items')
+            .select('id', { count: 'exact', head: true })
+            .contains('moment_history', JSON.stringify([{ moment_id: m.id }]));
+        return { ...m, usageCount: count || 0 };
+    }));
+
+    // Fetch editing item if needed
+    let editingMoment = null;
+    if (editId) {
+        const { data } = await supabaseAdmin
+            .from('live_moments')
+            .select('*')
+            .eq('id', editId)
+            .single();
+        editingMoment = data;
+    }
+
+    // Parse existing match result to pre-fill detailed fields if editing
+    // match_result format example: "LAD 5 - 3 NYY (Top 9th)"
+    let defaultVisitor = "";
+    let defaultHome = "";
+    let defaultScoreV = "";
+    let defaultScoreH = "";
+    let defaultProgress = "";
+
+    if (editingMoment?.match_result) {
+        try {
+            const regex = /^(.+?)\s+(\d+)\s+-\s+(\d+)\s+(.+?)\s+\((.+)\)$/;
+            const match = editingMoment.match_result.match(regex);
+            if (match) {
+                defaultVisitor = match[1];
+                defaultScoreV = match[2];
+                defaultScoreH = match[3];
+                defaultHome = match[4];
+                defaultProgress = match[5];
+            }
+        } catch (e) {
+            console.error("Failed to parse match result", e);
+        }
+    }
+
     return (
         <div className="p-8">
-            <h2 className="text-2xl font-bold mb-6">Live Moment Operator</h2>
+            <h2 className="text-2xl font-bold mb-6">ライブモーメント管理 (Live Matches)</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Form Section */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-6 h-fit">
-                    <h3 className="text-lg font-bold mb-4 text-[#FFD700]">Create New Moment</h3>
-                    <form action={createLiveMoment} className="space-y-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className={`text-lg font-bold ${editingMoment ? 'text-blue-400' : 'text-[#FFD700]'}`}>
+                            {editingMoment ? 'イベント登録情報の修正' : '新規イベント登録'}
+                        </h3>
+                        {editingMoment && (
+                            <Link href="/admin/moments" className="text-xs text-gray-400 hover:text-white border border-gray-600 px-2 py-1 rounded">
+                                キャンセル
+                            </Link>
+                        )}
+                    </div>
+
+                    <form action={editingMoment ? updateLiveMoment.bind(null, editingMoment.id) : createLiveMoment} className="space-y-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Player Name</label>
-                            <input name="playerName" required className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="e.g. Shohei Ohtani" />
+                            <label className="block text-sm text-gray-400 mb-1">選手名 (Player Name)</label>
+                            <input
+                                name="playerName"
+                                required
+                                defaultValue={editingMoment?.player_name || ''}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                                placeholder="例: 大谷翔平 / Shohei Ohtani"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Title</label>
-                            <input name="title" required className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="e.g. Walk-off Home Run" />
+                            <label className="block text-sm text-gray-400 mb-1">タイトル (Title)</label>
+                            <input
+                                name="title"
+                                required
+                                defaultValue={editingMoment?.title || ''}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                                placeholder="例: Walk-off Home Run"
+                            />
                         </div>
-                        {/* matchResult replacement: Structured Inputs */}
+
+                        {/* Match Status */}
                         <div className="bg-black/30 p-3 rounded border border-white/10 space-y-3">
-                            <label className="block text-sm text-gray-400 -mb-2">Match Status</label>
+                            <label className="block text-sm text-gray-400 -mb-2">試合状況 (Match Status)</label>
 
                             {/* Visitor */}
-                            <div className="flex gap-2">
-                                <select name="teamVisitor" required className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]">
-                                    <option value="">Visitor Team</option>
-                                    <optgroup label="MLB">
-                                        <option value="LAD">LAD (Dodgers)</option>
-                                        <option value="NYY">NYY (Yankees)</option>
-                                        <option value="SD">SD (Padres)</option>
-                                        <option value="HOU">HOU (Astros)</option>
-                                        <option value="ATL">ATL (Braves)</option>
-                                        <option value="PHI">PHI (Phillies)</option>
-                                        <option value="NYM">NYM (Mets)</option>
-                                        <option value="BOS">BOS (Red Sox)</option>
-                                        <option value="LAA">LAA (Angels)</option>
-                                        <option value="CHC">CHC (Cubs)</option>
-                                        <option value="TOR">TOR (Blue Jays)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Central">
-                                        <option value="YG">Giants (Kyojin)</option>
-                                        <option value="T">Tigers (Hanshin)</option>
-                                        <option value="DB">BayStars (DeNA)</option>
-                                        <option value="C">Carp (Hiroshima)</option>
-                                        <option value="D">Dragons (Chunichi)</option>
-                                        <option value="S">Swallows (Yakult)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Pacific">
-                                        <option value="H">Hawks (SoftBank)</option>
-                                        <option value="F">Fighters (Nippon-Ham)</option>
-                                        <option value="M">Marines (Lotte)</option>
-                                        <option value="B">Buffaloes (Orix)</option>
-                                        <option value="E">Eagles (Rakuten)</option>
-                                        <option value="L">Lions (Seibu)</option>
-                                    </optgroup>
-                                    <optgroup label="National">
-                                        <option value="JPN">Samurai Japan</option>
-                                        <option value="USA">Team USA</option>
-                                        <option value="DOM">Dominican Rep</option>
-                                        <option value="VEN">Venezuela</option>
-                                        <option value="PUR">Puerto Rico</option>
-                                        <option value="MEX">Mexico</option>
-                                        <option value="CUB">Cuba</option>
-                                        <option value="CAN">Canada</option>
-                                        <option value="KOR">Korea</option>
-                                        <option value="TPE">Chinese Taipei</option>
-                                        <option value="NLD">Netherlands</option>
-                                        <option value="ITA">Italy</option>
-                                        <option value="AUS">Australia</option>
-                                        <option value="PAN">Panama</option>
-                                        <option value="COL">Colombia</option>
-                                        <option value="GBR">Great Britain</option>
-                                        <option value="CZE">Czech Republic</option>
-                                        <option value="ISR">Israel</option>
-                                        <option value="CHN">China</option>
-                                        <option value="Other">Other</option>
-                                    </optgroup>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-gray-500 w-12">ビジター</span>
+                                <select
+                                    name="teamVisitor"
+                                    required
+                                    defaultValue={defaultVisitor || ''}
+                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                                >
+                                    <option value="">チーム選択...</option>
+                                    {TEAM_GROUPS.map((group) => (
+                                        <optgroup key={group.label} label={group.label}>
+                                            {group.teams.map((team) => (
+                                                <option key={team.code} value={team.code}>{team.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
                                 </select>
-                                <input name="scoreVisitor" type="number" min="0" placeholder="0" className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]" />
+                                <input
+                                    name="scoreVisitor"
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    defaultValue={defaultScoreV || ''}
+                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
+                                />
                             </div>
 
                             {/* Home */}
-                            <div className="flex gap-2">
-                                <select name="teamHome" required className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]">
-                                    <option value="">Home Team</option>
-                                    <optgroup label="MLB">
-                                        <option value="LAD">LAD (Dodgers)</option>
-                                        <option value="NYY">NYY (Yankees)</option>
-                                        <option value="SD">SD (Padres)</option>
-                                        <option value="HOU">HOU (Astros)</option>
-                                        <option value="ATL">ATL (Braves)</option>
-                                        <option value="PHI">PHI (Phillies)</option>
-                                        <option value="NYM">NYM (Mets)</option>
-                                        <option value="BOS">BOS (Red Sox)</option>
-                                        <option value="LAA">LAA (Angels)</option>
-                                        <option value="CHC">CHC (Cubs)</option>
-                                        <option value="TOR">TOR (Blue Jays)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Central">
-                                        <option value="YG">Giants (Kyojin)</option>
-                                        <option value="T">Tigers (Hanshin)</option>
-                                        <option value="DB">BayStars (DeNA)</option>
-                                        <option value="C">Carp (Hiroshima)</option>
-                                        <option value="D">Dragons (Chunichi)</option>
-                                        <option value="S">Swallows (Yakult)</option>
-                                    </optgroup>
-                                    <optgroup label="NPB Pacific">
-                                        <option value="H">Hawks (SoftBank)</option>
-                                        <option value="F">Fighters (Nippon-Ham)</option>
-                                        <option value="M">Marines (Lotte)</option>
-                                        <option value="B">Buffaloes (Orix)</option>
-                                        <option value="E">Eagles (Rakuten)</option>
-                                        <option value="L">Lions (Seibu)</option>
-                                    </optgroup>
-                                    <optgroup label="National">
-                                        <option value="JPN">Samurai Japan</option>
-                                        <option value="USA">Team USA</option>
-                                        <option value="DOM">Dominican Rep</option>
-                                        <option value="VEN">Venezuela</option>
-                                        <option value="PUR">Puerto Rico</option>
-                                        <option value="MEX">Mexico</option>
-                                        <option value="CUB">Cuba</option>
-                                        <option value="CAN">Canada</option>
-                                        <option value="KOR">Korea</option>
-                                        <option value="TPE">Chinese Taipei</option>
-                                        <option value="NLD">Netherlands</option>
-                                        <option value="ITA">Italy</option>
-                                        <option value="AUS">Australia</option>
-                                        <option value="PAN">Panama</option>
-                                        <option value="COL">Colombia</option>
-                                        <option value="GBR">Great Britain</option>
-                                        <option value="CZE">Czech Republic</option>
-                                        <option value="ISR">Israel</option>
-                                        <option value="CHN">China</option>
-                                        <option value="Other">Other</option>
-                                    </optgroup>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-gray-500 w-12">ホーム</span>
+                                <select
+                                    name="teamHome"
+                                    required
+                                    defaultValue={defaultHome || ''}
+                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                                >
+                                    <option value="">チーム選択...</option>
+                                    {TEAM_GROUPS.map((group) => (
+                                        <optgroup key={group.label} label={group.label}>
+                                            {group.teams.map((team) => (
+                                                <option key={team.code} value={team.code}>{team.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
                                 </select>
-                                <input name="scoreHome" type="number" min="0" placeholder="0" className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]" />
+                                <input
+                                    name="scoreHome"
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    defaultValue={defaultScoreH || ''}
+                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
+                                />
                             </div>
 
                             {/* Progress */}
-                            <div>
-                                <select name="progress" className="w-full bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]">
+                            <div className="flex gap-2 items-center">
+                                <span className="text-xs text-gray-500 w-12">進行</span>
+                                <select
+                                    name="progress"
+                                    defaultValue={defaultProgress || 'Top 1st'}
+                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                                >
                                     <option value="Top 1st">Top 1st (1回表)</option>
                                     <option value="Bot 1st">Bot 1st (1回裏)</option>
                                     <option value="Top 2nd">Top 2nd (2回表)</option>
@@ -1693,75 +1936,121 @@ export default async function AdminMomentsPage() {
                                 </select>
                             </div>
                         </div>
+
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Type</label>
-                            <select name="type" className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none">
-                                <option value="HOMERUN">Homerun</option>
-                                <option value="VICTORY">Victory</option>
-                                <option value="RECORD_BREAK">Record Breaker</option>
-                                <option value="BIG_PLAY">Big Play (Highlight/Strikeout)</option>
+                            <label className="block text-sm text-gray-400 mb-1">イベントタイプ (Type)</label>
+                            <select
+                                name="type"
+                                defaultValue={editingMoment?.type || 'HOMERUN'}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                            >
+                                <option value="HOMERUN">ホームラン (Homerun)</option>
+                                <option value="VICTORY">勝利 (Victory)</option>
+                                <option value="RECORD_BREAK">記録達成 (Record Breaker)</option>
+                                <option value="BIG_PLAY">ビッグプレイ/三振 (Big Play)</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Intensity (1-5)</label>
-                            <select name="intensity" className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none">
-                                <option value="5">5 - Legendary</option>
-                                <option value="4">4 - High</option>
-                                <option value="3">3 - Medium</option>
-                                <option value="2">2 - Low</option>
-                                <option value="1">1 - Minimal</option>
+                            <label className="block text-sm text-gray-400 mb-1">熱狂度 (Intensity 1-5)</label>
+                            <select
+                                name="intensity"
+                                defaultValue={editingMoment?.intensity || '3'}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                            >
+                                <option value="5">5 - Legendary (伝説級)</option>
+                                <option value="4">4 - High (高)</option>
+                                <option value="3">3 - Medium (中)</option>
+                                <option value="2">2 - Low (低)</option>
+                                <option value="1">1 - Minimal (最小)</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Description</label>
-                            <textarea name="description" rows={5} className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="Context details..." />
+                            <label className="block text-sm text-gray-400 mb-1">詳細説明 (Description)</label>
+                            <textarea
+                                name="description"
+                                rows={5}
+                                defaultValue={editingMoment?.description || ''}
+                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                                placeholder="試合の文脈や詳細など..."
+                            />
                         </div>
-                        <button type="submit" className="w-full bg-[#FFD700] text-black font-bold py-3 rounded hover:bg-[#F0C000] transition-colors">
-                            Broadcast Moment
+                        <button type="submit" className={`w-full font-bold py-3 rounded transition-colors ${editingMoment ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-[#FFD700] hover:bg-[#F0C000] text-black'}`}>
+                            {editingMoment ? '変更を保存 (Update)' : 'モーメントを発行 (Broadcast)'}
                         </button>
                     </form>
                 </div>
 
                 {/* List Section */}
                 <div>
-                    <h3 className="text-lg font-bold mb-4 text-gray-300">History Log</h3>
+                    <h3 className="text-lg font-bold mb-4 text-gray-300">履歴ログ (History)</h3>
                     <div className="space-y-3">
                         {moments?.map((m: any) => (
-                            <div key={m.id} className="bg-white/5 border border-white/10 p-4 rounded flex justify-between items-start">
-                                <div>
-                                    <div className="font-bold text-[#FFD700]">{m.player_name}</div>
-                                    <div className="text-sm text-white">{m.title}</div>
+                            <div key={m.id} className={`bg-white/5 border p-4 rounded flex justify-between items-start ${editingMoment?.id === m.id ? 'border-blue-500/50 bg-blue-900/10' : 'border-white/10'}`}>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="font-bold text-[#FFD700]">{m.player_name}</div>
+                                        <div className="text-xs bg-white/10 px-1.5 py-0.5 rounded text-gray-300">{m.type}</div>
+                                        {/* Usage Badge */}
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${m.usageCount > 0 ? 'bg-green-900/40 border-green-500/50 text-green-400' : 'bg-gray-800 border-gray-600 text-gray-500'}`}>
+                                            配布数: {m.usageCount || 0}枚
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-white font-medium">{m.title}</div>
                                     {m.match_result && (
                                         <div className="text-xs text-gray-400 mt-0.5">
                                             {m.match_result}
-                                            {m.is_finalized && <span className="ml-2 text-green-400 font-bold">✓ FINAL</span>}
+                                            {m.is_finalized && <span className="ml-2 text-green-400 font-bold">✓ 終了済</span>}
                                         </div>
                                     )}
-                                    <div className="text-xs text-gray-500 mt-1">{new Date(m.created_at).toLocaleString()}</div>
+                                    <div className="text-xs text-gray-500 mt-1">{new Date(m.created_at).toLocaleString('ja-JP')}</div>
+
+                                    {/* Action Buttons */}
+                                    <div className="mt-3 flex items-center gap-3">
+                                        {m.usageCount > 0 ? (
+                                            <div title="配布済み(使用中)のため編集不可" className="flex items-center gap-2 text-gray-500 cursor-not-allowed border border-transparent px-2 py-0.5">
+                                                <span className="text-xs">🔒</span>
+                                                <span className="text-xs">使用中 (不可)</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Link
+                                                    href={`/admin/moments?edit=${m.id}`}
+                                                    scroll={false}
+                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 border border-blue-500/30 px-2 py-0.5 rounded hover:bg-blue-500/10 transition-colors"
+                                                >
+                                                    ✏️ 編集
+                                                </Link>
+
+                                                <DeleteMomentButton id={m.id} />
+                                            </>
+                                        )}
+                                    </div>
 
                                     {/* Finalize Form for Pending Moments */}
                                     {!m.is_finalized && (
-                                        <form action={finalizeMoment.bind(null, m.id)} className="mt-3 flex items-center gap-2">
+                                        <form action={finalizeMoment.bind(null, m.id)} className="mt-2 pt-2 border-t border-white/5 flex items-center gap-2">
                                             <input
                                                 name="finalScore"
                                                 required
-                                                placeholder="Final Score (e.g. 5-3)"
+                                                placeholder="最終スコア (例: 5-3)"
                                                 defaultValue={m.match_result || ''}
                                                 className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-white w-32 focus:border-[#FFD700] outline-none"
                                             />
                                             <button type="submit" className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-1 rounded transition-colors">
-                                                Finalize
+                                                試合終了を記録
                                             </button>
                                         </form>
                                     )}
                                 </div>
-                                <div className="bg-white/10 px-2 py-1 rounded text-xs font-mono">
-                                    Lvl {m.intensity}
+                                <div className="ml-4 flex flex-col items-end gap-2">
+                                    <div className="bg-white/10 px-2 py-1 rounded text-xs font-mono whitespace-nowrap">
+                                        Lvl {m.intensity}
+                                    </div>
                                 </div>
                             </div>
                         ))}
                         {moments?.length === 0 && (
-                            <div className="text-gray-500 text-sm">No moments recorded yet.</div>
+                            <div className="text-gray-500 text-sm">記録されたモーメントはありません。</div>
                         )}
                     </div>
                 </div>
@@ -2027,29 +2316,33 @@ export default async function AdminLayout({
 
     // Double check (Middleware should catch this, but safe to have)
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
-    if (!user || !user.email || !adminEmails.includes(user.email)) {
+    if (!user || !user.email || !adminEmails.some(email => email.toLowerCase() === user.email?.toLowerCase())) {
         redirect('/');
     }
 
     return (
-        <div className="min-h-screen bg-neutral-900 text-white flex">
+        <div className="min-h-screen bg-neutral-900 text-white flex flex-col md:flex-row">
             {/* Admin Sidebar */}
-            <aside className="w-64 bg-black border-r border-white/10 flex-shrink-0">
-                <div className="p-6 border-b border-white/10">
+            <aside className="w-full md:w-64 bg-black border-b md:border-b-0 md:border-r border-white/10 flex-shrink-0">
+                <div className="p-6 border-b border-white/10 flex justify-between items-center md:block">
                     <h1 className="text-xl font-bold tracking-wider text-[#FFD700]">ADMIN PANEL</h1>
+                    <div className="md:hidden text-[10px] text-gray-500 text-right">
+                        Logged in as:<br />
+                        <span className="text-gray-300 truncate w-32 block">{user.email}</span>
+                    </div>
                 </div>
-                <nav className="p-4 space-y-2">
-                    <Link href="/admin" className="block px-4 py-3 rounded hover:bg-white/5 text-gray-300 hover:text-white transition-colors">
+                <nav className="p-4 flex md:block space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-x-visible">
+                    <Link href="/admin" className="whitespace-nowrap px-4 py-2 md:py-3 rounded hover:bg-white/5 text-gray-300 hover:text-white transition-colors block">
                         Dashboard
                     </Link>
-                    <Link href="/admin/moments" className="block px-4 py-3 rounded hover:bg-white/5 text-gray-300 hover:text-white transition-colors">
+                    <Link href="/admin/moments" className="whitespace-nowrap px-4 py-2 md:py-3 rounded hover:bg-white/5 text-gray-300 hover:text-white transition-colors block">
                         Live Moments
                     </Link>
-                    <Link href="/admin/payouts" className="block px-4 py-3 rounded hover:bg-white/5 text-gray-300 hover:text-white transition-colors">
+                    <Link href="/admin/payouts" className="whitespace-nowrap px-4 py-2 md:py-3 rounded hover:bg-white/5 text-gray-300 hover:text-white transition-colors block">
                         Payouts
                     </Link>
                 </nav>
-                <div className="absolute bottom-0 w-64 p-4 border-t border-white/10">
+                <div className="hidden md:block absolute bottom-0 w-64 p-4 border-t border-white/10">
                     <div className="text-xs text-gray-500">
                         Logged in as:<br />
                         <span className="text-gray-300 truncate block">{user.email}</span>
@@ -2070,16 +2363,22 @@ export default async function AdminLayout({
 </file>
 
 <file path="frontend/app/admin/page.tsx">
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createLiveMoment, finalizeMoment } from '@/app/actions/admin';
 
 // Need admin client for global stats if RLS restricts (e.g. counting total users)
-const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getAdminClient = () => {
+    return createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+};
 
 export default async function AdminDashboard() {
+    const supabaseAdmin = getAdminClient();
+
     // 1. Total Users
     const { count: userCount } = await supabaseAdmin
         .from('profiles')
@@ -2097,27 +2396,129 @@ export default async function AdminDashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
-    return (
-        <div className="p-8">
-            <h2 className="text-2xl font-bold mb-6">Dashboard Overview</h2>
+    // 4. Recent Moments (History)
+    const { data: moments } = await supabaseAdmin
+        .from('live_moments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* KPI Card 1 */}
+    return (
+        <div className="p-4 md:p-8 space-y-10">
+            <h2 className="text-2xl font-bold mb-6">Admin Control Panel</h2>
+
+            {/* KPI Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                 <div className="bg-white/5 rounded-xl border border-white/10 p-6">
                     <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider">Total Users</h3>
                     <p className="text-4xl font-mono font-bold text-white mt-2">{userCount ?? '-'}</p>
                 </div>
-
-                {/* KPI Card 2 */}
                 <div className="bg-white/5 rounded-xl border border-white/10 p-6">
                     <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider">Active Listings</h3>
                     <p className="text-4xl font-mono font-bold text-[#FFD700] mt-2">{listingCount ?? '-'}</p>
                 </div>
-
-                {/* KPI Card 3 */}
                 <div className="bg-white/5 rounded-xl border border-white/10 p-6">
                     <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider">Pending Payouts</h3>
                     <p className="text-4xl font-mono font-bold text-red-500 mt-2">{payoutCount ?? '-'}</p>
+                </div>
+            </div>
+
+            {/* Event Registration Section (Live Moments) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-bold mb-6 text-[#FFD700] flex items-center gap-2">
+                        <span>Live Moment / Event Registration</span>
+                    </h3>
+
+                    <form action={createLiveMoment} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-tighter">Player Name</label>
+                                <input name="playerName" required className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="e.g. Shohei Ohtani" />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-tighter">Event Title</label>
+                                <input name="title" required className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none" placeholder="e.g. 50-50 Achievement" />
+                            </div>
+                        </div>
+
+                        <div className="bg-black/30 p-3 rounded border border-white/10 space-y-3">
+                            <label className="block text-[10px] text-gray-400 mb-1 uppercase">Match Status / Live Score</label>
+                            <div className="flex gap-2">
+                                <select name="teamVisitor" required className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-xs">
+                                    <option value="">Visitor Team</option>
+                                    <option value="LAD">LAD (Dodgers)</option>
+                                    <option value="NYY">NYY (Yankees)</option>
+                                    <option value="SD">SD (Padres)</option>
+                                    <option value="JPN">Samurai Japan</option>
+                                </select>
+                                <input name="scoreVisitor" type="number" min="0" placeholder="0" className="w-12 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center" />
+                                <span className="text-gray-500">vs</span>
+                                <input name="scoreHome" type="number" min="0" placeholder="0" className="w-12 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center" />
+                                <select name="teamHome" required className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-xs">
+                                    <option value="">Home Team</option>
+                                    <option value="LAD">LAD (Dodgers)</option>
+                                    <option value="NYY">NYY (Yankees)</option>
+                                    <option value="SD">SD (Padres)</option>
+                                    <option value="JPN">Samurai Japan</option>
+                                </select>
+                            </div>
+                            <select name="progress" className="w-full bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-xs">
+                                <option value="Top 1st">Top 1st</option>
+                                <option value="Final">Final (試合終了)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs text-gray-400 mb-1">Impact Level (1-5)</label>
+                            <input type="range" name="intensity" min="1" max="5" defaultValue="3" className="w-full accent-[#FFD700]" />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs text-gray-400 mb-1">Details</label>
+                            <textarea name="description" rows={3} className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none text-sm" placeholder="Additional context..." />
+                        </div>
+
+                        <button type="submit" className="w-full bg-gradient-to-r from-[#FFD700] to-[#F0B000] text-black font-black py-4 rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-[#FFD700]/10">
+                            BROADCAST EVENT
+                        </button>
+                    </form>
+                </div>
+
+                {/* History Quick-View */}
+                <div>
+                    <h3 className="text-xl font-bold mb-6 text-gray-300">Recent Events</h3>
+                    <div className="space-y-3">
+                        {moments?.map((m: any) => (
+                            <div key={m.id} className="bg-white/5 border border-white/10 p-4 rounded-xl flex justify-between items-start">
+                                <div>
+                                    <div className="font-bold text-[#FFD700]">{m.player_name}</div>
+                                    <div className="text-sm text-white">{m.title}</div>
+                                    <div className="text-[10px] text-gray-500 mt-1">{new Date(m.created_at).toLocaleString()}</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="bg-white/10 px-2 py-1 rounded text-[10px] font-bold">LVL {m.intensity}</div>
+                                    {m.is_finalized && <span className="text-green-400 text-[10px] font-bold mt-1 block">✓ FINAL</span>}
+                                </div>
+                            </div>
+                        ))}
+                        <Link href="/admin/moments" className="block text-center py-2 text-xs text-gray-500 hover:text-white transition-colors">
+                            View all event history →
+                        </Link>
+                    </div>
+
+                    <div className="mt-8 p-6 bg-red-500/5 border border-red-500/10 rounded-2xl">
+                        <h4 className="text-red-500 font-bold mb-2">Payout Queue</h4>
+                        <p className="text-sm text-gray-400">There are currently <span className="text-white font-bold">{payoutCount ?? 0}</span> payout requests pending review.</p>
+                        <Link href="/admin/payouts" className="inline-block mt-4 text-xs font-bold bg-red-500/10 text-red-500 px-4 py-2 rounded-full border border-red-500/20 hover:bg-red-500/20">
+                            Process Payouts →
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2152,21 +2553,26 @@ export async function POST(req: Request) {
         });
 
         const { object } = await generateObject({
-            // In this simulated environment, sticking to 2.0 Flash Exp is safer than guessing 3.0 string.
-            model: google('gemini-2.0-flash-exp'),
+            // Using generic alias for best availability
+            model: google('gemini-flash-latest'),
 
             schema: z.object({
-                playerName: fieldSchema.describe('Full name of the player. STRICT RULE: For Japanese players (e.g. Ohtani, Ichiro, Darvish, Yamamoto, Senga, Yoshida, etc.), you MUST output the name in "Kanji (Romaji)" format (e.g. "大谷翔平 (Shohei Ohtani)"). If the card is in English but the player is Japanese, you MUST still provide the Kanji. Do NOT output only English for Japanese players.'),
+                playerName: fieldSchema.describe('Full name of the player. STRICT RULE: For Japanese players, you MUST output the name in "Kanji (Romaji)" format (e.g. "大谷翔平 (Shohei Ohtani)").'),
                 team: fieldSchema.describe('Team name.'),
                 year: fieldSchema.describe('Year of the card.'),
                 brand: fieldSchema.describe('Card manufacturer/brand.'),
                 cardNumber: fieldSchema.describe('Card number.'),
 
                 // Features
-                variation: fieldSchema.describe('Variation name (e.g. Refractor, Gold, Holo). Null if base card.'),
+                variation: fieldSchema.describe('Variation name or parallel type (e.g. "Pink Refractor", "Gold", "Base").'),
+                parallelType: fieldSchema.describe('Specific parallel color/type if applicable (e.g. "Orange", "Camo", "Cracked Ice"). Null if base.'),
+                isRefractor: fieldSchema.describe('Is this a Refractor/Chrome/Shiny card? "true" or "false".'),
                 serialNumber: fieldSchema.describe('Serial number if visible (e.g. 10/50).'),
+
                 isRookie: fieldSchema.describe('Is this a Rookie Card (RC)? "true" or "false".'),
+
                 isAutograph: fieldSchema.describe('Is this an Autographed card? "true" or "false".'),
+                autographType: fieldSchema.describe('Type of autograph: "On-Card", "Sticker", or "Facsimile" (printed). Null if no auto.'),
 
                 // Grading
                 isGraded: fieldSchema.describe('Is the card encased/graded? "true" or "false".'),
@@ -2179,7 +2585,7 @@ export async function POST(req: Request) {
                 {
                     role: 'user',
                     content: [
-                        { type: 'text', text: 'Analyze this baseball card. Extract all visible details. IMPORTANT: For Japanese players, you MUST output the name in "Kanji (Romaji)" format. Examples: "大谷翔平 (Shohei Ohtani)", "ダルビッシュ有 (Yu Darvish)", "鈴木誠也 (Seiya Suzuki)". Never output only English for Japanese players. For boolean flags (Rookie, Autograph, Graded), output "true" or "false".' },
+                        { type: 'text', text: 'Analyze this baseball card. Extract details precisely. \n1. **Parallel/Variation**: Look carefully for colors (Orange, Blue, Gold) and texture (Refractor, Wave, Mojo). \n2. **Autograph**: Distinction between real auto (ink) and facsimile (printed) is crucial. \n3. **Japanese Players**: ALWAYS output "Kanji (Romaji)" format. Example: "山本由伸 (Yoshinobu Yamamoto)". \n4. **Booleans**: Output "true"/"false" as strings.' },
                         { type: 'image', image: base64Image },
                     ],
                 },
@@ -2382,6 +2788,46 @@ export async function GET() {
 }
 </file>
 
+<file path="frontend/app/api/debug-auth/route.ts">
+import { createClient } from '@/utils/supabase/server';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const adminEmailsRaw = process.env.ADMIN_EMAILS || '';
+        const publicAdminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || '';
+        const adminEmails = adminEmailsRaw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
+        const userEmail = user?.email?.toLowerCase() || '';
+        const isAdmin = userEmail ? adminEmails.includes(userEmail) : false;
+
+        return NextResponse.json({
+            status: 'success',
+            diagnostics: {
+                currentUser: user?.email || 'Guest',
+                isAdmin,
+                adminCount: adminEmails.length,
+                // We don't return the full list for security, but we return a hint
+                adminListHint: adminEmails.map(e => e[0] + '***' + e.split('@')[1]).join(', '),
+                envSet: {
+                    ADMIN_EMAILS: !!process.env.ADMIN_EMAILS,
+                    NEXT_PUBLIC_ADMIN_EMAILS: !!process.env.NEXT_PUBLIC_ADMIN_EMAILS,
+                    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+                }
+            }
+        });
+    } catch (error: any) {
+        return NextResponse.json({
+            status: 'error',
+            message: error.message
+        }, { status: 500 });
+    }
+}
+</file>
+
 <file path="frontend/app/api/debug-email/route.ts">
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
@@ -2476,6 +2922,271 @@ export async function POST() {
 }
 </file>
 
+<file path="frontend/app/api/estimate-price/route.ts">
+import { NextRequest, NextResponse } from 'next/server';
+
+// ============================================================
+// Types
+// ============================================================
+
+interface EstimatePriceRequest {
+    playerName: string;
+    year?: string;
+    brand?: string;
+    cardNumber?: string;
+    variation?: string;
+    isAutograph?: boolean;
+    isGraded?: boolean;
+    grade?: string;
+}
+
+interface RecentSale {
+    title: string;
+    price: number;
+    currency: string;
+    soldDate: string;
+    condition?: string;
+}
+
+interface EstimatePriceResponse {
+    estimatedPriceRange: {
+        min: number;
+        max: number;
+        currency: string;
+    };
+    recentSales: RecentSale[];
+    dataSource: 'ebay' | 'mock';
+    searchQuery: string;
+}
+
+// ============================================================
+// eBay API Integration
+// ============================================================
+
+async function getEbayAccessToken(): Promise<string | null> {
+    const clientId = process.env.EBAY_CLIENT_ID;
+    const clientSecret = process.env.EBAY_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+        return null;
+    }
+
+    try {
+        const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+        const response = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${credentials}`,
+            },
+            body: 'grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope',
+        });
+
+        if (!response.ok) {
+            console.error('eBay OAuth failed:', await response.text());
+            return null;
+        }
+
+        const data = await response.json();
+        return data.access_token;
+    } catch (error) {
+        console.error('eBay OAuth error:', error);
+        return null;
+    }
+}
+
+async function searchEbaySoldListings(
+    query: string,
+    accessToken: string
+): Promise<{ sales: RecentSale[]; priceRange: { min: number; max: number } } | null> {
+    try {
+        // eBay Browse API - Search for completed/sold items
+        const searchUrl = new URL('https://api.ebay.com/buy/browse/v1/item_summary/search');
+        searchUrl.searchParams.set('q', query);
+        searchUrl.searchParams.set('filter', 'buyingOptions:{AUCTION},soldItems:true');
+        searchUrl.searchParams.set('limit', '10');
+        searchUrl.searchParams.set('sort', '-endDate');
+
+        const response = await fetch(searchUrl.toString(), {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            console.error('eBay Search failed:', await response.text());
+            return null;
+        }
+
+        const data = await response.json();
+        const items = data.itemSummaries || [];
+
+        if (items.length === 0) {
+            return null;
+        }
+
+        const sales: RecentSale[] = items.slice(0, 5).map((item: any) => ({
+            title: item.title,
+            price: parseFloat(item.price?.value || '0'),
+            currency: item.price?.currency || 'USD',
+            soldDate: item.itemEndDate || new Date().toISOString(),
+            condition: item.condition,
+        }));
+
+        const prices = sales.map(s => s.price).filter(p => p > 0);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+
+        return { sales, priceRange: { min, max } };
+    } catch (error) {
+        console.error('eBay Search error:', error);
+        return null;
+    }
+}
+
+// ============================================================
+// Mock Data Generator
+// ============================================================
+
+function generateMockData(request: EstimatePriceRequest): EstimatePriceResponse {
+    const { playerName, year, brand, variation, isAutograph, isGraded, grade } = request;
+
+    // Base price calculation based on card attributes
+    let basePrice = 1000; // ¥1,000 base
+
+    // Famous players get higher prices
+    const famousPlayers = ['ohtani', '大谷', 'trout', 'judge', 'soto', 'acuna'];
+    const isTopPlayer = famousPlayers.some(p =>
+        playerName.toLowerCase().includes(p)
+    );
+    if (isTopPlayer) basePrice *= 5;
+
+    // Recent cards (2020+) are generally more valuable
+    const cardYear = parseInt(year || '2020');
+    if (cardYear >= 2020) basePrice *= 1.5;
+
+    // Premium variations
+    const premiumVariations = ['refractor', 'gold', 'auto', 'parallel', 'chrome'];
+    const isPremium = premiumVariations.some(v =>
+        (variation || '').toLowerCase().includes(v) ||
+        (brand || '').toLowerCase().includes(v)
+    );
+    if (isPremium) basePrice *= 2;
+
+    // Autograph premium
+    if (isAutograph) basePrice *= 3;
+
+    // Graded premium
+    if (isGraded) {
+        basePrice *= 1.5;
+        const gradeNum = parseFloat(grade || '9');
+        if (gradeNum >= 10) basePrice *= 2;
+        else if (gradeNum >= 9.5) basePrice *= 1.5;
+    }
+
+    // Add variance for realistic range
+    const min = Math.round(basePrice * 0.7);
+    const max = Math.round(basePrice * 1.3);
+
+    // Generate mock recent sales
+    const mockSales: RecentSale[] = [];
+    const baseDate = new Date();
+    const conditions = ['PSA 10', 'PSA 9', 'BGS 9.5', 'Raw NM', 'Raw EX'];
+
+    for (let i = 0; i < 5; i++) {
+        const saleDate = new Date(baseDate);
+        saleDate.setDate(saleDate.getDate() - (i * 3 + Math.floor(Math.random() * 5)));
+
+        const salePrice = min + Math.random() * (max - min);
+
+        mockSales.push({
+            title: `${year || '2024'} ${brand || 'Topps'} ${playerName} ${variation || 'Base'} #${Math.floor(Math.random() * 300) + 1}`,
+            price: Math.round(salePrice),
+            currency: 'JPY',
+            soldDate: saleDate.toISOString(),
+            condition: conditions[i % conditions.length],
+        });
+    }
+
+    return {
+        estimatedPriceRange: { min, max, currency: 'JPY' },
+        recentSales: mockSales,
+        dataSource: 'mock',
+        searchQuery: buildSearchQuery(request),
+    };
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function buildSearchQuery(request: EstimatePriceRequest): string {
+    const parts = [
+        request.playerName,
+        request.year,
+        request.brand,
+        request.variation,
+    ].filter(Boolean);
+
+    if (request.isAutograph) parts.push('autograph');
+    if (request.isGraded && request.grade) parts.push(request.grade);
+
+    return parts.join(' ');
+}
+
+// ============================================================
+// API Handler
+// ============================================================
+
+export async function POST(req: NextRequest) {
+    try {
+        const body: EstimatePriceRequest = await req.json();
+
+        if (!body.playerName) {
+            return NextResponse.json(
+                { error: 'playerName is required' },
+                { status: 400 }
+            );
+        }
+
+        const searchQuery = buildSearchQuery(body);
+
+        // Try eBay API first
+        const accessToken = await getEbayAccessToken();
+
+        if (accessToken) {
+            const ebayResult = await searchEbaySoldListings(searchQuery, accessToken);
+
+            if (ebayResult && ebayResult.sales.length > 0) {
+                return NextResponse.json({
+                    estimatedPriceRange: {
+                        ...ebayResult.priceRange,
+                        currency: 'USD',
+                    },
+                    recentSales: ebayResult.sales,
+                    dataSource: 'ebay',
+                    searchQuery,
+                } as EstimatePriceResponse);
+            }
+        }
+
+        // Fallback to mock data
+        console.log('Using mock data for price estimation (eBay API not configured or no results)');
+        const mockResponse = generateMockData(body);
+
+        return NextResponse.json(mockResponse);
+    } catch (error: any) {
+        console.error('Price Estimation Error:', error);
+        return NextResponse.json(
+            { error: error.message || 'Internal server error' },
+            { status: 500 }
+        );
+    }
+}
+</file>
+
 <file path="frontend/app/api/ping/route.ts">
 import { NextResponse } from 'next/server';
 
@@ -2519,8 +3230,9 @@ export async function POST(req: NextRequest) {
             signature,
             process.env.STRIPE_WEBHOOK_SECRET!
         );
+        console.log(`[Webhook] Signature verified. Event Type: ${event.type}`);
     } catch (err: any) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
+        console.error(`[Webhook] Signature verification failed: ${err.message}`);
         return NextResponse.json({ error: 'Webhook Error' }, { status: 400 });
     }
 
@@ -2530,6 +3242,8 @@ export async function POST(req: NextRequest) {
 
         // Retrieve metadata
         const md = session.metadata;
+        console.log('[Webhook] Session Metadata:', md);
+
         const orderId = md?.orderId;
         const listingId = md?.listingId;
 
@@ -3888,6 +4602,46 @@ export default function CommunityPage() {
 }
 </file>
 
+<file path="frontend/app/debug-admin/page.tsx">
+import { createClient } from '@/utils/supabase/server';
+
+export default async function DebugAdminPage() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const adminEmailsRaw = process.env.ADMIN_EMAILS || 'NOT SET';
+    const publicAdminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'NOT SET';
+    const adminEmailsList = adminEmailsRaw.split(',').map(e => e.trim().toLowerCase());
+
+    const currentUserEmail = user?.email?.toLowerCase() || 'NOT LOGGED IN';
+    const isMatched = user?.email ? adminEmailsList.includes(currentUserEmail) : false;
+
+    return (
+        <div style={{ padding: '40px', fontFamily: 'monospace', backgroundColor: '#111', color: '#eee', minHeight: '100vh' }}>
+            <h1 style={{ color: '#FFD700' }}>Admin Authorization Debug</h1>
+            <div style={{ backgroundColor: '#222', padding: '20px', borderRadius: '8px', border: '1px solid #444' }}>
+                <p><strong>Logged in as:</strong> {user?.email || 'None'}</p>
+                <p><strong>Environment ADMIN_EMAILS:</strong> {adminEmailsRaw}</p>
+                <p><strong>Parsed Admin List:</strong> {JSON.stringify(adminEmailsList)}</p>
+                <hr style={{ border: '0', borderTop: '1px solid #444', margin: '20px 0' }} />
+                <p style={{ fontSize: '1.5rem' }}>
+                    <strong>Result:</strong> {isMatched ? <span style={{ color: '#4ade80' }}>MATCHED (ACCESS GRANTED)</span> : <span style={{ color: '#f87171' }}>MISMATCH (ACCESS DENIED)</span>}
+                </p>
+            </div>
+
+            <div style={{ marginTop: '40px', fontSize: '0.8rem', color: '#888' }}>
+                <p>Possible causes for mismatch:</p>
+                <ul>
+                    <li>The email in ADMIN_EMAILS has a typo or extra space.</li>
+                    <li>Vercel environment variables are not yet applied (requires redeploy).</li>
+                    <li>Lowercase/Uppercase mismatch (the debug above normalizes to lowercase).</li>
+                </ul>
+            </div>
+        </div>
+    );
+}
+</file>
+
 <file path="frontend/app/listings/[id]/page.tsx">
 'use client';
 
@@ -4096,7 +4850,7 @@ export default function ListingDetail() {
             <div className="max-w-7xl mx-auto w-full flex-1">
                 <nav className="mb-8">
                     <Link href="/market" className="text-brand-platinum hover:text-white font-medium flex items-center transition-colors group">
-                        <span className="mr-2 group-hover:-translate-x-1 transition-transform">←</span> Back to Market
+                        <span className="mr-2 group-hover:-translate-x-1 transition-transform">←</span> マーケットに戻る
                     </Link>
                 </nav>
 
@@ -4300,7 +5054,7 @@ export default function ListingDetail() {
                                         />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-brand-platinum/50 uppercase tracking-wider">Seller</p>
+                                        <p className="text-xs text-brand-platinum/50 uppercase tracking-wider">出品者</p>
                                         <Link href={`/profile/${listing.seller_id}`} className="text-white font-medium hover:text-brand-blue transition-colors">
                                             {getSellerName(listing.seller)}
                                         </Link>
@@ -4310,29 +5064,29 @@ export default function ListingDetail() {
 
                             {/* --- Product Details (Spec Sheet) --- */}
                             <div className="border-t border-brand-platinum/10 py-6">
-                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-4">Product Details</h3>
+                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-4">商品詳細 (Product Details)</h3>
                                 <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
                                     <div className="col-span-1">
-                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Team</dt>
+                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">チーム (Team)</dt>
                                         <dd className="font-medium text-white">{listing.team || '---'}</dd>
                                     </div>
                                     <div className="col-span-1">
-                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Year</dt>
+                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">年度 (Year)</dt>
                                         <dd className="font-medium text-white">{listing.year || '---'}</dd>
                                     </div>
                                     <div className="col-span-1">
-                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Brand</dt>
+                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">ブランド (Brand)</dt>
                                         <dd className="font-medium text-white">{listing.manufacturer || '---'}</dd>
                                     </div>
                                     {listing.variation && (
                                         <div className="col-span-1">
-                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Variation</dt>
+                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">バリエーション</dt>
                                             <dd className="font-medium text-white">{listing.variation}</dd>
                                         </div>
                                     )}
                                     {listing.serial_number && (
                                         <div className="col-span-1">
-                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Serial Number</dt>
+                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">シリアル番号</dt>
                                             <dd className="font-mono text-brand-gold">{listing.serial_number}</dd>
                                         </div>
                                     )}
@@ -4342,36 +5096,36 @@ export default function ListingDetail() {
                             {/* --- Description --- */}
                             {listing.description && (
                                 <div className="border-t border-brand-platinum/10 py-6">
-                                    <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-3">Description</h3>
+                                    <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-3">商品説明 (Description)</h3>
                                     <p className="text-brand-platinum/80 leading-relaxed whitespace-pre-wrap">{listing.description}</p>
                                 </div>
                             )}
 
                             <div className="border-t border-brand-platinum/10 py-8">
-                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-6">Condition & Grading</h3>
+                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-6">状態・グレーディング (Condition)</h3>
                                 <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                                     <div>
-                                        <p className="text-xs text-brand-platinum/50 uppercase mb-1">Graded</p>
-                                        <p className="font-medium text-white text-lg">{listing.condition_grading.is_graded ? 'Yes' : 'No'}</p>
+                                        <p className="text-xs text-brand-platinum/50 uppercase mb-1">鑑定有無 (Graded)</p>
+                                        <p className="font-medium text-white text-lg">{listing.condition_grading.is_graded ? 'あり (Yes)' : 'なし (No)'}</p>
                                     </div>
                                     {!listing.condition_grading.is_graded && (
                                         <div>
-                                            <p className="text-xs text-brand-platinum/50 uppercase mb-1">Condition</p>
+                                            <p className="text-xs text-brand-platinum/50 uppercase mb-1">状態 (Condition)</p>
                                             <p className="font-medium text-white text-lg">{listing.condition_rating || listing.condition_grading.service || '---'}</p>
                                         </div>
                                     )}
                                     {listing.condition_grading.is_graded && (
                                         <>
                                             <div>
-                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">Service</p>
+                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">鑑定機関 (Service)</p>
                                                 <p className="font-medium text-white text-lg">{listing.condition_grading.service}</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">Score</p>
+                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">グレード点数 (Score)</p>
                                                 <p className="font-heading font-bold text-3xl text-brand-blue text-glow">{listing.condition_grading.score}</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">Cert #</p>
+                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">証明番号 (Cert #)</p>
                                                 <p className="font-mono text-sm text-brand-platinum">{listing.condition_grading.certification_number}</p>
                                             </div>
                                         </>
@@ -4438,11 +5192,11 @@ export default function ListingDetail() {
                                 <div className="flex items-end justify-between mb-8">
                                     <div>
                                         <p className="text-sm text-brand-platinum/50 uppercase tracking-wider mb-1">
-                                            {listing.status === 'Display' ? 'Status' : 'Current Price'}
+                                            {listing.status === 'Display' ? 'ステータス' : '現在価格'}
                                         </p>
                                         {listing.status === 'Display' ? (
                                             <span className="px-4 py-2 rounded-lg bg-brand-platinum/10 border border-brand-platinum/20 text-white font-bold tracking-wider">
-                                                DISPLAY ONLY
+                                                展示のみ (Display Only)
                                             </span>
                                         ) : (
                                             <p className="text-5xl font-heading font-bold text-brand-gold text-gold-glow tracking-tight">
@@ -4454,12 +5208,12 @@ export default function ListingDetail() {
 
                                 {user?.id === listing.seller_id ? (
                                     <div className="bg-brand-dark-light/50 p-6 rounded-xl text-center border border-brand-platinum/10">
-                                        <p className="text-brand-platinum font-medium">You are the seller of this item.</p>
+                                        <p className="text-brand-platinum font-medium">あなたの出品商品です。</p>
                                         <button
                                             onClick={() => setIsEditModalOpen(true)}
                                             className="mt-4 text-brand-blue hover:text-brand-blue-glow text-sm font-bold uppercase tracking-wider transition-colors"
                                         >
-                                            Edit Listing
+                                            出品を編集
                                         </button>
                                     </div>
                                 ) : (
@@ -4470,17 +5224,17 @@ export default function ListingDetail() {
                                                     href={`/checkout/${listing.id}`}
                                                     className="block w-full bg-brand-blue hover:bg-brand-blue-glow text-white text-xl font-bold py-5 rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)] hover:scale-[1.02] text-center"
                                                 >
-                                                    Buy Now
+                                                    購入手続きへ
                                                 </Link>
                                                 <div className="flex items-center justify-center mt-6 gap-2 text-brand-platinum/40 text-sm">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                    Secure transaction via Stripe (Mock)
+                                                    Secure transaction via Stripe
                                                 </div>
                                             </>
                                         ) : (
                                             <div className="bg-brand-dark-light/30 p-6 rounded-xl text-center border border-brand-platinum/5">
                                                 <p className="text-brand-platinum/60">
-                                                    This item is {listing.status === 'Display' ? 'for display only' : 'not available for purchase'}.
+                                                    この商品は{listing.status === 'Display' ? '展示のみで' : '現在'}購入できません。
                                                 </p>
                                             </div>
                                         )}
@@ -4549,7 +5303,7 @@ function LoginForm() {
                 window.location.href = '/';
             }
         } catch (err) {
-            setError('An unexpected error occurred');
+            setError('予期せぬエラーが発生しました');
         } finally {
             setLoading(false);
         }
@@ -4566,13 +5320,13 @@ function LoginForm() {
 
                 {searchParams.get('registered') === 'true' && !error && (
                     <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl text-sm">
-                        Account created successfully. Please sign in.
+                        アカウント作成が完了しました。ログインしてください。
                     </div>
                 )}
 
                 <div>
                     <label htmlFor="email" className="block text-sm font-medium text-brand-platinum mb-2">
-                        Email address
+                        メールアドレス (Email)
                     </label>
                     <input
                         id="email"
@@ -4589,7 +5343,7 @@ function LoginForm() {
 
                 <div>
                     <label htmlFor="password" className="block text-sm font-medium text-brand-platinum mb-2">
-                        Password
+                        パスワード (Password)
                     </label>
                     <input
                         id="password"
@@ -4610,16 +5364,16 @@ function LoginForm() {
                         disabled={loading}
                         className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-brand-blue hover:bg-brand-blue-glow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue transition-all transform hover:scale-[1.02] ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {loading ? 'Signing in...' : 'Sign in'}
+                        {loading ? 'ログイン処理中...' : 'ログイン'}
                     </button>
                 </div>
             </form>
 
             <div className="mt-6 text-center">
                 <p className="text-sm text-brand-platinum/60">
-                    Don't have an account?{' '}
+                    アカウントをお持ちでない場合は{' '}
                     <Link href="/register" className="font-medium text-brand-blue hover:text-brand-blue-glow transition-colors">
-                        Sign up
+                        新規登録
                     </Link>
                 </p>
             </div>
@@ -4639,14 +5393,14 @@ export default function LoginPage() {
                             </span>
                         </Link>
                         <h2 className="text-3xl font-heading font-bold text-white">
-                            Welcome back
+                            おかえりなさい
                         </h2>
                         <p className="mt-2 text-brand-platinum/60">
-                            Sign in to access your collection.
+                            コレクションにアクセスするにはログインしてください。
                         </p>
                     </div>
 
-                    <Suspense fallback={<div className="text-center text-white">Loading...</div>}>
+                    <Suspense fallback={<div className="text-center text-white">読み込み中...</div>}>
                         <LoginForm />
                     </Suspense>
                 </div>
@@ -5468,6 +6222,18 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
                         <h3 className="text-green-400 font-bold text-xl mb-2">Transaction Completed</h3>
                         <p className="text-brand-platinum/60 text-sm">Thank you for your purchase.</p>
                     </div>
+                ) : order.status === 'processing' || order.status === 'open' || order.status === 'pending' ? (
+                    <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-yellow-500 mb-4"></div>
+                        <h3 className="text-yellow-400 font-bold text-xl mb-2">Payment Processing</h3>
+                        <p className="text-brand-platinum/60 text-sm">
+                            We are confirming your payment. This typically takes a few moments.<br />
+                            Once confirmed, you will be able to record your moments.
+                        </p>
+                        <button onClick={() => window.location.reload()} className="mt-4 text-xs text-yellow-500/80 hover:text-yellow-400 underline">
+                            Check Status Again
+                        </button>
+                    </div>
                 ) : (
                     <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-xl text-center text-brand-platinum/60">
                         Waiting for seller to ship...
@@ -5490,38 +6256,14 @@ import { useEffect, useState, use } from 'react'; // React 19: use() for params
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
 import { markAsShipped, getSellerOrderDetails } from '../../../actions/order';
+import { SellerOrderDetail } from '../../../../types/index';
 
-interface OrderDetail {
-    id: string;
-    status: string;
-    listing: {
-        title: string;
-        player_name: string;
-        images: string[];
-        price: number;
-    };
-    total_amount: number;
-    created_at: string;
-    shipping_address_snapshot: {
-        name: string;
-        postal_code: string;
-        address: string;
-        phone: string;
-    } | null;
-    shipping_name?: string; // Legacy fallback
-    shipping_address?: string;
-    shipping_postal_code?: string;
-    shipping_phone?: string;
-    tracking_number?: string;
-    carrier?: string;
-    shipped_at?: string;
-    completed_at?: string;
-}
+
 
 export default function SellerOrderPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
-    const [order, setOrder] = useState<OrderDetail | null>(null);
+    const [order, setOrder] = useState<SellerOrderDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -5537,7 +6279,7 @@ export default function SellerOrderPage({ params }: { params: Promise<{ id: stri
 
             try {
                 const data = await getSellerOrderDetails(id);
-                setOrder(data as any);
+                setOrder(data as SellerOrderDetail);
                 setLoading(false);
             } catch (error: any) {
                 console.error('Fetch Order Error:', error);
@@ -6577,6 +7319,7 @@ import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { getAvailableBalance } from '../../app/actions/payout';
+import OrderHistory from '../../components/OrderHistory';
 // import { createClient } from '@/utils/supabase/client';
 
 export default function ProfilePage() {
@@ -6585,6 +7328,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    const [activeTab, setActiveTab] = useState<'purchases' | 'sales'>('purchases');
     const [isEditing, setIsEditing] = useState(false);
     const [editDisplayName, setEditDisplayName] = useState('');
     const [editFirstName, setEditFirstName] = useState('');
@@ -6778,7 +7522,7 @@ export default function ProfilePage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Last Name (Kanji)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Last Name (姓)</label>
                                                     <input
                                                         type="text"
                                                         value={editLastName}
@@ -6788,7 +7532,7 @@ export default function ProfilePage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">First Name (Kanji)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">First Name (名)</label>
                                                     <input
                                                         type="text"
                                                         value={editFirstName}
@@ -6801,7 +7545,7 @@ export default function ProfilePage() {
 
                                             {/* Real Name Kana Input */}
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Real Name (Katakana) <span className="text-red-400 text-xs">*Required for Payouts</span></label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Real Name (カタカナ) <span className="text-red-400 text-xs">*Required for Payouts</span></label>
                                                 <input
                                                     type="text"
                                                     value={editRealNameKana}
@@ -6811,7 +7555,7 @@ export default function ProfilePage() {
                                                     title="Full-width Katakana only"
                                                     className="w-full bg-brand-dark-light/50 border border-brand-platinum/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-blue"
                                                 />
-                                                <p className="text-[10px] text-brand-platinum/50 mt-1">※ Must match your bank account holder name exactly (spaces will be auto-removed).</p>
+                                                <p className="text-[10px] text-brand-platinum/50 mt-1">※ 銀行口座名義と一致させてください (姓と名の間のスペースなし)</p>
                                             </div>
 
                                             <div>
@@ -6827,10 +7571,10 @@ export default function ProfilePage() {
                                         </div>
 
                                         <div className="border-t border-brand-platinum/10 pt-4 mt-4">
-                                            <h3 className="text-white font-bold mb-3">Shipping Address</h3>
+                                            <h3 className="text-white font-bold mb-3">Shipping Address (配送先住所)</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Postal Code</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Postal Code (郵便番号)</label>
                                                     <input
                                                         type="text"
                                                         value={editPostalCode}
@@ -6840,7 +7584,7 @@ export default function ProfilePage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Phone Number</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Phone Number (電話番号)</label>
                                                     <input
                                                         type="tel"
                                                         value={editPhoneNumber}
@@ -6851,7 +7595,7 @@ export default function ProfilePage() {
                                                 </div>
                                             </div>
                                             <div className="mb-4">
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 1 (Prefecture, City)</label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 1 (都道府県・市区町村)</label>
                                                 <input
                                                     type="text"
                                                     value={editAddressLine1}
@@ -6861,7 +7605,7 @@ export default function ProfilePage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 2 (Street, Building)</label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Address Line 2 (番地・建物名)</label>
                                                 <input
                                                     type="text"
                                                     value={editAddressLine2}
@@ -6986,6 +7730,28 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Transaction History */}
+                    <div className="space-y-6 pt-8 border-t border-brand-platinum/10">
+                        <div className="flex items-center gap-8 border-b border-brand-platinum/10">
+                            <button
+                                onClick={() => setActiveTab('purchases')}
+                                className={`pb-3 text-sm font-bold tracking-wider transition-all border-b-2 ${activeTab === 'purchases' ? 'text-white border-brand-blue' : 'text-brand-platinum/40 border-transparent hover:text-brand-platinum'}`}
+                            >
+                                Purchases (購入履歴)
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('sales')}
+                                className={`pb-3 text-sm font-bold tracking-wider transition-all border-b-2 ${activeTab === 'sales' ? 'text-white border-brand-gold' : 'text-brand-platinum/40 border-transparent hover:text-brand-platinum'}`}
+                            >
+                                Sales (販売履歴)
+                            </button>
+                        </div>
+
+                        <div className="min-h-[200px]">
+                            <OrderHistory mode={activeTab === 'purchases' ? 'buy' : 'sell'} />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -7158,6 +7924,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
 import Footer from '../../components/Footer';
 import PremiumCardImage from '../../components/PremiumCardImage';
+import MarketPriceLinks from '../../components/MarketPriceLinks';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -7256,6 +8023,8 @@ function SellContent() {
     // AI Suggestions Data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [suggestedData, setSuggestedData] = useState<any>(null);
+
+
 
     // React Hook Form
     const {
@@ -7374,9 +8143,10 @@ function SellContent() {
                 setSelectedImageIndices([0]);
             }
 
-        } catch (err) {
-            console.error(err);
-            setFormError('Failed to upload image(s)');
+        } catch (err: any) {
+            console.error("Upload Error Details:", err);
+            const msg = err?.message || err?.error_description || JSON.stringify(err);
+            setFormError(`Upload Failed: ${msg}`);
         } finally {
             setUploading(false);
         }
@@ -7459,6 +8229,7 @@ function SellContent() {
         setFormError(null);
         setSuggestedData(null);
 
+
         try {
             const imageIndex = selectedImageIndices[0];
             const imageUrl = currentImages[imageIndex];
@@ -7476,7 +8247,10 @@ function SellContent() {
                         body: JSON.stringify({ image: base64data }),
                     });
 
-                    if (!apiRes.ok) throw new Error('AI Analysis failed');
+                    if (!apiRes.ok) {
+                        const errorData = await apiRes.json().catch(() => ({}));
+                        throw new Error(errorData.error || `AI Analysis failed with status ${apiRes.status}`);
+                    }
                     const data = await apiRes.json();
 
                     const missingFields = [];
@@ -7510,7 +8284,14 @@ function SellContent() {
                         setValue('condition', data.condition.value);
                     }
 
-                    // Removed AI Feedback as requested
+                    // Handle Parallel/Variation logic
+                    let variationVal = data.variation?.value || '';
+                    if (data.parallelType?.value) {
+                        variationVal = variationVal ? `${variationVal} / ${data.parallelType.value}` : data.parallelType.value;
+                    }
+                    if (variationVal) setValue('variation', variationVal);
+
+
 
                 } catch (err) {
                     console.error(err);
@@ -7621,7 +8402,7 @@ function SellContent() {
                     <h2 className="text-3xl font-heading font-bold leading-7 text-white sm:text-4xl sm:truncate drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
                         Create New Listing
                     </h2>
-                    <p className="mt-2 text-brand-platinum/60">Hybrid AI Listing Interface</p>
+                    <p className="mt-2 text-brand-platinum/60">AIを活用した出品インターフェース</p>
                 </div>
             </div>
 
@@ -7648,14 +8429,14 @@ function SellContent() {
                                 <div className="w-full h-full relative p-4 flex items-center justify-center">
                                     <PremiumCardImage src={images[0]} alt="Main upload" className="max-h-full object-contain rounded-lg shadow-2xl" />
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
-                                        <p className="text-white font-bold">Add / Change Images</p>
+                                        <p className="text-white font-bold">画像を追加 / 変更</p>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <svg className={`w-12 h-12 mb-4 transition-colors ${isDragging ? 'text-brand-gold' : 'text-brand-platinum/50 group-hover:text-brand-gold'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    <p className={`mb-2 text-lg ${isDragging ? 'text-white' : 'text-brand-platinum group-hover:text-white'}`}><span className="font-bold">Upload Card Image</span></p>
-                                    <p className="text-sm text-brand-platinum/50">Multiple images supported</p>
+                                    <p className={`mb-2 text-lg ${isDragging ? 'text-white' : 'text-brand-platinum group-hover:text-white'}`}><span className="font-bold">カード画像をアップロード</span></p>
+                                    <p className="text-sm text-brand-platinum/50">複数枚のアップロードに対応</p>
                                 </div>
                             )}
                             <input
@@ -7724,7 +8505,7 @@ function SellContent() {
                                         disabled={analyzing}
                                         className="bg-brand-gold text-brand-dark font-bold px-5 py-2 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2 whitespace-nowrap"
                                     >
-                                        {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AI Analytics</span>}
+                                        {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AI解析を実行</span>}
                                     </button>
                                 </div>
                             )}
@@ -7738,13 +8519,13 @@ function SellContent() {
                             <section>
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-brand-gold/20 flex items-center justify-center text-brand-gold text-sm">1</span>
-                                    Basic Info
+                                    Basic Info (基本情報)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Player Name */}
                                     <div className="md:col-span-2">
                                         <div className="flex justify-between mb-2 items-center">
-                                            <label className="text-sm font-medium text-brand-platinum">Player Name <span className="text-red-500">*</span></label>
+                                            <label className="text-sm font-medium text-brand-platinum">選手名 <span className="text-red-500">*</span></label>
                                             {suggestedData && renderChip("AI", suggestedData.playerName, 'playerName')}
                                         </div>
                                         <input {...register('playerName')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:ring-2 focus:ring-brand-blue" placeholder="大谷翔平 (Shohei Ohtani)" />
@@ -7754,7 +8535,7 @@ function SellContent() {
                                     {/* Year Dropdown */}
                                     <div>
                                         <div className="flex justify-between mb-2 items-center">
-                                            <label className="text-sm font-medium text-brand-platinum">Year <span className="text-red-500">*</span></label>
+                                            <label className="text-sm font-medium text-brand-platinum">発行年 <span className="text-red-500">*</span></label>
                                             {suggestedData && renderChip("AI", suggestedData.year, 'year')}
                                         </div>
                                         <div className="relative">
@@ -7762,7 +8543,7 @@ function SellContent() {
                                                 {...register('year')}
                                                 className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                             >
-                                                <option value="" disabled>Select Year...</option>
+                                                <option value="" disabled>年を選択...</option>
                                                 <option value="Unknown">Unknown (不明)</option>
                                                 {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                                             </select>
@@ -7783,7 +8564,7 @@ function SellContent() {
                                                 {...register('brand')}
                                                 className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                             >
-                                                <option value="" disabled>Select Brand...</option>
+                                                <option value="" disabled>ブランドを選択...</option>
                                                 {CARD_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
                                             </select>
                                             <div className="absolute right-3 top-3.5 pointer-events-none text-brand-platinum/50">
@@ -7818,11 +8599,11 @@ function SellContent() {
                                                     {...register('team')}
                                                     className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                                 >
-                                                    <option value="" disabled>Select Team...</option>
+                                                    <option value="" disabled>チームを選択...</option>
                                                     {(country === 'USA' ? MLB_TEAMS : NPB_TEAMS).map(team => (
                                                         <option key={team} value={team}>{team}</option>
                                                     ))}
-                                                    <option value="Other">Other (その他)</option>
+                                                    <option value="Other">その他</option>
                                                     <option value="Unknown">Unknown (不明)</option>
                                                 </select>
                                                 <div className="absolute right-3 top-3.5 pointer-events-none text-brand-platinum/50">
@@ -7839,36 +8620,36 @@ function SellContent() {
                             <section className="border-t border-white/5 pt-8">
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-brand-blue/20 flex items-center justify-center text-brand-blue text-sm">2</span>
-                                    Features & Rarity
+                                    Features & Rarity (特徴・レアリティ)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Variation */}
                                     <div>
                                         <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-brand-platinum">Variation</label>
+                                            <label className="text-sm font-medium text-brand-platinum">バリエーション</label>
                                             {suggestedData && renderChip("AI", suggestedData.variation, 'variation')}
                                         </div>
-                                        <input {...register('variation')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="Black Refractor" />
+                                        <input {...register('variation')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="例: Black Refractor" />
                                     </div>
 
                                     {/* Serial */}
                                     <div>
                                         <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-brand-platinum">Serial Number</label>
+                                            <label className="text-sm font-medium text-brand-platinum">シリアル番号</label>
                                             {suggestedData && renderChip("AI", suggestedData.serialNumber, 'serialNumber')}
                                         </div>
-                                        <input {...register('serialNumber')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="01/10" />
+                                        <input {...register('serialNumber')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="例: 01/10" />
                                     </div>
 
                                     {/* Flags */}
                                     <div className="md:col-span-2 flex gap-8 pt-2">
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" {...register('isRookie')} className="w-5 h-5 rounded border-brand-platinum/20 bg-brand-dark text-brand-gold focus:ring-brand-gold" />
-                                            <span className="text-white group-hover:text-brand-gold transition-colors">Rookie Card (RC)</span>
+                                            <span className="text-white group-hover:text-brand-gold transition-colors">ルーキーカード (RC)</span>
                                         </label>
                                         <label className="flex items-center gap-3 cursor-pointer group">
                                             <input type="checkbox" {...register('isAutograph')} className="w-5 h-5 rounded border-brand-platinum/20 bg-brand-dark text-brand-gold focus:ring-brand-gold" />
-                                            <span className="text-white group-hover:text-brand-gold transition-colors">Autographed (Auto)</span>
+                                            <span className="text-white group-hover:text-brand-gold transition-colors">直筆サイン入り (Auto)</span>
                                         </label>
                                     </div>
                                 </div>
@@ -7878,7 +8659,7 @@ function SellContent() {
                             <section className="border-t border-white/5 pt-8">
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 text-sm">3</span>
-                                    Condition
+                                    Condition (状態)
                                 </h3>
 
                                 {/* Graded Toggle */}
@@ -7886,14 +8667,14 @@ function SellContent() {
                                     <div className={`w-6 h-6 rounded border flex items-center justify-center mr-4 transition-all ${isGraded ? 'bg-brand-gold border-brand-gold' : 'border-brand-platinum/30'}`}>
                                         {isGraded && <svg className="w-4 h-4 text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                     </div>
-                                    <span className="text-white font-bold">Professionally Graded?</span>
+                                    <span className="text-white font-bold">鑑定済みですか？ (PSA/BGSなど)</span>
                                 </div>
 
                                 {isGraded ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
                                         <div>
                                             <div className="flex justify-between mb-2">
-                                                <label className="text-sm font-medium text-brand-platinum">Grading Company</label>
+                                                <label className="text-sm font-medium text-brand-platinum">鑑定会社</label>
                                                 {suggestedData && renderChip("AI", suggestedData.gradingCompany, 'gradingCompany')}
                                             </div>
                                             <select {...register('gradingCompany')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white">
@@ -7906,7 +8687,7 @@ function SellContent() {
                                         </div>
                                         <div>
                                             <div className="flex justify-between mb-2">
-                                                <label className="text-sm font-medium text-brand-platinum">Grade</label>
+                                                <label className="text-sm font-medium text-brand-platinum">グレード (点数)</label>
                                                 {suggestedData && renderChip("AI", suggestedData.grade, 'grade')}
                                             </div>
                                             <input {...register('grade')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="10" />
@@ -7915,7 +8696,7 @@ function SellContent() {
                                         {/* Certification Number */}
                                         <div className="md:col-span-2">
                                             <div className="flex justify-between mb-2">
-                                                <label className="text-sm font-medium text-brand-platinum">Certification Number (Optional)</label>
+                                                <label className="text-sm font-medium text-brand-platinum">証明番号 (任意)</label>
                                             </div>
                                             <input {...register('certificationNumber')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white" placeholder="12345678" />
                                         </div>
@@ -7923,7 +8704,7 @@ function SellContent() {
                                 ) : (
                                     <div className="animate-fade-in-up">
                                         <div className="flex justify-between mb-2">
-                                            <label className="text-sm font-medium text-brand-platinum">Raw Card Condition</label>
+                                            <label className="text-sm font-medium text-brand-platinum">未鑑定カードの状態</label>
                                             {suggestedData && renderChip("AI", suggestedData.condition, 'condition')}
                                         </div>
                                         <div className="relative">
@@ -7931,13 +8712,13 @@ function SellContent() {
                                                 {...register('condition')}
                                                 className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-brand-blue"
                                             >
-                                                <option value="" disabled>Select Condition...</option>
-                                                <option value="Gem Mint">Gem Mint</option>
-                                                <option value="Mint">Mint</option>
-                                                <option value="Near Mint">Near Mint</option>
-                                                <option value="Excellent">Excellent</option>
-                                                <option value="Very Good">Very Good</option>
-                                                <option value="Poor">Poor</option>
+                                                <option value="" disabled>状態を選択...</option>
+                                                <option value="Gem Mint">Gem Mint (完品)</option>
+                                                <option value="Mint">Mint (美品)</option>
+                                                <option value="Near Mint">Near Mint (準美品)</option>
+                                                <option value="Excellent">Excellent (良品)</option>
+                                                <option value="Very Good">Very Good (可)</option>
+                                                <option value="Poor">Poor (難あり)</option>
                                             </select>
                                             <div className="absolute right-3 top-3.5 pointer-events-none text-brand-platinum/50">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -7951,16 +8732,34 @@ function SellContent() {
                             <section className="border-t border-white/5 pt-8">
                                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                                     <span className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-sm">4</span>
-                                    Price & Note
+                                    Price & Note (価格・詳細)
                                 </h3>
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="text-sm font-medium text-brand-platinum mb-2 block">Notes / Description</label>
-                                        <textarea {...register('description')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white h-24" placeholder="Any scratches? Print lines?" />
+                                        <label className="text-sm font-medium text-brand-platinum mb-2 block">商品説明 / 詳細メモ</label>
+                                        <textarea {...register('description')} className="block w-full px-4 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white h-24" placeholder="傷の状態や特徴など..." />
                                     </div>
 
                                     <div>
-                                        <label className="text-sm font-bold text-brand-gold tracking-wider mb-2 block uppercase">Price (JPY) <span className="text-red-500">*</span></label>
+
+
+
+                                        {/* External Market Links */}
+                                        {suggestedData && (
+                                            <div className="mb-6">
+                                                <MarketPriceLinks
+                                                    initialQuery={[
+                                                        suggestedData.year?.value,
+                                                        suggestedData.brand?.value,
+                                                        suggestedData.playerName?.value,
+                                                        suggestedData.cardNumber?.value,
+                                                        // suggestedData.variation?.value // Optional: might be too specific
+                                                    ].filter(Boolean).join(' ')}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <label className="text-sm font-bold text-brand-gold tracking-wider mb-2 block uppercase">販売価格 (円) <span className="text-red-500">*</span></label>
                                         <div className="relative">
                                             <span className="absolute left-4 top-3.5 text-brand-platinum">¥</span>
                                             <input
@@ -8003,11 +8802,11 @@ function SellContent() {
                                     {submitting ? (
                                         <>
                                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            <span>Listing...</span>
+                                            <span>出品中...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <span>List Item Now</span>
+                                            <span>出品する</span>
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                                         </>
                                     )}
@@ -8419,7 +9218,7 @@ function HomeContent() {
                 <input
                   type="text"
                   id="search"
-                  placeholder="Search player, series, or year..."
+                  placeholder="選手名、シリーズ、年代などで検索..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="block w-full pl-10 pr-3 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white placeholder-brand-platinum/30 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
@@ -8436,7 +9235,7 @@ function HomeContent() {
                 onChange={(e) => setSelectedTeam(e.target.value)}
                 className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
               >
-                <option value="">All Teams</option>
+                <option value="">全チーム</option>
                 {teams.map((team) => (
                   <option key={team} value={team}>{team}</option>
                 ))}
@@ -8452,9 +9251,9 @@ function HomeContent() {
                 onChange={(e) => setSortOrder(e.target.value)}
                 className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
               >
-                <option value="newest">Newest</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
+                <option value="newest">新着順</option>
+                <option value="price_asc">価格が安い順</option>
+                <option value="price_desc">価格が高い順</option>
               </select>
             </div>
           </div>
@@ -8464,7 +9263,7 @@ function HomeContent() {
         <div className="mb-12">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-heading font-bold text-white">Latest Arrivals</h2>
-            <span className="text-brand-platinum/60 text-sm">{listings.length} items found</span>
+            <span className="text-brand-platinum/60 text-sm">{listings.length} 件</span>
           </div>
 
           {loading ? (
@@ -8487,12 +9286,12 @@ function HomeContent() {
 
               {listings.length === 0 && (
                 <div className="text-center py-20 bg-brand-dark-light/30 rounded-2xl border border-brand-platinum/5">
-                  <p className="text-brand-platinum/50 text-lg">No listings found matching your criteria.</p>
+                  <p className="text-brand-platinum/50 text-lg">条件に一致するカードが見つかりませんでした。</p>
                   <button
                     onClick={() => { setSearchQuery(''); setSelectedTeam(''); }}
                     className="mt-4 text-brand-blue hover:text-brand-blue-glow font-medium"
                   >
-                    Clear Filters
+                    条件をクリア
                   </button>
                 </div>
               )}
@@ -10190,10 +10989,10 @@ export default function Header() {
     };
 
     const NAV_ITEMS = [
-        { name: 'MARKETPLACE', path: '/market' },
-        { name: 'MY COLLECTION', path: '/collection' },
-        { name: 'AUCTIONS', path: '/auctions' },
-        { name: 'COMMUNITY', path: '/community' },
+        { name: 'マーケット (Market)', path: '/market' },
+        { name: 'コレクション (Collection)', path: '/collection' },
+        { name: 'オークション (Auctions)', path: '/auctions' },
+        { name: 'コミュニティ (Community)', path: '/community' },
     ];
 
     return (
@@ -10232,7 +11031,7 @@ export default function Header() {
                             href="/sell"
                             className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-brand-dark rounded-full text-xs font-bold hover:bg-white transition-colors shadow-lg shadow-brand-gold/20"
                         >
-                            <span>SELL</span>
+                            <span>出品する</span>
                         </Link>
                     )}
 
@@ -10257,14 +11056,14 @@ export default function Header() {
                                 {user ? (
                                     <>
                                         <div className="px-3 py-2 text-xs text-brand-platinum/60 border-b border-white/5 mb-1">
-                                            Signed in as<br />
+                                            ログイン中:<br />
                                             <span className="text-white font-bold truncate block">{user.email}</span>
                                         </div>
                                         <Link href="/profile" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
-                                            Profile
+                                            マイページ
                                         </Link>
                                         <Link href="/collection" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
-                                            My Collection
+                                            マイコレクション
                                         </Link>
                                         <Link href="/payouts" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors flex items-center gap-2">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -10272,23 +11071,38 @@ export default function Header() {
                                                 <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
                                                 <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
                                             </svg>
-                                            Payouts (Using Wallet)
+                                            売上・振込
                                         </Link>
+
+                                        {/* Admin Link (Only for authorized emails) */}
+                                        {(() => {
+                                            const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
+                                            if (user?.email && adminEmails.includes(user.email.toLowerCase())) {
+                                                return (
+                                                    <Link href="/admin" className="block px-3 py-2 rounded-lg bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-xs font-bold transition-colors mt-2 text-center border border-brand-gold/20">
+                                                        管理画面
+                                                    </Link>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                         <button
                                             onClick={handleSignOut}
                                             className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-sm text-red-400 hover:text-red-300 transition-colors"
                                         >
-                                            Sign out
+                                            ログアウト
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <Link href="/login" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
-                                            Sign in
-                                        </Link>
-                                        <Link href="/register" className="block px-3 py-2 rounded-lg hover:bg-brand-blue/10 text-sm text-brand-blue hover:text-brand-blue-glow transition-colors">
-                                            Register
-                                        </Link>
+                                        <>
+                                            <Link href="/login" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-brand-platinum hover:text-white transition-colors">
+                                                ログイン
+                                            </Link>
+                                            <Link href="/register" className="block px-3 py-2 rounded-lg hover:bg-brand-blue/10 text-sm text-brand-blue hover:text-brand-blue-glow transition-colors">
+                                                新規登録
+                                            </Link>
+                                        </>
                                     </>
                                 )}
                             </div>
@@ -10327,15 +11141,15 @@ export default function Header() {
                     ))}
                     {user && (
                         <>
-                            <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">MY PROFILE</Link>
-                            <Link href="/payouts" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">PAYOUTS & EARNINGS</Link>
-                            <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">START SELLING</Link>
+                            <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">マイページ</Link>
+                            <Link href="/payouts" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl hover:bg-white/5 text-brand-platinum font-bold text-sm">売上・振込設定</Link>
+                            <Link href="/sell" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-gold/10 text-brand-gold font-bold text-sm text-center border border-brand-gold/20">出品する</Link>
                         </>
                     )}
                     {user ? (
-                        <button onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }} className="p-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-sm text-center border border-red-500/20 mt-2">LOGOUT</button>
+                        <button onClick={() => { handleSignOut(); setIsMobileMenuOpen(false); }} className="p-3 rounded-xl bg-red-500/10 text-red-400 font-bold text-sm text-center border border-red-500/20 mt-2">ログアウト</button>
                     ) : (
-                        <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-blue/10 text-brand-blue font-bold text-sm text-center border border-brand-blue/20 mt-2">LOGIN</Link>
+                        <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-xl bg-brand-blue/10 text-brand-blue font-bold text-sm text-center border border-brand-blue/20 mt-2">ログイン</Link>
                     )}
                 </div>
             )}
@@ -10533,8 +11347,8 @@ export default function LiveMomentListener() {
     // Initialize Supabase Client (Stable outside effect if possible, or memoized)
     // For simplicity and stability in App Router, we can initialize it once
     const [supabase] = useState(() => createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
     ));
 
     useEffect(() => {
@@ -10676,6 +11490,96 @@ export default function LiveMomentToast({ data, onDismiss }: LiveMomentToastProp
                 </motion.div>
             </div>
         </AnimatePresence>
+    );
+}
+</file>
+
+<file path="frontend/components/MarketPriceLinks.tsx">
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Search, ExternalLink, ShoppingBag, Gavel, Globe } from 'lucide-react';
+
+interface MarketPriceLinksProps {
+    initialQuery: string;
+}
+
+export default function MarketPriceLinks({ initialQuery }: MarketPriceLinksProps) {
+    const [query, setQuery] = useState(initialQuery);
+
+    // Sync state if prop changes (e.g. AI re-analyzes)
+    useEffect(() => {
+        setQuery(initialQuery);
+    }, [initialQuery]);
+
+    const openSearch = (urlTemplate: string) => {
+        if (!query.trim()) return;
+        const encodedQuery = encodeURIComponent(query.trim());
+        const url = urlTemplate.replace('{encodedQuery}', encodedQuery);
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
+    return (
+        <div className="glass-panel p-4 rounded-xl border border-white/10 animate-fade-in-up">
+            <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold text-brand-platinum flex items-center gap-2">
+                        <Search className="w-4 h-4" />
+                        相場をチェック (参考)
+                    </label>
+                </div>
+
+                {/* Editable Query Input */}
+                <div className="relative">
+                    <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue/50 transition-colors"
+                        placeholder="キーワードを入力 (例: 大谷翔平 2024)"
+                    />
+                    <div className="absolute right-3 top-2.5 pointer-events-none">
+                        <span className="text-xs text-brand-platinum/50">キーワードを編集</span>
+                    </div>
+                </div>
+
+                {/* Market Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
+                    {/* Mercari */}
+                    <button
+                        type="button"
+                        onClick={() => openSearch('https://jp.mercari.com/search?keyword={encodedQuery}&status=sold_out_processing,sold_out')}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all text-sm font-medium group"
+                    >
+                        <ShoppingBag className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        <span>Mercari</span>
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                    </button>
+
+                    {/* Yahoo Auction */}
+                    <button
+                        type="button"
+                        onClick={() => openSearch('https://auctions.yahoo.co.jp/search/search?p={encodedQuery}&aucmaxprice=999999999&istatus=2')}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all text-sm font-medium group"
+                    >
+                        <Gavel className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        <span>Yahoo!</span>
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                    </button>
+
+                    {/* eBay */}
+                    <button
+                        type="button"
+                        onClick={() => openSearch('https://www.ebay.com/sch/i.html?_nkw={encodedQuery}&LH_Sold=1')}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-sm font-medium group"
+                    >
+                        <Globe className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        <span>eBay</span>
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 </file>
@@ -11109,6 +12013,120 @@ export default function MomentHistoryPanel({ history, itemId, isOwner, onSuccess
             </div>
         </div>
     );
+}
+</file>
+
+<file path="frontend/components/OrderHistory.tsx">
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getSellerOrders, getBuyerOrders } from '../app/actions/order';
+
+export default function OrderHistory({ mode }: { mode: 'buy' | 'sell' }) {
+    const [orders, setOrders] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchOrders = async () => {
+            try {
+                const data = mode === 'sell' ? await getSellerOrders() : await getBuyerOrders();
+                setOrders(data);
+            } catch (error) {
+                console.error('Failed to fetch orders', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchOrders();
+    }, [mode]);
+
+    if (loading) {
+        return (
+            <div className="flex justify-center p-8">
+                <div className="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    if (orders.length === 0) {
+        return (
+            <div className="p-8 text-center border border-white/5 rounded-2xl bg-white/5">
+                <p className="text-brand-platinum/60">
+                    {mode === 'sell' ? 'You have no sales yet.' : 'You have no purchases yet.'}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {orders.map((order) => (
+                <Link
+                    key={order.id}
+                    href={`/orders/${mode}/${order.id}`}
+                    className="block group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all p-4"
+                >
+                    <div className="flex gap-4 items-center">
+                        {/* Image */}
+                        <div className="w-16 h-20 bg-black/20 rounded-lg overflow-hidden flex-shrink-0">
+                            {order.listing?.images?.[0] ? (
+                                <img
+                                    src={order.listing.images[0]}
+                                    alt={order.listing.title}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-2xl">🃏</div>
+                            )}
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${getStatusStyle(order.status)}`}>
+                                    {order.status.replace('_', ' ')}
+                                </span>
+                                <span className="text-xs text-brand-platinum/60 font-mono">
+                                    {new Date(order.created_at).toLocaleDateString()}
+                                </span>
+                            </div>
+                            <h3 className="font-bold text-white truncate text-sm mb-0.5">
+                                {order.listing?.player_name || order.listing?.series_name || 'Unknown Item'}
+                            </h3>
+                            <p className="text-xs text-brand-platinum/60 truncate">
+                                {order.listing?.title}
+                            </p>
+                            <div className="mt-2 text-brand-gold font-mono text-sm font-bold">
+                                ¥{(order.total_amount || 0).toLocaleString()}
+                            </div>
+                        </div>
+
+                        {/* Arrow */}
+                        <div className="text-brand-platinum/20 group-hover:text-white transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </div>
+                </Link>
+            ))}
+        </div>
+    );
+}
+
+function getStatusStyle(status: string) {
+    switch (status) {
+        case 'paid':
+        case 'awaiting_shipping':
+            return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+        case 'shipped':
+            return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+        case 'completed':
+            return 'bg-green-500/20 text-green-400 border-green-500/30';
+        default:
+            return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+    }
 }
 </file>
 
@@ -11749,6 +12767,57 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: '2025-11-17.clover', // Latest API version
     typescript: true,
 });
+</file>
+
+<file path="frontend/lib/teams.ts">
+export const TEAM_GROUPS = [
+    {
+        label: "MLB (メジャーリーグ)",
+        teams: [
+            { code: "LAD", name: "ドジャース (LAD)" },
+            { code: "NYY", name: "ヤンキース (NYY)" },
+            { code: "SD", name: "パドレス (SD)" },
+            { code: "LAA", name: "エンゼルス (LAA)" },
+            { code: "TOR", name: "ブルージェイズ (TOR)" },
+            { code: "BOS", name: "レッドソックス (BOS)" },
+            { code: "NYM", name: "メッツ (NYM)" },
+            { code: "PHI", name: "フィリーズ (PHI)" },
+            { code: "ATL", name: "ブレーブス (ATL)" },
+            { code: "HOU", name: "アストロズ (HOU)" },
+        ]
+    },
+    {
+        label: "NPB セ・リーグ",
+        teams: [
+            { code: "YG", name: "巨人 (Giants)" },
+            { code: "T", name: "阪神 (Tigers)" },
+            { code: "DB", name: "DeNA (BayStars)" },
+            { code: "C", name: "広島 (Carp)" },
+            { code: "S", name: "ヤクルト (Swallows)" },
+            { code: "D", name: "中日 (Dragons)" },
+        ]
+    },
+    {
+        label: "NPB パ・リーグ",
+        teams: [
+            { code: "H", name: "ソフトバンク (Hawks)" },
+            { code: "F", name: "日本ハム (Fighters)" },
+            { code: "M", name: "ロッテ (Marines)" },
+            { code: "E", name: "楽天 (Eagles)" },
+            { code: "L", name: "西武 (Lions)" },
+            { code: "B", name: "オリックス (Buffaloes)" },
+        ]
+    },
+    {
+        label: "ナショナルチーム",
+        teams: [
+            { code: "JPN", name: "侍ジャパン (Samurai Japan)" },
+            { code: "USA", name: "アメリカ代表 (USA)" },
+            { code: "DOM", name: "ドミニカ代表 (Dominican Rep.)" },
+            { code: "KOR", name: "韓国代表 (Korea)" },
+        ]
+    }
+];
 </file>
 
 <file path="frontend/migrations/03_add_order_status.sql">
@@ -12418,6 +13487,32 @@ WHERE (status NOT IN ('completed', 'cancelled'));
 COMMENT ON INDEX unique_active_order_per_listing IS 'Ensures only one active transaction per item, while allowing historical orders to coexist.';
 </file>
 
+<file path="frontend/migrations/32_setup_storage.sql">
+-- Create a new storage bucket for card images
+insert into storage.buckets (id, name, public)
+values ('card-images', 'card-images', true) on conflict (id) do nothing;
+-- Set up access policies for the storage bucket
+-- 1. Allow public read access to the bucket
+create policy "Public Access" on storage.objects for
+select using (bucket_id = 'card-images');
+-- 2. Allow authenticated users to upload images
+create policy "Authenticated users can upload images" on storage.objects for
+insert with check (
+        bucket_id = 'card-images'
+        and auth.role() = 'authenticated'
+    );
+-- 3. Allow users to update/delete their own images
+create policy "Users can update own images" on storage.objects for
+update using (
+        bucket_id = 'card-images'
+        and auth.uid() = owner
+    );
+create policy "Users can delete own images" on storage.objects for delete using (
+    bucket_id = 'card-images'
+    and auth.uid() = owner
+);
+</file>
+
 <file path="frontend/migrations/debug_helper.sql">
 -- Migration: Debug Helper (Expose Policies)
 -- Creates an RPC to list policies for debugging purposes.
@@ -12494,6 +13589,331 @@ COMMENT ON COLUMN public.listing_items.manufacturer IS 'Brand/Manufacturer of th
 
 -- 4. Force a schema cache reload
 NOTIFY pgrst, 'reload schema';
+</file>
+
+<file path="frontend/migrations/production_setup.sql">
+-- ======================================================================================
+-- PRODUCTION DATABASE SETUP SCRIPT
+-- Application: TC-APP (Trading Card App)
+-- Generated at: 2026-01-27
+--
+-- This script consolidates all schema definitions, migrations, and RLS policies.
+-- It is designed to be run on a FRESH Supabase instance.
+-- ======================================================================================
+-- 1. EXTENSIONS
+create extension if not exists "uuid-ossp";
+-- 2. ENUMS (Initial Definition)
+create type manufacturer_enum as enum ('BBM', 'Calbee', 'Epoch', 'Topps_Japan', 'Topps');
+create type team_enum as enum (
+    'Giants',
+    'Tigers',
+    'Dragons',
+    'Swallows',
+    'Carp',
+    'BayStars',
+    'Hawks',
+    'Fighters',
+    'Marines',
+    'Buffaloes',
+    'Eagles',
+    'Lions',
+    'Dodgers'
+);
+create type rarity_enum as enum (
+    'Common',
+    'Rare',
+    'Super Rare',
+    'Parallel',
+    'Autograph',
+    'Patch',
+    'Rookie',
+    'Legend'
+);
+create type listing_status_enum as enum (
+    'Draft',
+    'Active',
+    'TransactionPending',
+    'AwaitingShipment',
+    'Shipped',
+    'Delivered',
+    'Completed',
+    'Cancelled'
+);
+-- Update Enum: Add 'Display', 'Sold', 'Incoming' (from update_status_enum.sql & migration 23)
+ALTER TYPE listing_status_enum
+ADD VALUE IF NOT EXISTS 'Display';
+ALTER TYPE listing_status_enum
+ADD VALUE IF NOT EXISTS 'Sold';
+ALTER TYPE listing_status_enum
+ADD VALUE IF NOT EXISTS 'Incoming';
+-- 3. PROFILES Table
+create table public.profiles (
+    id uuid references auth.users on delete cascade not null primary key,
+    email text unique not null,
+    name text,
+    avatar_url text,
+    real_name_kana text,
+    -- Added from migration 08
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+alter table public.profiles enable row level security;
+create policy "Public profiles are viewable by everyone." on public.profiles for
+select using (true);
+create policy "Users can insert their own profile." on public.profiles for
+insert with check (auth.uid() = id);
+create policy "Users can update their own profile." on public.profiles for
+update using (auth.uid() = id);
+-- 4. CARD CATALOGS (Deprecated but kept for reference if needed, largely replaced by loose listing items)
+create table public.card_catalogs (
+    id uuid default uuid_generate_v4() primary key,
+    manufacturer manufacturer_enum not null,
+    series_name text,
+    player_name text not null,
+    team team_enum not null,
+    card_number text,
+    rarity rarity_enum,
+    is_rookie boolean default false,
+    year integer,
+    created_at timestamptz default now()
+);
+alter table public.card_catalogs enable row level security;
+create policy "Catalog is viewable by everyone." on public.card_catalogs for
+select using (true);
+-- 5. LISTING ITEMS (Products)
+create table public.listing_items (
+    id uuid default uuid_generate_v4() primary key,
+    catalog_id uuid references public.card_catalogs(id),
+    -- Nullable in new schema (migration 05)
+    seller_id uuid references public.profiles(id) not null,
+    status listing_status_enum default 'Draft'::listing_status_enum not null,
+    price integer,
+    -- Nullable (migration update_status_enum.sql)
+    images jsonb not null,
+    condition_grading jsonb not null,
+    -- Additional columns from migrations
+    origin_order_id uuid,
+    -- migration 22 (Recursive references added later)
+    deleted_at timestamptz DEFAULT NULL,
+    -- migration 21
+    moment_history jsonb DEFAULT '[]'::jsonb,
+    -- migration 16
+    -- Expanded columns (migration 04 consolidated)
+    player_name text,
+    team text,
+    year integer,
+    manufacturer text,
+    set_name text,
+    card_number text,
+    is_rookie boolean default false,
+    is_autograph boolean default false,
+    start_price integer,
+    min_bid_price integer,
+    condition_rating text,
+    -- migration fix_schema
+    variation text,
+    serial_number text,
+    description text,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+-- Note: references for origin_order_id will be added after orders table creation
+-- 6. ORDERS (Transaction History)
+create table public.orders (
+    id uuid default uuid_generate_v4() primary key,
+    listing_id uuid references public.listing_items(id) not null,
+    -- Unique constraint removed/modified in migration 31
+    buyer_id uuid references public.profiles(id) not null,
+    seller_id uuid references public.profiles(id),
+    -- migration 24
+    payment_method_id text not null,
+    total_amount integer not null,
+    status text not null check (
+        status IN (
+            'pending',
+            'paid',
+            'awaiting_shipping',
+            'shipped',
+            'completed',
+            'cancelled',
+            'returned'
+        )
+    ),
+    -- migration 12
+    -- Shipping Details (migration 09 & 12)
+    tracking_number text,
+    carrier text,
+    shipped_at timestamptz,
+    completed_at timestamptz,
+    shipping_address_snapshot jsonb,
+    shipping_name text,
+    shipping_postal_code text,
+    shipping_address text,
+    shipping_phone text,
+    -- Live Moments (migration 15)
+    moment_snapshot jsonb,
+    created_at timestamptz default now()
+);
+-- Add Circular Reference for listing_items
+ALTER TABLE public.listing_items
+ADD CONSTRAINT fk_origin_order FOREIGN KEY (origin_order_id) REFERENCES public.orders(id);
+-- 7. BANK ACCOUNTS & PAYOUTS (migration 08 & 10 & 11)
+CREATE TABLE IF NOT EXISTS public.bank_accounts (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    bank_name text NOT NULL,
+    branch_name text NOT NULL,
+    account_type text NOT NULL,
+    account_number text NOT NULL,
+    account_holder_name text NOT NULL,
+    bank_code text,
+    -- migration 10
+    branch_code text,
+    -- migration 10
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.payouts (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    amount integer NOT NULL,
+    fee integer not null default 0,
+    -- migration 11
+    payout_amount integer not null,
+    -- migration 11
+    status text NOT NULL DEFAULT 'pending',
+    created_at timestamptz DEFAULT now(),
+    processed_at timestamptz
+);
+-- 8. LIVE MOMENTS (migration 14, 17, 18)
+create table if not exists public.live_moments (
+    id uuid default gen_random_uuid() primary key,
+    player_name text not null,
+    title text not null,
+    description text,
+    intensity integer not null default 1 check (
+        intensity >= 1
+        and intensity <= 5
+    ),
+    match_result text,
+    -- migration 17
+    is_finalized boolean DEFAULT false,
+    -- migration 18
+    created_at timestamptz default now()
+);
+-- 9. INDICES
+CREATE INDEX IF NOT EXISTS idx_listing_items_origin_order_id ON public.listing_items(origin_order_id);
+-- Partial index from migration 31
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_order_per_listing ON public.orders (listing_id)
+WHERE (status NOT IN ('completed', 'cancelled'));
+-- 10. ROW LEVEL SECURITY (Consolidated Final Policies - Migration 27 & 32 mostly)
+-- A. Table Enablement
+ALTER TABLE public.listing_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bank_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.live_moments ENABLE ROW LEVEL SECURITY;
+-- B. Listings Policies (Non-Recursive)
+-- Public Access
+CREATE POLICY "Listings_Public_Access" ON public.listing_items FOR
+SELECT USING (
+        status = 'Active'
+        AND deleted_at IS NULL
+    );
+-- Owner Access
+CREATE POLICY "Listings_Owner_Access" ON public.listing_items FOR
+SELECT USING (seller_id = auth.uid());
+CREATE POLICY "Listings_Owner_Update" ON public.listing_items FOR
+UPDATE USING (seller_id = auth.uid());
+CREATE POLICY "Listings_Owner_Delete" ON public.listing_items FOR DELETE USING (seller_id = auth.uid());
+-- Transaction History Access (Sold & Bought)
+CREATE POLICY "Listings_SoldHistory_Access" ON public.listing_items FOR
+SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM public.orders
+            WHERE orders.listing_id = listing_items.id
+                AND orders.seller_id = auth.uid()
+        )
+    );
+CREATE POLICY "Listings_InTransit_Access" ON public.listing_items FOR
+SELECT USING (
+        EXISTS (
+            SELECT 1
+            FROM public.orders
+            WHERE orders.listing_id = listing_items.id
+                AND orders.buyer_id = auth.uid()
+        )
+    );
+-- C. Orders Policies
+CREATE POLICY "Orders_Buyer_Access" ON public.orders FOR
+SELECT USING (buyer_id = auth.uid());
+CREATE POLICY "Orders_Seller_Access" ON public.orders FOR
+SELECT USING (seller_id = auth.uid());
+CREATE POLICY "Users can create orders" ON public.orders FOR
+INSERT WITH CHECK (auth.uid() = buyer_id);
+-- D. Bank & Payouts Policies
+CREATE POLICY "Users can view own bank account" ON public.bank_accounts FOR
+SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own bank account" ON public.bank_accounts FOR
+INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own bank account" ON public.bank_accounts FOR
+UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own bank account" ON public.bank_accounts FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own payouts" ON public.payouts FOR
+SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own payouts" ON public.payouts FOR
+INSERT WITH CHECK (auth.uid() = user_id);
+-- E. Live Moments Policies
+CREATE POLICY "Live moments are viewable by everyone" on public.live_moments for
+select using (true);
+-- 11. STORAGE SETUP (Migration 32)
+insert into storage.buckets (id, name, public)
+values ('card-images', 'card-images', true) on conflict (id) do nothing;
+create policy "Public Access" on storage.objects for
+select using (bucket_id = 'card-images');
+create policy "Authenticated users can upload images" on storage.objects for
+insert with check (
+        bucket_id = 'card-images'
+        and auth.role() = 'authenticated'
+    );
+create policy "Users can update own images" on storage.objects for
+update using (
+        bucket_id = 'card-images'
+        and auth.uid() = owner
+    );
+create policy "Users can delete own images" on storage.objects for delete using (
+    bucket_id = 'card-images'
+    and auth.uid() = owner
+);
+-- 12. TRIGGERS & FUNCTIONS
+-- Handle New User
+create or replace function public.handle_new_user() returns trigger as $$ begin
+insert into public.profiles (id, email, name)
+values (
+        new.id,
+        new.email,
+        new.raw_user_meta_data->>'name'
+    );
+return new;
+end;
+$$ language plpgsql security definer;
+create trigger on_auth_user_created
+after
+insert on auth.users for each row execute procedure public.handle_new_user();
+-- Self-Healing Complete Order (Migration 30)
+CREATE OR REPLACE FUNCTION public.complete_order(p_listing_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN -- Update listing status to Draft (makes it ownable/visible in Workspace but not listed)
+UPDATE listing_items
+SET status = 'Draft',
+    updated_at = NOW()
+WHERE id = p_listing_id;
+-- Update order status to completed
+UPDATE orders
+SET status = 'completed',
+    completed_at = NOW()
+WHERE listing_id = p_listing_id;
+END;
+$$;
 </file>
 
 <file path="frontend/migrations/reset_data.sql">
@@ -13081,6 +14501,56 @@ async function simulateAction() {
 simulateAction();
 </file>
 
+<file path="frontend/scripts/test-gemini.ts">
+import { config } from 'dotenv';
+import path from 'path';
+
+// Load env from frontend/.env.local (assuming that's where keys are)
+// We need to resolve the path relative to where we run the script
+// If running from root, path is frontend/.env.local
+config({ path: path.resolve(process.cwd(), 'frontend/.env.local') });
+
+const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+if (!apiKey) {
+    console.error('❌ GOOGLE_GENERATIVE_AI_API_KEY is missing from process.env');
+    process.exit(1);
+}
+
+console.log('🔑 API Key found:', apiKey.slice(0, 5) + '...');
+
+async function listModels() {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.error) {
+            console.error('❌ API Error:', data.error);
+            return;
+        }
+
+        if (data.models) {
+            console.log('✅ Available Models:');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data.models.forEach((m: any) => {
+                // Filter for likely candidates
+                if (m.name.includes('gemini')) {
+                    console.log(`- ${m.name} (${m.supportedGenerationMethods})`);
+                }
+            });
+        } else {
+            console.log('⚠️ No models returned.', data);
+        }
+
+    } catch (e) {
+        console.error('❌ Network/Fetch Error:', e);
+    }
+}
+
+listModels();
+</file>
+
 <file path="frontend/types/index.ts">
 export type Manufacturer = "BBM" | "Calbee" | "Epoch" | "Topps_Japan";
 export type Team = "Giants" | "Tigers" | "Dragons" | "Swallows" | "Carp" | "BayStars" | "Hawks" | "Fighters" | "Marines" | "Buffaloes" | "Eagles" | "Lions" | "SamuraiJapan" | "Other";
@@ -13187,6 +14657,40 @@ export interface MomentHistoryItem {
     owner_at_time?: string;
     status?: 'pending' | 'finalized';
 }
+
+export interface SellerOrderDetail {
+    id: string;
+    status: string;
+    listing: {
+        id: string;
+        title: string;
+        seller_id: string;
+        series_name: string;
+        player_name: string;
+        images: string[];
+        price: number;
+    };
+    total_amount: number;
+    created_at: string;
+    // Snapshot of address at time of purchase
+    shipping_address_snapshot: {
+        name: string;
+        postal_code: string;
+        address: string;
+        phone: string;
+    } | null;
+    // Legacy fallback columns
+    shipping_name?: string;
+    shipping_address?: string;
+    shipping_postal_code?: string;
+    shipping_phone?: string;
+
+    // Shipment details
+    tracking_number?: string;
+    carrier?: string;
+    shipped_at?: string;
+    completed_at?: string;
+}
 </file>
 
 <file path="frontend/utils/supabase/client.ts">
@@ -13194,8 +14698,8 @@ import { createBrowserClient } from '@supabase/ssr'
 
 export function createClient() {
     return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
     )
 }
 </file>
@@ -13212,8 +14716,8 @@ export async function updateSession(request: NextRequest) {
     })
 
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key',
         {
             cookies: {
                 get(name: string) {
@@ -13261,10 +14765,22 @@ export async function updateSession(request: NextRequest) {
 
     // Admin Access Control
     if (request.nextUrl.pathname.startsWith('/admin')) {
-        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
-        const userEmail = user?.email;
+        // Exclude diagnostic routes
+        if (request.nextUrl.pathname.includes('debug')) {
+            return response;
+        }
+
+        const adminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || '';
+        const adminEmails = adminEmailsRaw
+            .split(/[,;|]+/)
+            .map(e => e.trim().toLowerCase())
+            .filter(Boolean);
+
+        const userEmail = user?.email?.toLowerCase();
 
         if (!user || !userEmail || !adminEmails.includes(userEmail)) {
+            // Internal redirect to a specific error page if needed, but for now just console/home
+            console.log(`[AUTH] Access Denied: User "${userEmail || 'none'}" not in admin list: [${adminEmails.join('|')}]`);
             return NextResponse.redirect(new URL('/', request.url))
         }
     }
@@ -13281,8 +14797,8 @@ export async function createClient() {
     const cookieStore = await cookies()
 
     return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key',
         {
             cookies: {
                 get(name: string) {
@@ -14827,8 +16343,10 @@ export async function middleware(request: NextRequest) {
     const basicAuthUser = process.env.BASIC_AUTH_USER;
     const basicAuthPassword = process.env.BASIC_AUTH_PASSWORD;
 
-    // Exclude Webhooks from Basic Auth
-    if (request.nextUrl.pathname.startsWith('/api/webhooks')) {
+    // Exclude Webhooks and Debug from Admin Check
+    if (request.nextUrl.pathname.startsWith('/api/webhooks') ||
+        request.nextUrl.pathname.startsWith('/debug-admin') ||
+        request.nextUrl.pathname.startsWith('/api/debug-auth')) {
         return await updateSession(request);
     }
 
@@ -14836,19 +16354,101 @@ export async function middleware(request: NextRequest) {
         const authHeader = request.headers.get('authorization');
 
         if (authHeader) {
-            const authValue = authHeader.split(' ')[1];
-            const [user, pwd] = atob(authValue).split(':');
+            try {
+                const authValue = authHeader.split(' ')[1];
+                const decoded = atob(authValue);
+                const firstColonIndex = decoded.indexOf(':');
 
-            if (user === basicAuthUser && pwd === basicAuthPassword) {
-                return await updateSession(request);
+                if (firstColonIndex !== -1) {
+                    const user = decoded.substring(0, firstColonIndex);
+                    const pwd = decoded.substring(firstColonIndex + 1);
+
+                    // Case-insensitive user check for iOS auto-capitalization
+                    if (user.toLowerCase() === basicAuthUser.toLowerCase() && pwd === basicAuthPassword) {
+                        return await updateSession(request);
+                    }
+                }
+            } catch (e) {
+                console.error('Basic Auth decode error:', e);
             }
         }
 
-        return new NextResponse('Authentication required', {
+        const userAgent = request.headers.get('user-agent') || '';
+        const isFBorMessenger = userAgent.includes('FBAN') || userAgent.includes('FBAV');
+
+        const responseHeaders: Record<string, string> = {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        };
+
+        // Do not send WWW-Authenticate for FB/Messenger to force custom HTML display
+        if (!isFBorMessenger) {
+            responseHeaders['WWW-Authenticate'] = 'Basic realm="Restricted"';
+        }
+
+        return new Response(`
+            <!DOCTYPE html>
+            <html lang="ja">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Authentication Required [v2]</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        background-color: #f4f7f9;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        margin: 0;
+                        color: #333;
+                    }
+                    .container {
+                        background: white;
+                        padding: 2rem;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                        max-width: 400px;
+                        text-align: center;
+                    }
+                    h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #000; }
+                    p { line-height: 1.6; color: #666; font-size: 0.95rem; }
+                    .warning {
+                        background: #fff8e1;
+                        border-left: 4px solid #ffb300;
+                        padding: 10px;
+                        margin: 20px 0;
+                        text-align: left;
+                        font-size: 0.85rem;
+                    }
+                    .btn {
+                        display: inline-block;
+                        margin-top: 20px;
+                        padding: 12px 24px;
+                        background: #0070f3;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Authentication Required [v2]</h1>
+                    <p>このページにアクセスするには認証が必要です。</p>
+                    <div class="warning">
+                        <strong>Messenger等をお使いの方へ:</strong><br>
+                        アプリ内のブラウザでは認証画面が表示されない制約があります。右上のメニュー等から<strong>「ブラウザで開く」</strong>（SafariやChrome）を選択してください。
+                    </div>
+                    <p>通常はブラウザ側でログイン画面が表示されます。</p>
+                </div>
+            </body>
+            </html>
+        `, {
             status: 401,
-            headers: {
-                'WWW-Authenticate': 'Basic realm="Secure Area"',
-            },
+            headers: responseHeaders,
         });
     }
 
@@ -14917,6 +16517,7 @@ module.exports = nextConfig;
     "@supabase/supabase-js": "^2.86.2",
     "ai": "^5.0.108",
     "framer-motion": "^12.23.25",
+    "lucide-react": "^0.563.0",
     "next": "^16.0.7",
     "pg": "^8.16.3",
     "react": "^19.2.1",
@@ -14928,8 +16529,8 @@ module.exports = nextConfig;
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "autoprefixer": "^10.4.19",
     "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
@@ -16162,6 +17763,9 @@ WHERE id = (
         "build": "npm run build --prefix frontend",
         "start": "npm run start --prefix frontend",
         "lint": "npm run lint --prefix frontend"
+    },
+    "dependencies": {
+        "lucide-react": "^0.563.0"
     }
 }
 </file>

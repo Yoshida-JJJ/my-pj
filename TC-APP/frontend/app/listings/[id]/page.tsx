@@ -205,7 +205,7 @@ export default function ListingDetail() {
             <div className="max-w-7xl mx-auto w-full flex-1">
                 <nav className="mb-8">
                     <Link href="/market" className="text-brand-platinum hover:text-white font-medium flex items-center transition-colors group">
-                        <span className="mr-2 group-hover:-translate-x-1 transition-transform">←</span> Back to Market
+                        <span className="mr-2 group-hover:-translate-x-1 transition-transform">←</span> マーケットに戻る
                     </Link>
                 </nav>
 
@@ -409,7 +409,7 @@ export default function ListingDetail() {
                                         />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-brand-platinum/50 uppercase tracking-wider">Seller</p>
+                                        <p className="text-xs text-brand-platinum/50 uppercase tracking-wider">出品者</p>
                                         <Link href={`/profile/${listing.seller_id}`} className="text-white font-medium hover:text-brand-blue transition-colors">
                                             {getSellerName(listing.seller)}
                                         </Link>
@@ -419,29 +419,29 @@ export default function ListingDetail() {
 
                             {/* --- Product Details (Spec Sheet) --- */}
                             <div className="border-t border-brand-platinum/10 py-6">
-                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-4">Product Details</h3>
+                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-4">商品詳細 (Product Details)</h3>
                                 <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
                                     <div className="col-span-1">
-                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Team</dt>
+                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">チーム (Team)</dt>
                                         <dd className="font-medium text-white">{listing.team || '---'}</dd>
                                     </div>
                                     <div className="col-span-1">
-                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Year</dt>
+                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">年度 (Year)</dt>
                                         <dd className="font-medium text-white">{listing.year || '---'}</dd>
                                     </div>
                                     <div className="col-span-1">
-                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Brand</dt>
+                                        <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">ブランド (Brand)</dt>
                                         <dd className="font-medium text-white">{listing.manufacturer || '---'}</dd>
                                     </div>
                                     {listing.variation && (
                                         <div className="col-span-1">
-                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Variation</dt>
+                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">バリエーション</dt>
                                             <dd className="font-medium text-white">{listing.variation}</dd>
                                         </div>
                                     )}
                                     {listing.serial_number && (
                                         <div className="col-span-1">
-                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">Serial Number</dt>
+                                            <dt className="text-brand-platinum/50 text-xs uppercase tracking-wider mb-1">シリアル番号</dt>
                                             <dd className="font-mono text-brand-gold">{listing.serial_number}</dd>
                                         </div>
                                     )}
@@ -451,36 +451,36 @@ export default function ListingDetail() {
                             {/* --- Description --- */}
                             {listing.description && (
                                 <div className="border-t border-brand-platinum/10 py-6">
-                                    <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-3">Description</h3>
+                                    <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-3">商品説明 (Description)</h3>
                                     <p className="text-brand-platinum/80 leading-relaxed whitespace-pre-wrap">{listing.description}</p>
                                 </div>
                             )}
 
                             <div className="border-t border-brand-platinum/10 py-8">
-                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-6">Condition & Grading</h3>
+                                <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-6">状態・グレーディング (Condition)</h3>
                                 <div className="grid grid-cols-2 gap-y-6 gap-x-4">
                                     <div>
-                                        <p className="text-xs text-brand-platinum/50 uppercase mb-1">Graded</p>
-                                        <p className="font-medium text-white text-lg">{listing.condition_grading.is_graded ? 'Yes' : 'No'}</p>
+                                        <p className="text-xs text-brand-platinum/50 uppercase mb-1">鑑定有無 (Graded)</p>
+                                        <p className="font-medium text-white text-lg">{listing.condition_grading.is_graded ? 'あり (Yes)' : 'なし (No)'}</p>
                                     </div>
                                     {!listing.condition_grading.is_graded && (
                                         <div>
-                                            <p className="text-xs text-brand-platinum/50 uppercase mb-1">Condition</p>
+                                            <p className="text-xs text-brand-platinum/50 uppercase mb-1">状態 (Condition)</p>
                                             <p className="font-medium text-white text-lg">{listing.condition_rating || listing.condition_grading.service || '---'}</p>
                                         </div>
                                     )}
                                     {listing.condition_grading.is_graded && (
                                         <>
                                             <div>
-                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">Service</p>
+                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">鑑定機関 (Service)</p>
                                                 <p className="font-medium text-white text-lg">{listing.condition_grading.service}</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">Score</p>
+                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">グレード点数 (Score)</p>
                                                 <p className="font-heading font-bold text-3xl text-brand-blue text-glow">{listing.condition_grading.score}</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">Cert #</p>
+                                                <p className="text-xs text-brand-platinum/50 uppercase mb-1">証明番号 (Cert #)</p>
                                                 <p className="font-mono text-sm text-brand-platinum">{listing.condition_grading.certification_number}</p>
                                             </div>
                                         </>
@@ -547,11 +547,11 @@ export default function ListingDetail() {
                                 <div className="flex items-end justify-between mb-8">
                                     <div>
                                         <p className="text-sm text-brand-platinum/50 uppercase tracking-wider mb-1">
-                                            {listing.status === 'Display' ? 'Status' : 'Current Price'}
+                                            {listing.status === 'Display' ? 'ステータス' : '現在価格'}
                                         </p>
                                         {listing.status === 'Display' ? (
                                             <span className="px-4 py-2 rounded-lg bg-brand-platinum/10 border border-brand-platinum/20 text-white font-bold tracking-wider">
-                                                DISPLAY ONLY
+                                                展示のみ (Display Only)
                                             </span>
                                         ) : (
                                             <p className="text-5xl font-heading font-bold text-brand-gold text-gold-glow tracking-tight">
@@ -563,12 +563,12 @@ export default function ListingDetail() {
 
                                 {user?.id === listing.seller_id ? (
                                     <div className="bg-brand-dark-light/50 p-6 rounded-xl text-center border border-brand-platinum/10">
-                                        <p className="text-brand-platinum font-medium">You are the seller of this item.</p>
+                                        <p className="text-brand-platinum font-medium">あなたの出品商品です。</p>
                                         <button
                                             onClick={() => setIsEditModalOpen(true)}
                                             className="mt-4 text-brand-blue hover:text-brand-blue-glow text-sm font-bold uppercase tracking-wider transition-colors"
                                         >
-                                            Edit Listing
+                                            出品を編集
                                         </button>
                                     </div>
                                 ) : (
@@ -579,17 +579,17 @@ export default function ListingDetail() {
                                                     href={`/checkout/${listing.id}`}
                                                     className="block w-full bg-brand-blue hover:bg-brand-blue-glow text-white text-xl font-bold py-5 rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)] hover:scale-[1.02] text-center"
                                                 >
-                                                    Buy Now
+                                                    購入手続きへ
                                                 </Link>
                                                 <div className="flex items-center justify-center mt-6 gap-2 text-brand-platinum/40 text-sm">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                    Secure transaction via Stripe (Mock)
+                                                    Secure transaction via Stripe
                                                 </div>
                                             </>
                                         ) : (
                                             <div className="bg-brand-dark-light/30 p-6 rounded-xl text-center border border-brand-platinum/5">
                                                 <p className="text-brand-platinum/60">
-                                                    This item is {listing.status === 'Display' ? 'for display only' : 'not available for purchase'}.
+                                                    この商品は{listing.status === 'Display' ? '展示のみで' : '現在'}購入できません。
                                                 </p>
                                             </div>
                                         )}

@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
             signature,
             process.env.STRIPE_WEBHOOK_SECRET!
         );
+        console.log(`[Webhook] Signature verified. Event Type: ${event.type}`);
     } catch (err: any) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
+        console.error(`[Webhook] Signature verification failed: ${err.message}`);
         return NextResponse.json({ error: 'Webhook Error' }, { status: 400 });
     }
 
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
 
         // Retrieve metadata
         const md = session.metadata;
+        console.log('[Webhook] Session Metadata:', md);
+
         const orderId = md?.orderId;
         const listingId = md?.listingId;
 
