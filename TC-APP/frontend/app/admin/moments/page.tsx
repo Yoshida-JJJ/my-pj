@@ -63,9 +63,20 @@ export default async function AdminMomentsPage({
     const extHome = typeof params?.home === 'string' ? params.home : '';
     const extVisitorScore = typeof params?.visitorScore === 'string' ? params.visitorScore : '';
     const extHomeScore = typeof params?.homeScore === 'string' ? params.homeScore : '';
+    // User requested defaults for these:
+    // User requested defaults for these:
+    const extType = typeof params?.type === 'string' ? params.type : '';
     const extProgress = typeof params?.progress === 'string' ? params.progress : '';
 
-    const isAutoFilled = !editId && (extPlayer || extTitle || extDesc || extVisitor || extHome || extVisitorScore || extHomeScore || extProgress);
+    // Check if any *meaningful* params are present for the banner (checking keys directly avoids default vals triggering it)
+    const hasExternalParams = !editId && (
+        !!params?.player || !!params?.title || !!params?.desc ||
+        !!params?.visitor || !!params?.home ||
+        !!params?.visitorScore || !!params?.homeScore ||
+        !!params?.progress || !!params?.type
+    );
+
+    const isAutoFilled = hasExternalParams;
 
     if (editingMoment?.match_result) {
         try {
@@ -202,7 +213,7 @@ export default async function AdminMomentsPage({
                                 <span className="text-xs text-gray-500 w-12">進行</span>
                                 <select
                                     name="progress"
-                                    defaultValue={defaultProgress || 'Top 1st'}
+                                    defaultValue={editingMoment ? defaultProgress : (extProgress || 'Top 1st')}
                                     className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
                                 >
                                     <option value="Top 1st">Top 1st (1回表)</option>
@@ -223,6 +234,12 @@ export default async function AdminMomentsPage({
                                     <option value="Bot 8th">Bot 8th (8回裏)</option>
                                     <option value="Top 9th">Top 9th (9回表)</option>
                                     <option value="Bot 9th">Bot 9th (9回裏)</option>
+                                    <option value="Top 10th">Top 10th (10回表)</option>
+                                    <option value="Bot 10th">Bot 10th (10回裏)</option>
+                                    <option value="Top 11th">Top 11th (11回表)</option>
+                                    <option value="Bot 11th">Bot 11th (11回裏)</option>
+                                    <option value="Top 12th">Top 12th (12回表)</option>
+                                    <option value="Bot 12th">Bot 12th (12回裏)</option>
                                     <option value="Final">Final (試合終了)</option>
                                 </select>
                             </div>
@@ -232,7 +249,7 @@ export default async function AdminMomentsPage({
                             <label className="block text-sm text-gray-400 mb-1">イベントタイプ (Type)</label>
                             <select
                                 name="type"
-                                defaultValue={editingMoment?.type || 'HOMERUN'}
+                                defaultValue={editingMoment?.type || (extType || 'HOMERUN')}
                                 className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
                             >
                                 <option value="HOMERUN">ホームラン (Homerun)</option>
