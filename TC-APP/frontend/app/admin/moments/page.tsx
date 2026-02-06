@@ -249,13 +249,15 @@ export default async function AdminMomentsPage({
                             <label className="block text-sm text-gray-400 mb-1">イベントタイプ (Type)</label>
                             <select
                                 name="type"
-                                defaultValue={editingMoment?.type || (extType || 'HOMERUN')}
+                                defaultValue={editingMoment?.type || (extType || 'BIG_PLAY')}
                                 className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
                             >
                                 <option value="HOMERUN">ホームラン (Homerun)</option>
+                                <option value="STRIKEOUT">奪三振 (Strikeout)</option>
+                                <option value="TIMELY">タイムリー/長打 (Timely/Hit)</option>
                                 <option value="VICTORY">勝利 (Victory)</option>
                                 <option value="RECORD_BREAK">記録達成 (Record Breaker)</option>
-                                <option value="BIG_PLAY">ビッグプレイ/三振 (Big Play)</option>
+                                <option value="BIG_PLAY">好プレー/その他 (Big Play)</option>
                             </select>
                         </div>
                         <div>
