@@ -86,10 +86,10 @@ export default function HeroSection() {
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-brand-gold text-xs font-bold tracking-widest mb-1 uppercase">
-                                                {'PREMIUM'}
+                                                {'注目'}
                                             </p>
                                             <h3 className="text-white font-heading text-xl font-bold leading-tight">
-                                                {featuredCard.player_name || 'Unknown Player'}
+                                                {featuredCard.player_name || '選手名不明'}
                                             </h3>
                                             <p className="text-brand-platinum/80 text-xs mt-1">
                                                 {featuredCard.year || ''} {featuredCard.manufacturer || ''}
@@ -113,7 +113,7 @@ export default function HeroSection() {
                             <div className="w-full h-full flex items-center justify-center bg-brand-dark-light">
                                 <div className="animate-pulse flex flex-col items-center">
                                     <div className="h-12 w-12 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-4"></div>
-                                    <p className="text-brand-platinum/50 text-sm">Loading Featured Card...</p>
+                                    <p className="text-brand-platinum/50 text-sm">読み込み中...</p>
                                 </div>
                             </div>
                         )}
@@ -136,8 +136,8 @@ export default function HeroSection() {
                 </h1>
 
                 <p className="text-brand-platinum/80 text-lg md:text-xl mb-10 max-w-2xl mx-auto animate-fade-in-up delay-200">
-                    Experience the next generation of sports card collecting.
-                    Verify, trade, and showcase your assets in a premium ecosystem.
+                    次世代のトレーディングカード体験を。
+                    真贋証明、取引、コレクション展示をプレミアムなプラットフォームで。
                 </p>
 
                 <div className="flex flex-col md:flex-row gap-6 justify-center">
@@ -147,7 +147,7 @@ export default function HeroSection() {
                             className="group relative px-8 py-4 bg-brand-blue text-white font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                            <span className="relative z-10">EXPLORE MARKETPLACE</span>
+                            <span className="relative z-10">マーケットを見る</span>
                         </Link>
                     ) : (
                         <>
@@ -156,13 +156,13 @@ export default function HeroSection() {
                                 className="group relative px-8 py-4 bg-brand-gold text-brand-dark font-bold rounded-full overflow-hidden transition-all hover:scale-105 shadow-[0_0_20px_rgba(234,179,8,0.3)]"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                                <span className="relative z-10">SIGN UP NOW</span>
+                                <span className="relative z-10">無料で始める</span>
                             </Link>
                             <Link
                                 href="/login"
                                 className="px-8 py-4 bg-white/5 text-white font-bold rounded-full border border-white/10 hover:bg-white/10 transition-all hover:scale-105 backdrop-blur-md"
                             >
-                                SIGN IN
+                                ログイン
                             </Link>
                         </>
                     )}

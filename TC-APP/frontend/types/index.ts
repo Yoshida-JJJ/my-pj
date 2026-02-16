@@ -137,3 +137,21 @@ export interface SellerOrderDetail {
     shipped_at?: string;
     completed_at?: string;
 }
+
+export interface SalesHistoryItem {
+    orderId: string;
+    saleAmount: number;       // 販売価格
+    feeRate: number;          // 適用された手数料率（0.10 = 10%）
+    platformFee: number;      // 手数料額
+    netEarning: number;       // 純収益
+    completedAt: string;
+    listing: {
+        id: string;
+        playerName: string;
+        image: string | null;
+        seriesName?: string;
+        manufacturer?: string;
+        year?: number;
+    } | null;
+}
+

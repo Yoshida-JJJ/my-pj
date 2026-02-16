@@ -6,8 +6,8 @@ import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 import Footer from '../../components/Footer';
 import { getAvailableBalance } from '../../app/actions/payout';
+import { getCompletedSales, getCompletedPurchases, getSellerOrders } from '../actions/order';
 import OrderHistory from '../../components/OrderHistory';
-// import { createClient } from '@/utils/supabase/client';
 
 export default function ProfilePage() {
     const [user, setUser] = useState<any>(null);
@@ -15,7 +15,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    const [activeTab, setActiveTab] = useState<'purchases' | 'sales'>('purchases');
+    const [activeTab, setActiveTab] = useState<'purchases' | 'sales'>('sales');
     const [isEditing, setIsEditing] = useState(false);
     const [editDisplayName, setEditDisplayName] = useState('');
     const [editFirstName, setEditFirstName] = useState('');
@@ -28,6 +28,11 @@ export default function ProfilePage() {
     const [editRealNameKana, setEditRealNameKana] = useState('');
     const [balance, setBalance] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
+
+    // Dynamic stats
+    const [listingsCount, setListingsCount] = useState(0);
+    const [salesAmount, setSalesAmount] = useState(0);
+    const [purchasesCount, setPurchasesCount] = useState(0);
 
     useEffect(() => {
         const fetchUserAndProfile = async () => {
@@ -70,6 +75,21 @@ export default function ProfilePage() {
             } catch (e) {
                 console.error("Failed to load balance", e);
                 setBalance(0);
+            }
+
+            // Fetch Stats
+            try {
+                const [completedSales, completedPurchases, allSales] = await Promise.all([
+                    getCompletedSales(),
+                    getCompletedPurchases(),
+                    getSellerOrders()
+                ]);
+
+                setListingsCount(allSales.length);
+                setSalesAmount(completedSales.reduce((acc: number, o: any) => acc + (o.net_earnings || o.total_amount || 0), 0));
+                setPurchasesCount(completedPurchases.length);
+            } catch (e) {
+                console.error('Failed to load stats', e);
             }
 
             setLoading(false);
@@ -134,11 +154,11 @@ export default function ProfilePage() {
             });
             setIsEditing(false);
             setEditRealNameKana(sanitizedKana); // Update state to sanitized version
-            alert('Profile updated successfully!');
+            alert('プロフィールを更新しました！');
 
         } catch (error) {
             console.error(error);
-            alert('Failed to update profile.');
+            alert('プロフィールの更新に失敗しました。');
         } finally {
             setSaving(false);
         }
@@ -163,10 +183,10 @@ export default function ProfilePage() {
                     {/* Header Section */}
                     <div className="text-center space-y-4">
                         <h1 className="text-4xl font-heading font-bold text-white tracking-tight">
-                            My Profile
+                            マイページ
                         </h1>
                         <p className="text-brand-platinum/60">
-                            Manage your account settings and view your activity.
+                            アカウント設定の管理とアクティビティの確認
                         </p>
                     </div>
 
@@ -198,7 +218,7 @@ export default function ProfilePage() {
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-1 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Nickname (Display Name)</label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">ニックネーム</label>
                                                 <input
                                                     type="text"
                                                     value={editDisplayName}
@@ -209,7 +229,7 @@ export default function ProfilePage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Last Name (姓)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">姓</label>
                                                     <input
                                                         type="text"
                                                         value={editLastName}
@@ -219,7 +239,7 @@ export default function ProfilePage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">First Name (名)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">名</label>
                                                     <input
                                                         type="text"
                                                         value={editFirstName}
@@ -232,7 +252,7 @@ export default function ProfilePage() {
 
                                             {/* Real Name Kana Input */}
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Real Name (カタカナ) <span className="text-red-400 text-xs">*Required for Payouts</span></label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">氏名（カタカナ） <span className="text-red-400 text-xs">*出金に必要</span></label>
                                                 <input
                                                     type="text"
                                                     value={editRealNameKana}
@@ -246,7 +266,7 @@ export default function ProfilePage() {
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Email</label>
+                                                <label className="block text-sm font-medium text-brand-platinum/60 mb-1">メールアドレス</label>
                                                 <input
                                                     type="email"
                                                     value={editEmail}
@@ -258,10 +278,10 @@ export default function ProfilePage() {
                                         </div>
 
                                         <div className="border-t border-brand-platinum/10 pt-4 mt-4">
-                                            <h3 className="text-white font-bold mb-3">Shipping Address (配送先住所)</h3>
+                                            <h3 className="text-white font-bold mb-3">配送先住所</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Postal Code (郵便番号)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">郵便番号</label>
                                                     <input
                                                         type="text"
                                                         value={editPostalCode}
@@ -271,7 +291,7 @@ export default function ProfilePage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">Phone Number (電話番号)</label>
+                                                    <label className="block text-sm font-medium text-brand-platinum/60 mb-1">電話番号</label>
                                                     <input
                                                         type="tel"
                                                         value={editPhoneNumber}
@@ -351,14 +371,14 @@ export default function ProfilePage() {
                                             disabled={saving}
                                             className="px-6 py-2 rounded-xl bg-brand-blue hover:bg-brand-blue-glow text-white font-bold text-sm shadow-lg shadow-brand-blue/20 transition-all text-center disabled:opacity-50"
                                         >
-                                            {saving ? 'Saving...' : 'Save Changes'}
+                                            {saving ? '保存中...' : '変更を保存'}
                                         </button>
                                         <button
                                             onClick={() => setIsEditing(false)}
                                             disabled={saving}
                                             className="px-6 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-all"
                                         >
-                                            Cancel
+                                            キャンセル
                                         </button>
                                     </>
                                 ) : (
@@ -367,10 +387,10 @@ export default function ProfilePage() {
                                             onClick={() => setIsEditing(true)}
                                             className="px-6 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm border border-white/10 transition-all"
                                         >
-                                            Edit Profile
+                                            プロフィール編集
                                         </button>
                                         <Link href="/collection" className="px-6 py-2 rounded-xl bg-brand-blue hover:bg-brand-blue-glow text-white font-bold text-sm shadow-lg shadow-brand-blue/20 transition-all text-center">
-                                            My Collection
+                                            マイコレクション
                                         </Link>
                                     </>
                                 )}
@@ -384,7 +404,7 @@ export default function ProfilePage() {
 
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                             <div>
-                                <h3 className="text-yellow-600/80 text-sm font-bold tracking-widest uppercase mb-1">Current Balance / 売上金残高</h3>
+                                <h3 className="text-yellow-600/80 text-sm font-bold tracking-widest uppercase mb-1">売上金残高</h3>
                                 <div className="text-4xl md:text-5xl font-heading font-bold text-white tracking-tight flex items-baseline gap-2">
                                     <span className="text-2xl text-white/50">¥</span>
                                     {balance !== null ? balance.toLocaleString() : '---'}
@@ -395,7 +415,7 @@ export default function ProfilePage() {
                                 href="/payouts"
                                 className="px-8 py-3 rounded-full bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold shadow-lg shadow-yellow-600/20 transition-all transform hover:scale-105"
                             >
-                                Withdraw / 出金申請
+                                出金申請
                             </Link>
                         </div>
                     </div>
@@ -403,9 +423,9 @@ export default function ProfilePage() {
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {[
-                            { label: 'Total Listings', value: '0', icon: '📋' },
-                            { label: 'Sales', value: '¥0', icon: '💰' },
-                            { label: 'Purchases', value: '0', icon: '🛍️' },
+                            { label: '出品数', value: listingsCount.toString(), icon: '📋' },
+                            { label: '売上', value: `¥${salesAmount.toLocaleString()}`, icon: '💰' },
+                            { label: '購入数', value: purchasesCount.toString(), icon: '🛍️' },
                         ].map((stat, i) => (
                             <div key={i} className="glass-panel p-6 rounded-2xl border border-brand-platinum/5 hover:border-brand-platinum/20 transition-all group">
                                 <div className="flex items-center justify-between mb-2">
@@ -423,16 +443,16 @@ export default function ProfilePage() {
                     <div className="space-y-6 pt-8 border-t border-brand-platinum/10">
                         <div className="flex items-center gap-8 border-b border-brand-platinum/10">
                             <button
-                                onClick={() => setActiveTab('purchases')}
-                                className={`pb-3 text-sm font-bold tracking-wider transition-all border-b-2 ${activeTab === 'purchases' ? 'text-white border-brand-blue' : 'text-brand-platinum/40 border-transparent hover:text-brand-platinum'}`}
-                            >
-                                Purchases (購入履歴)
-                            </button>
-                            <button
                                 onClick={() => setActiveTab('sales')}
                                 className={`pb-3 text-sm font-bold tracking-wider transition-all border-b-2 ${activeTab === 'sales' ? 'text-white border-brand-gold' : 'text-brand-platinum/40 border-transparent hover:text-brand-platinum'}`}
                             >
-                                Sales (販売履歴)
+                                販売履歴
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('purchases')}
+                                className={`pb-3 text-sm font-bold tracking-wider transition-all border-b-2 ${activeTab === 'purchases' ? 'text-white border-brand-blue' : 'text-brand-platinum/40 border-transparent hover:text-brand-platinum'}`}
+                            >
+                                購入履歴
                             </button>
                         </div>
 

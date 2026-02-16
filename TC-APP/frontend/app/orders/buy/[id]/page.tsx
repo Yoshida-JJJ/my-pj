@@ -60,7 +60,7 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
             }
         } catch (error: any) {
             console.error('Fetch Order Error:', error);
-            alert(error.message || 'Order not found');
+            alert(error.message || '注文が見つかりません');
             router.push('/collection');
         }
     };
@@ -82,33 +82,36 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
     }, [id, buyerItem, retryCount, loading]);
 
     const handleReceive = async () => {
-        if (!confirm('Have you received the item? This will complete the transaction and release funds to the seller.')) return;
+        if (!confirm('商品を受け取りましたか？この操作で取引が完了し、販売者への決済が確定します。この操作は取り消しできません。')) return;
 
         setSubmitting(true);
         try {
             await markAsReceived(id);
-            alert('Transaction Completed!');
+            alert('取引が完了しました！');
             window.location.reload();
         } catch (error: any) {
-            alert(error.message || 'Failed to update status');
+            alert(error.message || 'ステータスの更新に失敗しました');
         } finally {
             setSubmitting(false);
         }
     };
 
-    if (loading) return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-white">Loading...</div>;
+    if (loading) return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-white">読み込み中...</div>;
     if (!order) return null;
 
     return (
         <div className="min-h-screen bg-brand-dark text-white pt-24 pb-12 px-4">
             <div className="max-w-2xl mx-auto glass-panel-premium rounded-2xl p-8 border border-white/10">
                 <h1 className="text-2xl font-bold font-heading mb-6 flex items-center justify-between">
-                    <span>Order Status</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wider
+                    <span>注文状況</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium tracking-wider
                         ${order.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                             order.status === 'shipped' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                                 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
-                        {order.status.replace('_', ' ')}
+                        {order.status === 'completed' ? '完了' :
+                            order.status === 'shipped' ? '配送中' :
+                                order.status === 'paid' || order.status === 'awaiting_shipping' ? '発送準備中' :
+                                    order.status === 'pending' ? '決済処理中' : order.status}
                     </span>
                 </h1>
 
@@ -140,10 +143,10 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
                                             </h3>
                                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-brand-platinum/80">
                                                 <span className="flex items-center gap-1">
-                                                    <span className="text-brand-gold">Player:</span> {moment.player_name}
+                                                    <span className="text-brand-gold">選手:</span> {moment.player_name}
                                                 </span>
                                                 <span className="flex items-center gap-1">
-                                                    <span className="text-brand-gold">Time:</span> {new Date(moment.created_at).toLocaleString()}
+                                                    <span className="text-brand-gold">時刻:</span> {new Date(moment.created_at).toLocaleString('ja-JP')}
                                                 </span>
                                             </div>
                                         </div>
@@ -176,20 +179,20 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
                     <div className="mb-8 p-6 bg-brand-blue/5 border border-brand-blue/10 rounded-xl">
                         <h3 className="text-brand-blue font-bold mb-4 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                            Shipment Details
+                            配送情報
                         </h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-xs text-brand-platinum/60 uppercase">Carrier</p>
-                                <p className="font-bold text-lg">{order.carrier || 'Not specified'}</p>
+                                <p className="text-xs text-brand-platinum/60 uppercase">配送業者</p>
+                                <p className="font-bold text-lg">{order.carrier || '未指定'}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-brand-platinum/60 uppercase">Tracking Number</p>
-                                <p className="font-mono text-lg tracking-wider">{order.tracking_number || 'No tracking number'}</p>
+                                <p className="text-xs text-brand-platinum/60 uppercase">追跡番号</p>
+                                <p className="font-mono text-lg tracking-wider">{order.tracking_number || '追跡番号なし'}</p>
                             </div>
                         </div>
                         {order.shipped_at && (
-                            <p className="text-xs text-brand-platinum/40 mt-4 text-right">Shipped: {new Date(order.shipped_at).toLocaleString()}</p>
+                            <p className="text-xs text-brand-platinum/40 mt-4 text-right">発送日: {new Date(order.shipped_at).toLocaleString('ja-JP')}</p>
                         )}
                     </div>
                 )}
@@ -220,7 +223,7 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
                                 <div className="p-8 rounded-xl bg-white/5 border border-dashed border-white/10 text-center mb-8">
                                     <div className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-brand-gold mb-2"></div>
                                     <p className="text-xs text-brand-platinum/30 uppercase tracking-widest">
-                                        Preparing your card for memories...
+                                        カード情報を準備中...
                                     </p>
                                 </div>
                             );
@@ -265,41 +268,41 @@ export default function BuyerOrderPage({ params }: { params: Promise<{ id: strin
                 {order.status === 'shipped' ? (
                     <div className="mb-8">
                         <div className="p-4 bg-brand-gold/10 border border-brand-gold/20 rounded-lg text-brand-gold mb-4 text-sm">
-                            Please confirm receiving the item only after verifying its condition. This action is irreversible.
+                            商品の状態を確認した上で、受取確認を行ってください。この操作は取り消しできません。
                         </div>
                         <button
                             onClick={handleReceive}
                             disabled={submitting}
                             className="w-full bg-brand-gold text-brand-dark font-bold py-4 rounded-xl hover:bg-brand-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-gold/20"
                         >
-                            {submitting ? 'Processing...' : 'I Received the Item (Complete Transaction)'}
+                            {submitting ? '処理中...' : '✅ 受取確認（取引完了）'}
                         </button>
                     </div>
                 ) : order.status === 'completed' ? (
                     <div className="mb-8 p-6 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
-                        <h3 className="text-green-400 font-bold text-xl mb-2">Transaction Completed</h3>
-                        <p className="text-brand-platinum/60 text-sm">Thank you for your purchase.</p>
+                        <h3 className="text-green-400 font-bold text-xl mb-2">取引完了</h3>
+                        <p className="text-brand-platinum/60 text-sm">ご購入いただきありがとうございました。</p>
                     </div>
                 ) : order.status === 'processing' || order.status === 'open' || order.status === 'pending' ? (
                     <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center">
                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-yellow-500 mb-4"></div>
-                        <h3 className="text-yellow-400 font-bold text-xl mb-2">Payment Processing</h3>
+                        <h3 className="text-yellow-400 font-bold text-xl mb-2">決済処理中</h3>
                         <p className="text-brand-platinum/60 text-sm">
-                            We are confirming your payment. This typically takes a few moments.<br />
-                            Once confirmed, you will be able to record your moments.
+                            お支払いを確認中です。通常数分で完了します。<br />
+                            確認完了後、注文状況が更新されます。
                         </p>
                         <button onClick={() => window.location.reload()} className="mt-4 text-xs text-yellow-500/80 hover:text-yellow-400 underline">
-                            Check Status Again
+                            ステータスを再確認
                         </button>
                     </div>
                 ) : (
                     <div className="mb-8 p-6 bg-white/5 border border-white/10 rounded-xl text-center text-brand-platinum/60">
-                        Waiting for seller to ship...
+                        販売者が発送準備を行っています。しばらくお待ちください。
                     </div>
                 )}
 
                 <button onClick={() => router.back()} className="text-brand-platinum hover:text-white transition-colors text-sm">
-                    &larr; Back to Collection
+                    &larr; コレクションに戻る
                 </button>
             </div>
         </div >

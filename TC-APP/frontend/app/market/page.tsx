@@ -167,12 +167,29 @@ function MarketPageContent() {
 
     const teams: Team[] = ["Giants", "Tigers", "Dragons", "Swallows", "Carp", "BayStars", "Hawks", "Fighters", "Marines", "Buffaloes", "Eagles", "Lions"];
 
+    const teamDisplayNames: Record<Team, string> = {
+        Giants: "読売ジャイアンツ",
+        Tigers: "阪神タイガース",
+        Dragons: "中日ドラゴンズ",
+        Swallows: "ヤクルトスワローズ",
+        Carp: "広島カープ",
+        BayStars: "横浜ベイスターズ",
+        Hawks: "ソフトバンクホークス",
+        Fighters: "日本ハムファイターズ",
+        Marines: "千葉ロッテマリーンズ",
+        Buffaloes: "オリックスバファローズ",
+        Eagles: "楽天イーグルス",
+        Lions: "埼玉西武ライオンズ",
+        SamuraiJapan: "侍ジャパン",
+        Other: "その他"
+    };
+
     return (
         <div className="min-h-screen bg-brand-dark flex flex-col pb-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 relative z-20 flex-1 w-full">
                 <div className="mb-8">
-                    <h1 className="text-4xl font-heading font-bold text-white mb-2">Marketplace</h1>
-                    <p className="text-brand-platinum/60">Discover and trade premium baseball cards.</p>
+                    <h1 className="text-4xl font-heading font-bold text-white mb-2">マーケット</h1>
+                    <p className="text-brand-platinum/60">プレミアムなプロ野球カードを探そう</p>
                 </div>
 
                 {/* Search & Filter Bar */}
@@ -190,7 +207,7 @@ function MarketPageContent() {
                                 <input
                                     type="text"
                                     id="search"
-                                    placeholder="Search player, series, or year..."
+                                    placeholder="選手名、シリーズ名、年度で検索..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="block w-full pl-10 pr-3 py-3 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white placeholder-brand-platinum/30 focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all"
@@ -207,9 +224,9 @@ function MarketPageContent() {
                                 onChange={(e) => setSelectedTeam(e.target.value)}
                                 className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
                             >
-                                <option value="">All Teams</option>
+                                <option value="">すべてのチーム</option>
                                 {teams.map((team) => (
-                                    <option key={team} value={team}>{team}</option>
+                                    <option key={team} value={team}>{teamDisplayNames[team]}</option>
                                 ))}
                             </select>
                         </div>
@@ -223,9 +240,9 @@ function MarketPageContent() {
                                 onChange={(e) => setSortOrder(e.target.value)}
                                 className="block w-full py-3 px-4 rounded-xl bg-brand-dark-light/50 border border-brand-platinum/10 text-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition-all appearance-none"
                             >
-                                <option value="newest">Newest</option>
-                                <option value="price_asc">Price: Low to High</option>
-                                <option value="price_desc">Price: High to Low</option>
+                                <option value="newest">新着順</option>
+                                <option value="price_asc">価格: 安い順</option>
+                                <option value="price_desc">価格: 高い順</option>
                             </select>
                         </div>
                     </div>
@@ -234,8 +251,8 @@ function MarketPageContent() {
                 {/* Listings Grid */}
                 <div className="mb-12">
                     <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-heading font-bold text-white">All Listings</h2>
-                        <span className="text-brand-platinum/60 text-sm">{listings.length} items found</span>
+                        <h2 className="text-2xl font-heading font-bold text-white">出品一覧</h2>
+                        <span className="text-brand-platinum/60 text-sm">{listings.length} 件見つかりました</span>
                     </div>
 
                     {loading ? (
@@ -261,12 +278,12 @@ function MarketPageContent() {
 
                             {listings.length === 0 && (
                                 <div className="text-center py-20 bg-brand-dark-light/30 rounded-2xl border border-brand-platinum/5">
-                                    <p className="text-brand-platinum/50 text-lg">No listings found matching your criteria.</p>
+                                    <p className="text-brand-platinum/50 text-lg">該当する出品が見つかりませんでした。</p>
                                     <button
                                         onClick={() => { setSearchQuery(''); setSelectedTeam(''); }}
                                         className="mt-4 text-brand-blue hover:text-brand-blue-glow font-medium"
                                     >
-                                        Clear Filters
+                                        フィルターをクリア
                                     </button>
                                 </div>
                             )}

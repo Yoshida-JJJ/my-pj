@@ -35,10 +35,10 @@ export default function Header() {
     };
 
     const NAV_ITEMS = [
-        { name: 'マーケット (Market)', path: '/market' },
-        { name: 'コレクション (Collection)', path: '/collection' },
-        { name: 'オークション (Auctions)', path: '/auctions' },
-        { name: 'コミュニティ (Community)', path: '/community' },
+        { name: 'マーケット', path: '/market' },
+        { name: 'マイコレクション', path: '/collection' },
+        { name: 'オークション', path: '/auctions' },
+        { name: 'コミュニティ', path: '/community' },
     ];
 
     return (
@@ -47,10 +47,10 @@ export default function Header() {
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2 group">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-blue-glow flex items-center justify-center shadow-lg shadow-brand-blue/20 group-hover:shadow-brand-blue/40 transition-all">
-                        <span className="font-heading font-bold text-white text-sm">TC</span>
+                        <span className="font-heading font-bold text-white text-sm">BLS</span>
                     </div>
                     <span className="font-heading font-bold text-lg text-white tracking-tight hidden md:block">
-                        TC APP
+                        BigLuckStadium
                     </span>
                 </Link>
 

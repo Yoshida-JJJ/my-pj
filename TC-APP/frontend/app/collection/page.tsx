@@ -31,15 +31,13 @@ function MyPageContent() {
     const searchParams = useSearchParams();
     const isDebugLive = searchParams.get('live') === 'true'; // Debug Mode
 
-    const [activeTab, setActiveTab] = useState<'showcase' | 'listings' | 'orders' | 'history' | 'archive'>('showcase');
-    const [historyTab, setHistoryTab] = useState<'sold' | 'purchased'>('sold');
+    const [activeTab, setActiveTab] = useState<'showcase' | 'listings' | 'orders' | 'archive'>('showcase');
     const [filter, setFilter] = useState<'All' | 'Draft' | 'Active' | 'Display'>('All');
     const [showcaseItems, setShowcaseItems] = useState<any[]>([]);
     const [archivedItems, setArchivedItems] = useState<any[]>([]);
     const [myListings, setMyListings] = useState<ListingItem[]>([]);
     const [myOrders, setMyOrders] = useState<OrderItem[]>([]);
-    const [historySold, setHistorySold] = useState<ListingItem[]>([]);
-    const [historyPurchased, setHistoryPurchased] = useState<OrderItem[]>([]);
+
     const [loading, setLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -143,36 +141,16 @@ function MyPageContent() {
             })).map(tagWithLive).filter(item => item !== null);
             setMyListings(activeMyListings as any);
 
-            // History: Sold Items (Persistent Model: Query from orders)
-            const { data: soldOrdersData } = await supabase
-                .from('orders')
-                .select('*, listing:listing_items!listing_id(*)') // Get the listing details at time of fetch
-                .eq('seller_id', user.id)
-                .is('completed_at', null); // Initial check for pending sales? No, history usually means completed.
 
-            // Actually, History > Sold should probably show Completed orders.
-            const { data: completedSoldData } = await supabase
-                .from('orders')
-                .select('*, listing:listing_items!listing_id(*)') // Disambiguate join
-                .eq('seller_id', user.id)
-                .not('completed_at', 'is', null);
-
-            const soldHistory = (completedSoldData || []).map(order => ({
-                ...order.listing,
-                orders: order, // For formatDate(item.orders.completed_at)
-                type: 'sold'
-            })).map(tagWithLive);
-            setHistorySold(soldHistory as any);
 
             // Buying Tab: Active Transactions only
             const { data: ordersData } = await supabase
                 .from('orders')
-                .select('*, listing:listing_items!listing_id(*)') // Disambiguate join
+                .select('*, listing:listing_items!listing_id(*)')
                 .eq('buyer_id', user.id);
 
             const activeMyOrders = (ordersData?.filter(order => {
                 const orderStatus = (order.status || '').toLowerCase();
-                // ONLY show orders that are actually in progress for THIS purchase
                 return ['pending', 'paid', 'awaiting_shipping', 'shipped', 'delivered'].includes(orderStatus);
             }) || []).map(order => {
                 const listing = order.listing ? mergeOrderMoments(order.listing, order) : null;
@@ -180,20 +158,10 @@ function MyPageContent() {
                     ...order,
                     listing: listing ? tagWithLive(listing) : null
                 };
-            }).filter(o => o.listing !== null); // safety
+            }).filter(o => o.listing !== null);
             setMyOrders(activeMyOrders as any || []);
 
-            // History: Purchased Items
-            const purchasedHistory = (ordersData?.filter(order =>
-                (order.status || '').toLowerCase() === 'completed'
-            ) || []).map(order => {
-                const listing = order.listing ? mergeOrderMoments(order.listing, order) : null;
-                return {
-                    ...order,
-                    listing: listing ? tagWithLive(listing) : null
-                };
-            });
-            setHistoryPurchased(purchasedHistory as any);
+
 
             // Workspace Tab: Aggregated View
             const workspaceListings = (activeItemsRaw?.filter(item => {
@@ -244,26 +212,26 @@ function MyPageContent() {
 
 
     const handleDeleteCollectionItem = async (id: string) => {
-        if (!confirm('Are you sure you want to archive this item? It will be moved to your history tab.')) return;
+        if (!confirm('このアイテムをアーカイブしますか？履歴タブに移動します。')) return;
 
         try {
             await deleteItem(id);
             fetchData();
         } catch (error) {
             console.error('Failed to archive item:', error);
-            alert('Failed to archive item');
+            alert('アーカイブに失敗しました');
         }
     };
 
     const handleRestoreCollectionItem = async (id: string) => {
-        if (!confirm('Restore this item to your collection?')) return;
+        if (!confirm('このアイテムをコレクションに復元しますか？')) return;
 
         try {
             await restoreItem(id);
             fetchData();
         } catch (error) {
             console.error('Failed to restore item:', error);
-            alert('Failed to restore item');
+            alert('復元に失敗しました');
         }
     };
 
@@ -285,14 +253,14 @@ function MyPageContent() {
 
         if (error) {
             console.error('Failed to update status:', error);
-            alert('Failed to update status');
+            alert('ステータスの変更に失敗しました');
         } else {
             fetchData();
         }
     };
 
     const handleCancelListing = async (id: string) => {
-        if (!confirm('Are you sure you want to cancel this listing? The item will be returned to your drafts.')) return;
+        if (!confirm('この出品を取り消しますか？下書きに戻ります。')) return;
 
         const supabase = createClient();
 
@@ -312,12 +280,12 @@ function MyPageContent() {
 
         } catch (error) {
             console.error('Failed to cancel listing:', error);
-            alert('Failed to cancel listing');
+            alert('出品の取り消しに失敗しました');
         }
     };
 
     const handleShipItem = async (listingId: string) => {
-        if (!confirm('Are you ready to ship this item?')) return;
+        if (!confirm('出荷準備が完了しましたか？')) return;
 
         const supabase = createClient();
         const { error } = await supabase
@@ -327,7 +295,7 @@ function MyPageContent() {
 
         if (error) {
             console.error('Failed to ship item:', error);
-            alert('Failed to ship item');
+            alert('出荷更新に失敗しました');
         } else {
             fetchData();
         }
@@ -374,21 +342,21 @@ function MyPageContent() {
         <div className="min-h-screen bg-brand-dark flex flex-col">
             <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
                 <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-heading font-bold text-white">My Collection</h1>
+                    <h1 className="text-3xl font-heading font-bold text-white">マイコレクション</h1>
                     <div className="flex gap-4">
                         <Link
                             href={`/profile/${user.id}`}
                             className="px-4 py-2 bg-brand-platinum/10 text-brand-platinum border border-brand-platinum/20 rounded-lg hover:bg-brand-platinum/20 transition-all font-bold text-sm flex items-center gap-2"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                            View Public Profile
+                            公開プロフィールを見る
                         </Link>
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="px-4 py-2 bg-brand-gold/10 text-brand-gold border border-brand-gold/20 rounded-lg hover:bg-brand-gold/20 transition-all font-bold text-sm flex items-center gap-2"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                            Add Card
+                            カードを追加
                         </button>
                     </div>
                 </div>
@@ -403,35 +371,45 @@ function MyPageContent() {
                                     : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
                                     } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
                             >
-                                Workspace
+                                ワークスペース
                             </button>
                             <button
                                 onClick={() => setActiveTab('listings')}
                                 className={`${activeTab === 'listings'
                                     ? 'border-brand-blue text-brand-blue-glow'
                                     : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
-                                    } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
+                                    } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all relative`}
                             >
-                                Selling
+                                取引管理
+                                {myListings.filter(i => {
+                                    // @ts-ignore
+                                    const o = i.orders ? (Array.isArray(i.orders) ? i.orders.find((o: any) => ['paid', 'awaiting_shipping'].includes((o.status || '').toLowerCase())) : i.orders) : null;
+                                    return o && ['paid', 'awaiting_shipping'].includes((o.status || '').toLowerCase());
+                                }).length > 0 && (
+                                        <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse">
+                                            {myListings.filter(i => {
+                                                // @ts-ignore
+                                                const o = i.orders ? (Array.isArray(i.orders) ? i.orders.find((o: any) => ['paid', 'awaiting_shipping'].includes((o.status || '').toLowerCase())) : i.orders) : null;
+                                                return o && ['paid', 'awaiting_shipping'].includes((o.status || '').toLowerCase());
+                                            }).length}
+                                        </span>
+                                    )}
                             </button>
                             <button
                                 onClick={() => setActiveTab('orders')}
                                 className={`${activeTab === 'orders'
                                     ? 'border-brand-blue text-brand-blue-glow'
                                     : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
-                                    } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
+                                    } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all relative`}
                             >
-                                Buying
+                                購入中
+                                {myOrders.filter(o => o.status === 'shipped').length > 0 && (
+                                    <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-black bg-brand-gold rounded-full">
+                                        {myOrders.filter(o => o.status === 'shipped').length}
+                                    </span>
+                                )}
                             </button>
-                            <button
-                                onClick={() => setActiveTab('history')}
-                                className={`${activeTab === 'history'
-                                    ? 'border-brand-blue text-brand-blue-glow'
-                                    : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
-                                    } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
-                            >
-                                History
-                            </button>
+
                             <button
                                 onClick={() => setActiveTab('archive')}
                                 className={`${activeTab === 'archive'
@@ -439,7 +417,7 @@ function MyPageContent() {
                                     : 'border-transparent text-brand-platinum/60 hover:text-brand-platinum hover:border-brand-platinum/30'
                                     } flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-all`}
                             >
-                                Archive
+                                アーカイブ
                             </button>
                         </nav>
                     </div>
@@ -480,9 +458,9 @@ function MyPageContent() {
                                     {filteredShowcaseItems.length === 0 && (
                                         <div className="col-span-full flex flex-col items-center justify-center py-12 text-brand-platinum/50">
                                             <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                            <p>No items found in {filter}.</p>
+                                            <p>「{filter}」にアイテムが見つかりません。</p>
                                             {filter === 'All' && (
-                                                <button onClick={() => setIsModalOpen(true)} className="mt-4 text-brand-blue hover:text-brand-blue-glow">Add your first card</button>
+                                                <button onClick={() => setIsModalOpen(true)} className="mt-4 text-brand-blue hover:text-brand-blue-glow">最初のカードを追加する</button>
                                             )}
                                         </div>
                                     )}
@@ -494,8 +472,8 @@ function MyPageContent() {
                             <div className="grid grid-cols-1 gap-4">
                                 {myListings.length === 0 ? (
                                     <div className="text-center py-12 text-brand-platinum/50">
-                                        <p>No active sales in progress.</p>
-                                        <p className="text-sm mt-2">Items listed for sale are in your Workspace.</p>
+                                        <p>進行中の販売はありません。</p>
+                                        <p className="text-sm mt-2">出品中のアイテムはワークスペースにあります。</p>
                                     </div>
                                 ) : (
                                     myListings.map(item => {
@@ -509,7 +487,7 @@ function MyPageContent() {
 
                                         return (
                                             <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5">
-                                                <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light">
+                                                <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light flex-shrink-0">
                                                     {item.images?.[0] ? (
                                                         <img src={item.images[0]} className="w-full h-full object-cover" />
                                                     ) : (
@@ -518,28 +496,40 @@ function MyPageContent() {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-1">
+                                                <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-start">
                                                         <div>
                                                             <h3 className="text-white font-bold">{item.player_name || 'Unknown Item'}</h3>
-                                                            <p className="text-brand-platinum/60 text-sm">{item.status}</p>
+                                                            <p className="text-brand-platinum/60 text-sm">
+                                                                {order && ['paid', 'awaiting_shipping'].includes((order.status || '').toLowerCase()) ? '発送手続きをお願いします' :
+                                                                    order && order.status === 'shipped' ? '配送中' :
+                                                                        item.status === 'TransactionPending' ? '決済処理中' :
+                                                                            item.status}
+                                                            </p>
                                                         </div>
-                                                        <div className="flex gap-2">
-                                                            {(item.status === 'AwaitingShipment' || item.status === 'TransactionPending' || item.status === 'Shipped') && (
-                                                                order ? (
+                                                        <div className="flex gap-2 flex-shrink-0">
+                                                            {order && (
+                                                                ['paid', 'awaiting_shipping'].includes((order.status || '').toLowerCase()) ? (
                                                                     <Link
-                                                                        href={(currentUserId === item.seller_id || currentUserId === item.orders?.seller_id)
-                                                                            ? `/orders/sell/${order.id}`
-                                                                            : `/orders/buy/${order.id}`}
-                                                                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors shadow-lg ${(currentUserId === item.seller_id || currentUserId === item.orders?.seller_id)
-                                                                            ? "text-brand-dark bg-brand-blue hover:bg-brand-blue-light shadow-brand-blue/20"
-                                                                            : "text-brand-dark bg-brand-gold hover:bg-brand-gold-light shadow-brand-gold/20"
-                                                                            }`}
+                                                                        href={`/orders/sell/${order.id}`}
+                                                                        className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors shadow-lg text-white bg-red-500 hover:bg-red-400 shadow-red-500/30 animate-pulse"
                                                                     >
-                                                                        {(currentUserId === item.seller_id || currentUserId === item.orders?.seller_id) ? "Manage Order" : "View Order"}
+                                                                        📦 発送手続きへ
+                                                                    </Link>
+                                                                ) : order.status === 'shipped' ? (
+                                                                    <Link
+                                                                        href={`/orders/sell/${order.id}`}
+                                                                        className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors shadow-lg text-brand-dark bg-brand-blue hover:bg-brand-blue-light shadow-brand-blue/20"
+                                                                    >
+                                                                        ✅ 発送完了
                                                                     </Link>
                                                                 ) : (
-                                                                    <span className="text-xs text-brand-platinum/40 italic">Syncing Order...</span>
+                                                                    <Link
+                                                                        href={`/orders/sell/${order.id}`}
+                                                                        className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors shadow-lg text-brand-dark bg-brand-blue hover:bg-brand-blue-light shadow-brand-blue/20"
+                                                                    >
+                                                                        注文詳細
+                                                                    </Link>
                                                                 )
                                                             )}
                                                         </div>
@@ -556,7 +546,7 @@ function MyPageContent() {
                             <div className="grid grid-cols-1 gap-4">
                                 {myOrders.length === 0 ? (
                                     <div className="text-center py-12 text-brand-platinum/50">
-                                        <p>No active purchases in progress.</p>
+                                        <p>進行中の購入はありません。</p>
                                     </div>
                                 ) : (
                                     myOrders.map(order => (
@@ -575,11 +565,12 @@ function MyPageContent() {
                                                     <div>
                                                         <h3 className="text-white font-bold">{order.listing?.player_name || 'Unknown Item'}</h3>
                                                         <p className="text-brand-platinum/60 text-sm">
-                                                            {order.status === 'shipped' ? 'Shipped - On the way' :
-                                                                order.status === 'completed' ? 'Delivered & Completed' :
-                                                                    order.status === 'paid' || order.status === 'awaiting_shipping' ? 'Awaiting Shipment' :
-                                                                        order.status === 'pending' ? 'Transaction Pending' :
-                                                                            'Purchased'}
+                                                            {order.status === 'shipped' ? '配送中' :
+                                                                order.status === 'completed' ? '受取完了' :
+                                                                    order.status === 'delivered' ? '配達済み' :
+                                                                        order.status === 'paid' || order.status === 'awaiting_shipping' ? '発送準備中' :
+                                                                            order.status === 'pending' ? '決済処理中' :
+                                                                                '購入済み'}
                                                         </p>
                                                     </div>
                                                     {['paid', 'awaiting_shipping', 'shipped', 'delivered'].includes(order.status?.toLowerCase()) ? (
@@ -590,13 +581,13 @@ function MyPageContent() {
                                                                 : 'text-brand-platinum/60 bg-brand-dark-light border border-brand-platinum/10'
                                                                 }`}
                                                         >
-                                                            {order.status === 'shipped' ? 'View & Receive' : 'View Order'}
+                                                            {order.status === 'shipped' ? '確認・受取' : '注文を見る'}
                                                         </Link>
                                                     ) : (
                                                         <span
                                                             className="px-3 py-1 text-xs font-bold text-brand-platinum/40 bg-brand-dark-light border border-brand-platinum/10 rounded-lg cursor-not-allowed"
                                                         >
-                                                            Processing
+                                                            {order.status === 'pending' ? '決済処理中' : '発送準備中'}
                                                         </span>
                                                     )}
                                                 </div>
@@ -607,101 +598,7 @@ function MyPageContent() {
                             </div>
                         )}
 
-                        {activeTab === 'history' && (
-                            <div>
-                                <div className="flex gap-4 mb-6 border-b border-brand-platinum/10 pb-4">
-                                    <button
-                                        onClick={() => setHistoryTab('sold')}
-                                        className={`text-sm font-bold transition-colors ${historyTab === 'sold' ? 'text-brand-blue' : 'text-brand-platinum/60 hover:text-brand-platinum'
-                                            }`}
-                                    >
-                                        Sold History
-                                    </button>
-                                    <button
-                                        onClick={() => setHistoryTab('purchased')}
-                                        className={`text-sm font-bold transition-colors ${historyTab === 'purchased' ? 'text-brand-blue' : 'text-brand-platinum/60 hover:text-brand-platinum'
-                                            }`}
-                                    >
-                                        Purchase History
-                                    </button>
-                                </div>
 
-                                <div className="grid grid-cols-1 gap-4">
-                                    {historyTab === 'sold' ? (
-                                        historySold.length === 0 ? (
-                                            <div className="text-center py-12 text-brand-platinum/50">
-                                                <p>No sold items history.</p>
-                                            </div>
-                                        ) : (
-                                            historySold.map(item => (
-                                                <div key={item.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5 opacity-75">
-                                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light grayscale">
-                                                        {item.images?.[0] ? (
-                                                            <img src={item.images[0]} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-brand-platinum/20">
-                                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex justify-between items-center">
-                                                            <div>
-                                                                <h3 className="text-white font-bold">{item.player_name || 'Unknown Item'}</h3>
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <p className="text-brand-platinum/60 text-xs italic">Sold - Completed</p>
-                                                                    {/* @ts-ignore */}
-                                                                    {item.orders && (
-                                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-platinum/10 text-brand-platinum/40">
-                                                                            {/* @ts-ignore */}
-                                                                            {formatDate(Array.isArray(item.orders) ? item.orders[0]?.completed_at : item.orders?.completed_at)}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-brand-gold font-bold">
-                                                                {/* @ts-ignore */}
-                                                                ¥{item.orders?.total_amount?.toLocaleString() || item.price?.toLocaleString()}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )
-                                    ) : (
-                                        historyPurchased.length === 0 ? (
-                                            <div className="text-center py-12 text-brand-platinum/50">
-                                                <p>No purchase history.</p>
-                                            </div>
-                                        ) : (
-                                            historyPurchased.map(order => (
-                                                <div key={order.id} className="flex gap-4 p-4 rounded-xl bg-brand-dark-light/30 border border-brand-platinum/5 opacity-75">
-                                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-brand-dark-light grayscale">
-                                                        <img src={order.listing?.images[0]} className="w-full h-full object-cover" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex justify-between items-center">
-                                                            <div>
-                                                                <h3 className="text-white font-bold">{order.listing?.player_name || 'Unknown Item'}</h3>
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <p className="text-brand-platinum/60 text-xs italic">Purchased - Completed</p>
-                                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-platinum/10 text-brand-platinum/40">
-                                                                        {(order as any).completed_at ? formatDate((order as any).completed_at) : formatDate(order.created_at)}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-brand-gold font-bold">
-                                                                ¥{order.total_amount?.toLocaleString() || order.listing?.price?.toLocaleString()}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )
-                                    )}
-                                </div>
-                            </div>
-                        )}
                         {activeTab === 'archive' && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
                                 {archivedItems.map((item) => (
@@ -719,7 +616,7 @@ function MyPageContent() {
                                 {archivedItems.length === 0 && (
                                     <div className="col-span-full flex flex-col items-center justify-center py-12 text-brand-platinum/50">
                                         <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                                        <p>Your archive is empty.</p>
+                                        <p>アーカイブは空です。</p>
                                     </div>
                                 )}
                             </div>

@@ -586,6 +586,21 @@ export default function ListingDetail() {
                                                     Secure transaction via Stripe
                                                 </div>
                                             </>
+                                        ) : ['TransactionPending', 'AwaitingShipment'].includes(listing.status) ? (
+                                            <div className="bg-brand-gold/5 p-6 rounded-xl text-center border border-brand-gold/20">
+                                                <div className="flex items-center justify-center gap-2 mb-2">
+                                                    <span className="relative flex h-2.5 w-2.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-gold"></span>
+                                                    </span>
+                                                    <p className="text-brand-gold font-bold text-sm uppercase tracking-wider">
+                                                        {listing.status === 'TransactionPending' ? '取引進行中' : '配送準備中'}
+                                                    </p>
+                                                </div>
+                                                <p className="text-brand-platinum/50 text-sm">
+                                                    この商品は現在購入できません。
+                                                </p>
+                                            </div>
                                         ) : (
                                             <div className="bg-brand-dark-light/30 p-6 rounded-xl text-center border border-brand-platinum/5">
                                                 <p className="text-brand-platinum/60">

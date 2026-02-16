@@ -18,10 +18,10 @@ export default function NotFound() {
                 </h1>
                 <div className="-mt-12 mb-8 relative">
                     <h2 className="text-3xl md:text-4xl font-heading font-bold text-white mb-4 drop-shadow-lg">
-                        Page Not Found
+                        ページが見つかりません
                     </h2>
                     <p className="text-brand-platinum/60 max-w-md mx-auto text-lg mb-8">
-                        The card you are looking for seems to have been lost in the shuffle.
+                        お探しのカードが見つかりませんでした。
                     </p>
                 </div>
 
@@ -30,7 +30,7 @@ export default function NotFound() {
                     className="inline-flex items-center gap-2 px-8 py-4 bg-brand-blue hover:bg-brand-blue-glow text-white font-bold rounded-full transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-                    Return to Home
+                    ホームへ戻る
                 </Link>
             </div>
         </div>

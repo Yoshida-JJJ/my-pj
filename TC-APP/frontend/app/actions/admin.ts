@@ -20,6 +20,7 @@ export async function createLiveMoment(formData: FormData) {
     const type = formData.get('type') as string;
     const intensity = parseInt(formData.get('intensity') as string);
     const description = formData.get('description') as string;
+    const imageUrl = formData.get('imageUrl') as string;
 
     // Structured Match Data
     const teamVisitor = formData.get('teamVisitor') as string;
@@ -45,6 +46,7 @@ export async function createLiveMoment(formData: FormData) {
             type,
             intensity,
             description,
+            image_url: imageUrl,
             match_result: matchResult
         });
 
@@ -66,6 +68,23 @@ export async function approvePayout(payoutId: string) {
     if (error) throw new Error(error.message);
 
     revalidatePath('/admin/payouts');
+    revalidatePath('/admin'); // KPI update
+}
+
+export async function rejectPayout(payoutId: string) {
+    // Mark Payout as Rejected
+    // Note: User balance is automatically restored because getAvailableBalance
+    // excludes rejected payouts via .neq('status', 'rejected')
+    const { error } = await getAdminClient()
+        .from('payouts')
+        .update({
+            status: 'rejected',
+            processed_at: new Date().toISOString()
+        })
+        .eq('id', payoutId);
+
+    if (error) throw new Error(error.message);
+
     revalidatePath('/admin/payouts');
     revalidatePath('/admin'); // KPI update
 }
@@ -156,6 +175,7 @@ export async function updateLiveMoment(momentId: string, formData: FormData) {
     const type = formData.get('type') as string;
     const intensity = parseInt(formData.get('intensity') as string);
     const description = formData.get('description') as string;
+    const imageUrl = formData.get('imageUrl') as string;
 
     // Structured Match Data
     const teamVisitor = formData.get('teamVisitor') as string;
@@ -193,6 +213,7 @@ export async function updateLiveMoment(momentId: string, formData: FormData) {
             type,
             intensity,
             description,
+            image_url: imageUrl,
             match_result: matchResult
         })
         .eq('id', momentId);

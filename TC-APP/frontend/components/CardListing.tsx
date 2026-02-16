@@ -114,7 +114,7 @@ const CardListing = memo(({ item, isLiveMoment = false, liveMoments = EMPTY_LIVE
                             />
                         ) : (
                             <div className="flex items-center justify-center h-full text-brand-platinum/30">
-                                No Image
+                                画像なし
                             </div>
                         )}
                         {/* Live Moment Inner Glow */}
@@ -142,7 +142,7 @@ const CardListing = memo(({ item, isLiveMoment = false, liveMoments = EMPTY_LIVE
                     <button
                         onClick={handleFlip}
                         className="absolute bottom-3 right-3 z-20 p-2 rounded-full bg-black/60 text-white hover:bg-brand-blue hover:text-white transition-colors backdrop-blur-sm border border-white/10"
-                        title="Flip Card"
+                        title="カードを裏返す"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -214,7 +214,7 @@ const CardListing = memo(({ item, isLiveMoment = false, liveMoments = EMPTY_LIVE
 
                 <div className="mt-auto pt-4 border-t border-brand-platinum/10 grid grid-cols-2 gap-4">
                     <div>
-                        <p className="text-[10px] text-brand-platinum/50 uppercase tracking-wider mb-1">Price</p>
+                        <p className="text-[10px] text-brand-platinum/50 uppercase tracking-wider mb-1">価格</p>
                         <div className="flex items-center gap-1.5">
                             <div className="w-4 h-4 rounded-full bg-brand-gold flex items-center justify-center shadow-[0_0_10px_rgba(234,179,8,0.5)]">
                                 <span className="text-[10px] text-brand-dark font-bold">¥</span>
@@ -226,9 +226,9 @@ const CardListing = memo(({ item, isLiveMoment = false, liveMoments = EMPTY_LIVE
                     </div>
                     {!isSold && (
                         <div className="text-right border-l border-brand-platinum/10 pl-4">
-                            <p className="text-[10px] text-brand-platinum/50 uppercase tracking-wider mb-1">Status</p>
+                            <p className="text-[10px] text-brand-platinum/50 uppercase tracking-wider mb-1">ステータス</p>
                             <div className="flex items-center justify-end gap-1.5 text-brand-blue-glow">
-                                <span className="font-mono text-sm font-medium">Active</span>
+                                <span className="font-mono text-sm font-medium">出品中</span>
                             </div>
                         </div>
                     )}

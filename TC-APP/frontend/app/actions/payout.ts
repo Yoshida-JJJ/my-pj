@@ -1,37 +1,55 @@
 'use server';
 
 import { createClient } from '../../utils/supabase/server';
-import { Payout } from '../../types';
+import { Payout, SalesHistoryItem } from '../../types';
+import { calculateWithdrawalFee, getFeeTiersForDisplay } from '../../lib/withdrawal-fee';
 
 import { Resend } from 'resend';
 import { PayoutRequestEmail } from '../../components/emails/PayoutRequestEmail';
 import { ReactElement } from 'react';
 
-// Constants
-const PLATFORM_FEE_PERCENTAGE = 0.1; // 10%
+// Legacy constant - deprecated, use getCurrentFeeRate() instead
+// const PLATFORM_FEE_PERCENTAGE = 0.1;
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
+ * 現在適用される手数料率を取得する。
+ * 将来的にはキャンペーンテーブル参照やユーザーランク別の料率に拡張可能。
+ * 現時点では環境変数 PLATFORM_FEE_RATE（デフォルト0.10）を使用。
+ */
+export async function getCurrentFeeRate(): Promise<number> {
+    const envRate = process.env.PLATFORM_FEE_RATE;
+    if (envRate) {
+        const parsed = parseFloat(envRate);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+            return parsed;
+        }
+    }
+    return 0.10; // デフォルト10%
+}
+
+/**
  * Logic A: Calculate Available Balance
- * Formula: (Total Sold Items Price * 0.9) - (Total Payouts Request/Paid)
+ * 個別取引の net_earnings を積み上げて計算（一律掛け算ではない）
  */
 export async function getAvailableBalance(userId: string) {
     const supabase = await createClient();
 
-    // 1. Fetch Sold Items from Orders (Status: Completed)
-    // We use 'orders' because ownership of 'listing_items' transfers to the buyer upon completion.
+    // 1. 完了済み注文から net_earnings を個別に取得して合算
     const { data: soldOrders, error: soldError } = await supabase
         .from('orders')
-        .select('total_amount')
+        .select('total_amount, platform_fee, net_earnings')
         .eq('seller_id', userId)
         .eq('status', 'completed');
 
     if (soldError) throw new Error(soldError.message);
 
-    const totalSoldAmount = soldOrders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-    const totalEarnings = Math.floor(totalSoldAmount * (1 - PLATFORM_FEE_PERCENTAGE));
+    const totalSoldAmount = soldOrders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
+    const totalFees = soldOrders?.reduce((sum, o) => sum + (o.platform_fee || 0), 0) || 0;
+    // 個別の net_earnings を積み上げる（一律掛け算ではない）
+    const totalEarnings = soldOrders?.reduce((sum, o) => sum + (o.net_earnings || 0), 0) || 0;
 
-    // 2. Fetch Payouts (All status except rejected)
+    // 2. 出金済み/申請中の合計
     const { data: payouts, error: payoutError } = await supabase
         .from('payouts')
         .select('amount, status')
@@ -43,10 +61,12 @@ export async function getAvailableBalance(userId: string) {
     const totalPayouts = payouts?.reduce((sum, p) => sum + p.amount, 0) || 0;
 
     return {
-        totalSold: totalSoldAmount,
-        totalEarnings: totalEarnings,
+        totalSold: totalSoldAmount,    // 総販売額
+        totalFees: totalFees,          // 手数料合計
+        totalEarnings: totalEarnings,  // 純収益合計（個別積み上げ）
         withdrawn: totalPayouts,
-        available: totalEarnings - totalPayouts
+        available: totalEarnings - totalPayouts,
+        orderCount: soldOrders?.length || 0,  // 取引件数
     };
 }
 
@@ -126,9 +146,6 @@ export async function registerBankAccount(userId: string, bankData: {
     return { success: true };
 }
 
-const WITHDRAWAL_FEE = 250;
-const FEE_EXEMPTION_THRESHOLD = 30000;
-
 /**
  * Logic C: Request Payout
  */
@@ -143,13 +160,8 @@ export async function requestPayout(userId: string, netAmount: number) {
         throw new Error('Please register a bank account before requesting a payout.');
     }
 
-    // 1. Calculate Fee based on Net Amount
-    // Rule: If Net Payout is >= 30,000, Fee is 0.
-    let fee = WITHDRAWAL_FEE;
-    if (netAmount >= FEE_EXEMPTION_THRESHOLD) {
-        fee = 0;
-    }
-
+    // 1. Calculate Fee using tiered system
+    const fee = calculateWithdrawalFee(netAmount);
     const grossAmount = netAmount + fee; // Total Deduction from Balance
 
     // 2. Check Balance against Gross Amount
@@ -250,4 +262,12 @@ export async function getProfileKana(userId: string) {
 
     if (error) return null;
     return data?.real_name_kana;
+}
+
+/**
+ * フロントエンドに手数料段階テーブルを返す。
+ * payouts/page.tsx の初期ロード時に呼び出す。
+ */
+export async function getWithdrawalFeeTiers() {
+    return getFeeTiersForDisplay();
 }

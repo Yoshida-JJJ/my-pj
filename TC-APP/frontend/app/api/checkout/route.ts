@@ -102,6 +102,11 @@ export async function POST(req: NextRequest) {
             order = { ...existingMyOrder, ...updateData };
         } else {
             // No active order for us. Create a new one.
+            // 手数料率の取得と計算（環境変数ベース）
+            const feeRate = parseFloat(process.env.PLATFORM_FEE_RATE || '0.10');
+            const platformFee = Math.floor(listing.price * feeRate);
+            const netEarnings = listing.price - platformFee;
+
             const { data: newOrder, error: insertError } = await supabaseAdmin
                 .from('orders')
                 .insert({
@@ -110,6 +115,9 @@ export async function POST(req: NextRequest) {
                     seller_id: listing.seller_id,
                     payment_method_id: 'stripe_checkout',
                     total_amount: listing.price,
+                    fee_rate: feeRate,
+                    platform_fee: platformFee,
+                    net_earnings: netEarnings,
                     status: 'pending',
                     shipping_name: shippingDetails?.name,
                     shipping_postal_code: shippingDetails?.postalCode,
@@ -130,6 +138,20 @@ export async function POST(req: NextRequest) {
                 }, { status: 500 });
             }
             order = newOrder;
+        }
+
+        // 3.5 Lock the listing as TransactionPending (remove from marketplace immediately)
+        const { error: reserveError } = await supabaseAdmin
+            .from('listing_items')
+            .update({ status: 'TransactionPending', updated_at: new Date().toISOString() })
+            .eq('id', listingId)
+            .eq('status', 'Active');
+
+        if (reserveError) {
+            console.error('[Checkout] Failed to reserve listing:', reserveError.message);
+            // Non-fatal: proceed with checkout even if reserve fails
+        } else {
+            console.log(`[Checkout] Listing ${listingId} set to TransactionPending`);
         }
 
         // 4. Create Stripe Checkout Session

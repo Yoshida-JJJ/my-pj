@@ -1,0 +1,734 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+ai_watcher.py
+check_who_is_playing.py
+fetch_real_data.py
+find_and_fetch.py
+inspect_ohtani.py
+inspect_raw.py
+main.py
+players.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="ai_watcher.py">
+import requests
+import urllib.parse
+import webbrowser
+import google.generativeai as genai
+import json
+import re
+import time
+from datetime import datetime, timedelta
+import pytz
+from players import WATCH_LIST
+
+# --- 🔧 設定エリア ------------------------------------------------
+# 本番/ステージング環境のURL
+NEXTJS_ADMIN_URL = "https://bigluck-stadium.jp/admin/moments"
+
+# Gemini APIキー
+GEMINI_API_KEY = "AIzaSyAwjQnE8fGs1mfNlBMYfOBlHrZApLbCOaM"
+
+# テスト用日付設定 (Trueなら特定日を、Falseなら「今日」を見ます)
+IS_TEST_MODE = True
+TEST_TARGET_DATE = "2025-11-01"  # 2025 WS Game 7 (または 2024-10-26 など)
+# ------------------------------------------------------------------
+
+
+TEAM_MAP_PARTIAL = {
+    "Dodgers": "LAD", "Marlins": "MIA", "Padres": "SD", "Yankees": "NYY",
+    "Cubs": "CHC", "Angels": "LAA", "Red Sox": "BOS", "Mets": "NYM",
+    "Braves": "ATL", "Phillies": "PHI", "Giants": "SF", "Rockies": "COL",
+    "Diamondbacks": "AZ", "Rays": "TB", "Blue Jays": "TOR", "Orioles": "BAL",
+    "White Sox": "CWS", "Royals": "KC", "Tigers": "DET", "Twins": "MIN",
+    "Guardians": "CLE", "Mariners": "SEA", "Astros": "HOU", "Rangers": "TEX",
+    "Athletics": "OAK", "Nationals": "WSH", "Pirates": "PIT", "Cardinals": "STL",
+    "Brewers": "MIL", "Reds": "CIN"
+}
+
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-2.0-flash')
+WATCH_IDS = {p['id']: p for p in WATCH_LIST}
+
+def get_current_mlb_date():
+    tz = pytz.timezone('US/Eastern')
+    now = datetime.now(tz)
+    return now.strftime('%Y-%m-%d')
+
+def resolve_team_code(team_name):
+    for key, code in TEAM_MAP_PARTIAL.items():
+        if key in team_name:
+            return code
+    return "UNKNOWN"
+
+def to_ordinal(n):
+    """数字を序数に変換 (1->1st, 2->2nd)"""
+    try:
+        n = int(n)
+    except:
+        return str(n)
+        
+    if 11 <= (n % 100) <= 13:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f"{n}{suffix}"
+
+def to_form_progress(inning_raw, half_raw):
+    """
+    管理画面形式に変換: "Top 1st", "Bot 9th", "Final"
+    """
+    # 試合終了の場合
+    if str(inning_raw) == 'Final' or str(half_raw) == 'Final':
+        return 'Final'
+
+    if not inning_raw: return ""
+    
+    # 序数変換 (9 -> 9th)
+    inning_ord = to_ordinal(inning_raw)
+    
+    # Halfの変換 (Top/Bot)
+    side = "Bot" if str(half_raw).lower() == 'bottom' else "Top"
+    
+    return f"{side} {inning_ord}"
+
+def map_event_type_to_form(event_eng):
+    """
+    APIのイベント名を管理画面の <option value="..."> に完全一致させる
+    選択肢: HOMERUN, VICTORY, RECORD_BREAK, BIG_PLAY
+    """
+    event_upper = event_eng.upper()
+    
+    if 'HOME RUN' in event_upper:
+        return 'HOMERUN'
+    
+    # 三振、好プレー、ヒットなどは「BIG_PLAY (ビッグプレイ/三振)」へ
+    if 'STRIKEOUT' in event_upper:
+        return 'BIG_PLAY'
+    if 'DOUBLE' in event_upper or 'TRIPLE' in event_upper:
+        return 'BIG_PLAY'
+    if 'STOLEN' in event_upper: # 盗塁
+        return 'BIG_PLAY'
+        
+    # 勝利/試合終了
+    if 'GAME END' in event_upper:
+        return 'VICTORY'
+    
+    # デフォルト (ヒットなど)
+    return 'BIG_PLAY'
+
+def get_japanese_content(english_desc, event_type, player_name, score_str):
+    print(f"🤖 AIが {player_name} ({event_type}) の記事を執筆中...")
+    
+    base_prompt = """
+    あなたはプロ野球の劇的な瞬間を切り取る「トップトレーディングカード」のライターです。
+    以下のMLB実況データ（英語）を元に、日本語テキストを作成してください。
+
+    Target Player: {{player}}
+    Event Type: {{event}}
+    Raw Description: "{{desc}}"
+    Current Score: {{score}}
+
+    # 重要ルール
+    1. 直訳禁止。熱狂的に意訳すること。
+    2. 文脈重視: Strikeoutは「空振り三振」「見逃し三振」など。
+    3. 体言止め推奨。
+
+    # 出力フォーマット (JSONのみ)
+    {
+        "title": "20文字以内のタイトル",
+        "desc": "60文字程度の熱狂的な説明文",
+        "intensity": "5"
+    }
+    """
+    prompt = base_prompt.replace("{{player}}", player_name)
+    prompt = prompt.replace("{{event}}", event_type)
+    prompt = prompt.replace("{{desc}}", english_desc)
+    prompt = prompt.replace("{{score}}", score_str)
+    
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(prompt)
+            clean_text = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(clean_text)
+        except Exception as e:
+            if "429" in str(e):
+                time.sleep(5)
+            else:
+                break
+    return {"title": event_type, "desc": english_desc, "intensity": "3"}
+
+def check_games_for_highlights():
+    target_date = TEST_TARGET_DATE if IS_TEST_MODE else get_current_mlb_date()
+    print(f"📅 {target_date} の試合をスキャン中...")
+    
+    try:
+        url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={target_date}"
+        sched = requests.get(url).json()
+    except Exception as e:
+        print(f"❌ 日程エラー: {e}")
+        return
+
+    dates = sched.get('dates', [])
+    if not dates:
+        print("💤 試合データなし")
+        return
+
+    found_count = 0
+
+    for game in dates[0]['games']:
+        game_pk = game['gamePk']
+        away_team = game['teams']['away']['team']['name']
+        home_team = game['teams']['home']['team']['name']
+        
+        try:
+            feed = requests.get(f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live").json()
+        except:
+            continue
+
+        all_plays = feed.get('liveData', {}).get('plays', {}).get('allPlays', [])
+        linescore = feed.get('liveData', {}).get('linescore', {})
+        
+        home_runs_total = linescore.get('teams', {}).get('home', {}).get('runs', 0)
+        away_runs_total = linescore.get('teams', {}).get('away', {}).get('runs', 0)
+
+        for play in all_plays:
+            matchup = play.get('matchup', {})
+            result = play.get('result', {})
+            event = result.get('event', '')
+            
+            # イニング情報の取得
+            about = play.get('about', {})
+            current_inning = about.get('inning', '')
+            current_half = about.get('halfInning', 'top')
+            
+            # 🔴 修正: 進行状況の正規化
+            play_progress = to_form_progress(current_inning, current_half)
+            
+            # 🔴 修正: イベントタイプの正規化 (HOMERUN, BIG_PLAYなど)
+            form_event_type = map_event_type_to_form(event)
+
+            batter_id = matchup.get('batter', {}).get('id')
+            pitcher_id = matchup.get('pitcher', {}).get('id')
+            target_player_name = None
+            
+            # 判定ロジック
+            if batter_id in WATCH_IDS:
+                if 'Home Run' in event or 'Hit' in event or 'Double' in event:
+                    target_player_name = WATCH_IDS[batter_id]['name']
+            elif pitcher_id in WATCH_IDS:
+                if 'Strikeout' in event or 'Game End' in event:
+                    target_player_name = WATCH_IDS[pitcher_id]['name']
+
+            if target_player_name:
+                print(f"\n🔥 発見: {target_player_name} / {form_event_type} / {play_progress}")
+                
+                ai_content = get_japanese_content(
+                    result['description'], event, target_player_name, f"{away_runs_total}-{home_runs_total}"
+                )
+
+                payload = {
+                    "player": target_player_name,
+                    "title": ai_content['title'], 
+                    "type": form_event_type, # ここが BIG_PLAY や HOMERUN になります
+                    "desc": ai_content['desc'],
+                    "intensity": ai_content['intensity'],
+                    "visitor": resolve_team_code(away_team),
+                    "home": resolve_team_code(home_team),
+                    "visitorScore": away_runs_total,
+                    "homeScore": home_runs_total,
+                    "progress": play_progress
+                }
+                
+                full_url = f"{NEXTJS_ADMIN_URL}?{urllib.parse.urlencode(payload)}"
+                
+                print(f"🔗 URL: {full_url}")
+                webbrowser.open(full_url)
+                
+                found_count += 1
+                time.sleep(3)
+
+    if found_count == 0:
+        print("👀 ハイライトなし")
+
+if __name__ == "__main__":
+    check_games_for_highlights()
+</file>
+
+<file path="check_who_is_playing.py">
+import requests
+import json
+
+# 2024/09/19 LAD vs MIA のはず...
+GAME_PK = 746057
+
+def check_players():
+    url = f"https://statsapi.mlb.com/api/v1.1/game/{GAME_PK}/feed/live"
+    print(f"⚾ データ取得中... (Game ID: {GAME_PK})")
+    
+    resp = requests.get(url)
+    data = resp.json()
+    
+    # 試合の日時や会場情報を確認
+    game_data = data.get('gameData', {})
+    datetime = game_data.get('datetime', {})
+    venue = game_data.get('venue', {})
+    teams = game_data.get('teams', {})
+    
+    print("\n=== 🏟️ 試合情報確認 ===")
+    print(f"Date: {datetime.get('dateTime')} (Official Date: {datetime.get('officialDate')})")
+    print(f"Venue: {venue.get('name')}")
+    print(f"Away Team: {teams.get('away', {}).get('name')}")
+    print(f"Home Team: {teams.get('home', {}).get('name')}")
+    print("========================\n")
+
+    # プレイデータの確認
+    all_plays = data.get('liveData', {}).get('plays', {}).get('allPlays', [])
+    print(f"総プレイ数: {len(all_plays)}")
+    print("\n--- 📝 全打席リスト (最初の20件) ---")
+
+    for i, play in enumerate(all_plays[:20]): # 長いので最初の20件だけ
+        matchup = play.get('matchup', {})
+        batter = matchup.get('batter', {})
+        result = play.get('result', {})
+        
+        b_id = batter.get('id', 'No ID')
+        b_name = batter.get('fullName', 'No Name')
+        event = result.get('event', 'No Event')
+        
+        print(f"[{i}] ID:{b_id} | {b_name} -> {event}")
+
+    # 大谷選手のID (660271) がデータ全体のどこかに含まれているか文字列検索
+    print("\n--- 🔍 データ全体のスキャン ---")
+    raw_text = json.dumps(data)
+    if "660271" in raw_text:
+        print("✅ ID '660271' (Ohtani) はデータ内に存在します！")
+        print("-> データの構造（パス）が想定と違っているようです。")
+    else:
+        print("❌ ID '660271' (Ohtani) はデータ内に一切存在しません。")
+        print("-> 試合IDが間違っているか、出場していない試合です。")
+
+if __name__ == "__main__":
+    check_players()
+</file>
+
+<file path="fetch_real_data.py">
+import requests
+import urllib.parse
+import webbrowser
+import json
+
+# --- 設定 ---
+NEXTJS_ADMIN_URL = "http://localhost:3000/admin/moments"
+
+# ✅ 修正: 正真正銘の 50-50 達成試合 (2024/09/19 LAD vs MIA)
+GAME_PK = 746024
+OHTANI_ID = 660271
+
+def fetch_game_data(game_pk):
+    url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
+    print(f"⚾ データを取得中... (Game ID: {game_pk})")
+    resp = requests.get(url)
+    return resp.json()
+
+def find_homerun_play(game_data):
+    all_plays = game_data.get('liveData', {}).get('plays', {}).get('allPlays', [])
+    print(f"総プレイ数: {len(all_plays)}")
+    
+    target_play = None
+    hr_count = 0
+
+    for play in all_plays:
+        matchup = play.get('matchup', {})
+        batter = matchup.get('batter', {})
+        result = play.get('result', {})
+        
+        batter_id = batter.get('id')
+        event = result.get('event', '')
+        
+        # 大谷選手のホームランを探す
+        if batter_id == OHTANI_ID and 'Home Run' in event:
+            hr_count += 1
+            print(f"🔥 大谷選手のホームラン({hr_count}本目)を発見！: {result.get('description')[:30]}...")
+            # ループを回し続けることで、試合最後のHR（51号）を取得します
+            target_play = play
+            
+    return target_play
+
+def main():
+    try:
+        data = fetch_game_data(GAME_PK)
+        
+        # 試合情報の確認用ログ
+        teams = data.get('gameData', {}).get('teams', {})
+        print(f"Match: {teams.get('away', {}).get('name')} vs {teams.get('home', {}).get('name')}")
+
+        play = find_homerun_play(data)
+        
+        if not play:
+            print("❌ データが見つかりませんでした。")
+            return
+
+        # データの抽出
+        result = play['result']
+        matchup = play['matchup']
+        
+        # 名前取得 (APIにfullNameがない場合の保険付き)
+        player_name = matchup['batter'].get('fullName', 'Shohei Ohtani')
+        
+        event_payload = {
+            "player": player_name,
+            "title": f"Event: {result['event']}",
+            "desc": result['description'],
+            "intensity": "5",
+            "visitor": "LAD",
+            "home": "MIA"
+        }
+        
+        # URL生成
+        query_string = urllib.parse.urlencode(event_payload)
+        full_url = f"{NEXTJS_ADMIN_URL}?{query_string}"
+        
+        print("\n" + "="*50)
+        print(f"🎉 伝説の瞬間を検出しました！")
+        print(f"Play: {event_payload['desc']}")
+        print("-" * 50)
+        print("Generated URL:")
+        print(full_url)
+        print("="*50 + "\n")
+        
+        # ブラウザ起動
+        webbrowser.open(full_url)
+        
+    except Exception as e:
+        print(f"エラーが発生しました: {e}")
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="find_and_fetch.py">
+import requests
+import urllib.parse
+import webbrowser
+import json
+
+# --- 設定 ---
+NEXTJS_ADMIN_URL = "http://localhost:3000/admin/moments"
+TARGET_DATE = "2024-09-19" # 50-50 達成日 (現地時間)
+OHTANI_ID = 660271
+
+def find_game_pk(date_str):
+    """
+    指定された日付のスケジュールから、ドジャース(LAD)の試合IDを検索する
+    """
+    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}"
+    print(f"📅 {date_str} の試合日程を検索中...")
+    
+    resp = requests.get(url)
+    data = resp.json()
+    
+    dates = data.get('dates', [])
+    if not dates:
+        print("❌ 指定日の試合データがありません。")
+        return None
+        
+    games = dates[0].get('games', [])
+    for game in games:
+        away = game['teams']['away']['team']['name']
+        home = game['teams']['home']['team']['name']
+        pk = game['gamePk']
+        
+        print(f"  - 候補: {away} vs {home} (ID: {pk})")
+        
+        # ドジャース戦を探す
+        if 'Dodgers' in away or 'Dodgers' in home:
+            print(f"✅ ドジャース戦を発見しました！ ID: {pk}")
+            return pk
+            
+    print("❌ ドジャースの試合が見つかりませんでした。")
+    return None
+
+def find_homerun_play(game_pk):
+    url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
+    print(f"⚾ 試合データを取得中... (Game ID: {game_pk})")
+    
+    resp = requests.get(url)
+    game_data = resp.json()
+    
+    all_plays = game_data.get('liveData', {}).get('plays', {}).get('allPlays', [])
+    print(f"総プレイ数: {len(all_plays)}")
+    
+    target_play = None
+    hr_count = 0
+
+    for play in all_plays:
+        matchup = play.get('matchup', {})
+        batter = matchup.get('batter', {})
+        result = play.get('result', {})
+        
+        batter_id = batter.get('id')
+        event = result.get('event', '')
+        
+        # 大谷選手のホームランを探す
+        if batter_id == OHTANI_ID and 'Home Run' in event:
+            hr_count += 1
+            print(f"🔥 大谷選手のホームラン({hr_count}本目)を発見！: {result.get('description')[:30]}...")
+            # 50号、51号と続くので、最後のデータを採用（上書き）
+            target_play = play
+            
+    return target_play
+
+def main():
+    # 1. まず正しいGame IDを日程から探す
+    game_pk = find_game_pk(TARGET_DATE)
+    if not game_pk:
+        return
+
+    # 2. そのIDを使ってプレイデータを探す
+    play = find_homerun_play(game_pk)
+    
+    if not play:
+        print("❌ 大谷選手のホームランが見つかりませんでした。")
+        return
+
+    # 3. データ抽出とURL生成
+    result = play['result']
+    matchup = play['matchup']
+    player_name = matchup['batter'].get('fullName', 'Shohei Ohtani')
+    
+    event_payload = {
+        "player": player_name,
+        "title": f"Event: {result['event']}",
+        "desc": result['description'],
+        "intensity": "5",
+        "visitor": "LAD",
+        "home": "MIA"
+    }
+    
+    query_string = urllib.parse.urlencode(event_payload)
+    full_url = f"{NEXTJS_ADMIN_URL}?{query_string}"
+    
+    print("\n" + "="*50)
+    print(f"🎉 伝説の瞬間を検出しました！")
+    print(f"Play: {event_payload['desc']}")
+    print("-" * 50)
+    print("Generated URL:")
+    print(full_url)
+    print("="*50 + "\n")
+    
+    print("ブラウザを起動します...")
+    webbrowser.open(full_url)
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="inspect_ohtani.py">
+import requests
+import json
+
+GAME_PK = 746057  # LAD vs MIA (2024/09/19)
+
+def inspect_ohtani_plays():
+    url = f"https://statsapi.mlb.com/api/v1.1/game/{GAME_PK}/feed/live"
+    print(f"⚾ データを解析中... (Game ID: {GAME_PK})")
+    
+    resp = requests.get(url)
+    data = resp.json()
+    all_plays = data.get('liveData', {}).get('plays', {}).get('allPlays', [])
+    
+    print(f"総プレイ数: {len(all_plays)}")
+    print("--------------------------------------------------")
+    print("🔍 'Ohtani' または 'Shohei' を含むプレイを抽出します")
+    print("--------------------------------------------------")
+
+    found_count = 0
+    
+    for i, play in enumerate(all_plays):
+        # データの安全な取り出し
+        result = play.get('result', {})
+        matchup = play.get('matchup', {})
+        batter = matchup.get('batter', {})
+        
+        batter_name = batter.get('fullName', 'Unknown')
+        event_name = result.get('event', 'Unknown')
+        description = result.get('description', 'No description')
+        
+        # 名前チェック（大谷選手かどうか）
+        if 'Ohtani' in batter_name or 'Shohei' in batter_name:
+            found_count += 1
+            print(f"Play Index: {i}")
+            print(f"  Player Name: '{batter_name}'")  # ここが重要（シングルクォートで囲って余計な空白がないか見る）
+            print(f"  Event Name : '{event_name}'")   # ここも重要
+            print(f"  Description: {description[:50]}...")
+            print("--------------------------------------------------")
+
+    if found_count == 0:
+        print("❌ 'Ohtani' も 'Shohei' も含まれる選手が見つかりませんでした。")
+        print("もしかして: 選手名がIDだけになっている可能性があります。")
+
+if __name__ == "__main__":
+    inspect_ohtani_plays()
+</file>
+
+<file path="inspect_raw.py">
+import requests
+import json
+
+# 大谷 50-50 達成試合
+GAME_PK = 746409 
+
+def inspect_data():
+    url = f"https://statsapi.mlb.com/api/v1.1/game/{GAME_PK}/feed/live"
+    print(f"⚾ データを取得中... (Game ID: {GAME_PK})")
+    
+    try:
+        resp = requests.get(url)
+        data = resp.json()
+        
+        all_plays = data.get('liveData', {}).get('plays', {}).get('allPlays', [])
+        
+        print(f"取得できた総プレイ数: {len(all_plays)}")
+        print("--------------------------------------------------")
+        
+        # 最初の10プレイだけ中身を詳しく表示する
+        for i, play in enumerate(all_plays[:10]):
+            matchup = play.get('matchup', {})
+            batter = matchup.get('batter', {})
+            result = play.get('result', {})
+            
+            print(f"Play {i}:")
+            print(f"  - Event: {result.get('event')}")
+            print(f"  - Batter Name (fullName): {batter.get('fullName')}")
+            print(f"  - Batter ID: {batter.get('id')}")
+            print(f"  - Desc: {result.get('description')}")
+            print("--------------------------------------------------")
+            
+    except Exception as e:
+        print(f"エラー: {e}")
+
+if __name__ == "__main__":
+    inspect_data()
+</file>
+
+<file path="main.py">
+import urllib.parse
+import webbrowser
+import time
+
+# --- 設定 ---
+# Next.jsが動いているURL（ローカル環境）
+BASE_URL = "http://localhost:3000/admin/moments"
+
+# --- 1. 仮想のイベントデータ (本来はここをAIやスクレイピングで作る) ---
+mock_event = {
+    "player": "Shohei Ohtani",
+    "title": "55th Home Run",
+    "desc": "打球速度110マイルの弾丸ライナー！前人未到の記録を更新。",
+    "intensity": "5",       # 熱狂度 (1-5)
+    "visitor": "LAD",       # チームコード (Next.js側の定義と合わせる)
+    "home": "SD"
+}
+
+def generate_admin_url(data):
+    """辞書データを受け取り、管理画面の自動入力URLを生成する"""
+    query_string = urllib.parse.urlencode(data)
+    full_url = f"{BASE_URL}?{query_string}"
+    return full_url
+
+if __name__ == "__main__":
+    print("🤖 Watcher Bot: イベントを検知しました...")
+    time.sleep(1) # 計算しているフリ
+    
+    # URL生成
+    url = generate_admin_url(mock_event)
+    
+    print("\n" + "="*50)
+    print("生成されたURL:")
+    print(url)
+    print("="*50 + "\n")
+    
+    # オプション: 自動でブラウザを開く（確認用）
+    # 不要ならコメントアウトしてください
+    print("ブラウザで開いています...")
+    webbrowser.open(url)
+</file>
+
+<file path="players.py">
+# 監視対象の選手リスト (2025-2026シーズン最新版)
+# IDはMLB公式 (statsapi.mlb.com / mlb.com) のPerson IDを使用
+
+WATCH_LIST = [
+    # --- 🇺🇸 2025/2026 新加入・注目選手 ---
+    {"id": 808963, "name": "佐々木朗希", "team_code": "LAD"},  # Dodgers
+    {"id": 608372, "name": "菅野智之", "team_code": "BAL"},    # Orioles
+    {"id": 672960, "name": "岡本和真", "team_code": "TOR"},    # Blue Jays
+    {"id": 808959, "name": "村上宗隆", "team_code": "CWS"},    # White Sox
+    {"id": 829272, "name": "小笠原慎之介", "team_code": "WSH"},# Nationals
+
+    # --- 🌟 メジャー定着・主力選手 ---
+    {"id": 660271, "name": "大谷翔平", "team_code": "LAD"},    # Dodgers
+    {"id": 808967, "name": "山本由伸", "team_code": "LAD"},    # Dodgers
+    {"id": 506433, "name": "ダルビッシュ有", "team_code": "SD"}, # Padres
+    {"id": 673548, "name": "鈴木誠也", "team_code": "CHC"},    # Cubs
+    {"id": 684007, "name": "今永昇太", "team_code": "CHC"},    # Cubs
+    {"id": 807799, "name": "吉田正尚", "team_code": "BOS"},    # Red Sox
+    {"id": 673540, "name": "千賀滉大", "team_code": "NYM"},    # Mets
+    {"id": 579328, "name": "菊池雄星", "team_code": "LAA"},    # Angels (2025移籍)
+    {"id": 673451, "name": "松井裕樹", "team_code": "SD"},     # Padres
+    {"id": 628317, "name": "前田健太", "team_code": "DET"},    # Tigers
+
+    # --- 🇯🇵 侍ジャパン / 日系選手 ---
+    {"id": 663457, "name": "ラーズ・ヌートバー", "team_code": "STL"}, # Cardinals
+
+    # --- ⚠️ マイナー/招待選手など (必要に応じてコメントアウト解除) ---
+    # {"id": 642547, "name": "藤浪晋太郎", "team_code": "SEA"}, # Mariners (Minors)
+]
+</file>
+
+</files>

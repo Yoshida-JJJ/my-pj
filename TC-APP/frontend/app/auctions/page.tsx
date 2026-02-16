@@ -14,12 +14,12 @@ export default function AuctionsPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                         </svg>
                     </div>
-                    <h1 className="text-4xl font-heading font-bold text-white mb-4">Auctions Coming Soon</h1>
+                    <h1 className="text-4xl font-heading font-bold text-white mb-4">オークション機能は近日公開</h1>
                     <p className="text-brand-platinum/60 text-lg mb-8">
-                        Bid on exclusive, rare cards in real-time. The auction house is currently under construction.
+                        レアカードをリアルタイムで入札できるオークション機能を準備中です。
                     </p>
                     <div className="inline-block px-6 py-3 rounded-full bg-brand-dark-light border border-brand-platinum/10 text-brand-platinum/40 text-sm font-mono">
-                        ETA: Q1 2026
+                        公開予定: 2026年第1四半期
                     </div>
                 </div>
             </div>

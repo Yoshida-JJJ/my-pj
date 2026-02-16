@@ -88,7 +88,7 @@ export default function LiveMomentToast({ data, onDismiss }: LiveMomentToastProp
                         {/* CTA Button */}
                         <div className="mt-3 flex justify-end">
                             <span className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${isGold ? 'text-brand-dark group-hover:underline' : 'text-white'}`}>
-                                Check Cards
+                                カードを見る
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                             </span>
                         </div>

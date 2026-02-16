@@ -28,13 +28,13 @@ export default function Error({
                         <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     </div>
                 </div>
-                <h2 className="text-3xl font-heading font-bold text-white mb-4">System Malfunction</h2>
-                <p className="text-brand-platinum/60 mb-8 text-lg">{error.message || "An unexpected error occurred within the stadium network."}</p>
+                <h2 className="text-3xl font-heading font-bold text-white mb-4">エラーが発生しました</h2>
+                <p className="text-brand-platinum/60 mb-8 text-lg">{error.message || "予期しないエラーが発生しました。再度お試しください。"}</p>
                 <button
                     onClick={() => reset()}
                     className="px-8 py-3 bg-brand-blue hover:bg-brand-blue-glow text-white font-bold rounded-full transition-all shadow-lg hover:shadow-brand-blue/30"
                 >
-                    Reboot System
+                    再試行
                 </button>
             </div>
         </div>

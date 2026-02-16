@@ -13,36 +13,36 @@ export default function Footer() {
                         <div className="col-span-1 md:col-span-2">
                             <Link href="/" className="flex items-center gap-2 mb-4">
                                 <span className="font-heading text-2xl font-bold tracking-tighter text-white">
-                                    TC<span className="text-brand-blue">.APP</span>
+                                    BigLuck<span className="text-brand-blue">Stadium</span>
                                 </span>
                             </Link>
                             <p className="text-brand-platinum/60 max-w-sm">
-                                The premier marketplace for professional baseball trading cards.
-                                Buy, sell, and collect with confidence.
+                                プロ野球トレーディングカードのプレミアムマーケットプレイス。
+                                安心して売買・コレクションをお楽しみください。
                             </p>
                         </div>
 
                         <div>
-                            <h3 className="font-heading font-bold text-white mb-4">Marketplace</h3>
+                            <h3 className="font-heading font-bold text-white mb-4">マーケット</h3>
                             <ul className="space-y-2">
-                                <li><Link href="/" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">All Listings</Link></li>
-                                <li><Link href="/sell" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">Start Selling</Link></li>
-                                <li><Link href="/catalog" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">Card Catalog</Link></li>
+                                <li><Link href="/" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">出品一覧</Link></li>
+                                <li><Link href="/sell" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">出品する</Link></li>
+                                <li><Link href="/catalog" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">カードカタログ</Link></li>
                             </ul>
                         </div>
 
                         <div>
-                            <h3 className="font-heading font-bold text-white mb-4">Support</h3>
+                            <h3 className="font-heading font-bold text-white mb-4">サポート</h3>
                             <ul className="space-y-2">
-                                <li><Link href="/help" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">Help Center</Link></li>
-                                <li><Link href="/terms" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">Terms of Service</Link></li>
-                                <li><Link href="/privacy" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">Privacy Policy</Link></li>
+                                <li><Link href="/help" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">ヘルプセンター</Link></li>
+                                <li><Link href="/terms" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">利用規約</Link></li>
+                                <li><Link href="/privacy" className="text-brand-platinum/60 hover:text-brand-blue transition-colors">プライバシーポリシー</Link></li>
                             </ul>
                         </div>
                     </div>
 
                     <div className="mt-12 pt-8 border-t border-brand-platinum/10 text-center text-brand-platinum/40 text-sm">
-                        &copy; {new Date().getFullYear()} TC-APP. All rights reserved.
+                        &copy; {new Date().getFullYear()} BigLuckStadium. All rights reserved.
                     </div>
                 </div>
             </div>

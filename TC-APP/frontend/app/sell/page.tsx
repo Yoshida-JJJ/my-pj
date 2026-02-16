@@ -481,9 +481,9 @@ function SellContent() {
             <div className="md:flex md:items-center md:justify-between mb-8">
                 <div className="flex-1 min-w-0">
                     <h2 className="text-3xl font-heading font-bold leading-7 text-white sm:text-4xl sm:truncate drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
-                        Create New Listing
+                        新規出品
                     </h2>
-                    <p className="mt-2 text-brand-platinum/60">AIを活用した出品インターフェース</p>
+                    <p className="mt-2 text-brand-platinum/60">カード画像をアップロードすると、AIが自動で情報を読み取ります</p>
                 </div>
             </div>
 

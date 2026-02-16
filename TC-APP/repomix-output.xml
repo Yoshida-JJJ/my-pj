@@ -105,6 +105,7 @@ frontend/
     admin/
       moments/
         DeleteMomentButton.tsx
+        MomentForm.tsx
         page.tsx
       payouts/
         page.tsx
@@ -112,6 +113,11 @@ frontend/
       layout.tsx
       page.tsx
     api/
+      ai/
+        image/
+          route.ts
+        text/
+          route.ts
       analyze-card/
         route.ts
       checkout/
@@ -237,6 +243,7 @@ frontend/
     30_self_healing_complete_order.sql
     31_allow_multiple_orders_per_listing.sql
     32_setup_storage.sql
+    33_add_image_url_to_live_moments.sql
     debug_helper.sql
     debug_indexes.sql
     debug_triggers.sql
@@ -263,6 +270,7 @@ frontend/
     debug_7575.ts
     debug_c376.ts
     debug_moments.ts
+    fix_sakamoto.ts
     seed.ts
     simulate_action.ts
     test-gemini.ts
@@ -389,6 +397,7 @@ export async function createLiveMoment(formData: FormData) {
     const type = formData.get('type') as string;
     const intensity = parseInt(formData.get('intensity') as string);
     const description = formData.get('description') as string;
+    const imageUrl = formData.get('imageUrl') as string;
 
     // Structured Match Data
     const teamVisitor = formData.get('teamVisitor') as string;
@@ -414,6 +423,7 @@ export async function createLiveMoment(formData: FormData) {
             type,
             intensity,
             description,
+            image_url: imageUrl,
             match_result: matchResult
         });
 
@@ -444,10 +454,17 @@ export async function approvePayout(payoutId: string) {
  * Updates the moment result and propagates it to all stamped cards.
  */
 export async function finalizeMoment(momentId: string, formData: FormData) {
-    const finalScore = formData.get('finalScore') as string;
+    let finalScore = formData.get('finalScore') as string;
 
     if (!momentId || !finalScore) {
         throw new Error('Missing required fields');
+    }
+
+    // Auto-update inning to "9回裏" if "Game Set" button is pressed (User Requirement)
+    // Replaces pattern like "(Top 1st)" or "(1回表)" with "(9回裏)"
+    const inningPattern = /\((?:Top|Bot)\s+\d+\w+\)|\(\d+回[表裏]\)/gi;
+    if (inningPattern.test(finalScore)) {
+        finalScore = finalScore.replace(inningPattern, '(9回裏)');
     }
 
     console.log(`Finalizing Moment ${momentId} with score: ${finalScore}`);
@@ -518,6 +535,7 @@ export async function updateLiveMoment(momentId: string, formData: FormData) {
     const type = formData.get('type') as string;
     const intensity = parseInt(formData.get('intensity') as string);
     const description = formData.get('description') as string;
+    const imageUrl = formData.get('imageUrl') as string;
 
     // Structured Match Data
     const teamVisitor = formData.get('teamVisitor') as string;
@@ -555,6 +573,7 @@ export async function updateLiveMoment(momentId: string, formData: FormData) {
             type,
             intensity,
             description,
+            image_url: imageUrl,
             match_result: matchResult
         })
         .eq('id', momentId);
@@ -1733,12 +1752,438 @@ function DeleteButtonInner() {
 }
 </file>
 
+<file path="frontend/app/admin/moments/MomentForm.tsx">
+'use client';
+
+import { useState, useActionState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { createLiveMoment, updateLiveMoment } from '@/app/actions/admin';
+import { TEAM_GROUPS } from '@/lib/teams';
+import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
+
+type MomentFormProps = {
+    editingMoment?: any;
+    defaultValues: {
+        player: string;
+        title: string;
+        desc: string;
+        intensity: string;
+        visitor: string;
+        home: string;
+        scoreV: string;
+        scoreH: string;
+        progress: string;
+        type: string;
+    };
+    isAutoFilled?: boolean;
+};
+
+export default function MomentForm({ editingMoment, defaultValues, isAutoFilled }: MomentFormProps) {
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedImage, setGeneratedImage] = useState<string | null>(null); // Base64
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+
+    // AI Text Draft State
+    const [isDrafting, setIsDrafting] = useState(false);
+    const [draftKeywords, setDraftKeywords] = useState("");
+
+    // Form State (Controlled for AI Auto-fill)
+    const [playerName, setPlayerName] = useState(editingMoment?.player_name || defaultValues.player);
+    const [title, setTitle] = useState(editingMoment?.title || defaultValues.title);
+    const [type, setType] = useState(editingMoment?.type || (defaultValues.type || 'BIG_PLAY'));
+    const [intensity, setIntensity] = useState(editingMoment?.intensity || defaultValues.intensity || "3");
+    const [description, setDescription] = useState(editingMoment?.description || defaultValues.desc);
+
+    // Auto-scroll to generate button if auto-filled
+    useEffect(() => {
+        if (isAutoFilled && !editingMoment) {
+            const btn = document.getElementById('generate-btn');
+            if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [isAutoFilled, editingMoment]);
+
+    const handleAiDraft = async () => {
+        setIsDrafting(true);
+        try {
+            // Combine inputs for context
+            const contextKeywords = [
+                playerName,
+                type,
+                draftKeywords
+            ].filter(Boolean).join(", ");
+
+            const res = await fetch('/api/ai/text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keywords: contextKeywords }),
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            // Auto-fill fields
+            if (data.title) setTitle(data.title);
+            if (data.desc) setDescription(data.desc);
+            if (data.intensity) setIntensity(String(data.intensity));
+
+        } catch (e: any) {
+            alert(`AI Draft Error: ${e.message}`);
+        } finally {
+            setIsDrafting(false);
+        }
+    };
+
+    const handleGenerate = async () => {
+        if (!description) {
+            alert("画像生成には「詳細説明」が必要です。");
+            return;
+        }
+        setIsGenerating(true);
+        setGeneratedImage(null);
+        try {
+            const res = await fetch('/api/ai/image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: description }),
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            setGeneratedImage(`data:image/png;base64,${data.b64_json}`);
+        } catch (e: any) {
+            alert(`生成エラー: ${e.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleSubmit = async (formData: FormData) => {
+        setIsUploading(true);
+        setUploadError(null);
+
+        try {
+            let imageUrl = editingMoment?.image_url || null;
+
+            // If we have a new generated image, upload it
+            if (generatedImage) {
+                const supabase = createClient();
+                const blob = await (await fetch(generatedImage)).blob();
+                const fileExt = 'png';
+                const fileName = `generated-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                const { error: uploadError, data } = await supabase.storage
+                    .from('card-images')
+                    .upload(filePath, blob, {
+                        contentType: 'image/png',
+                        upsert: false
+                    });
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('card-images')
+                    .getPublicUrl(filePath);
+
+                imageUrl = publicUrl;
+            }
+
+            if (imageUrl) {
+                formData.append('imageUrl', imageUrl);
+            }
+
+            // Call Server Action
+            if (editingMoment) {
+                await updateLiveMoment(editingMoment.id, formData);
+            } else {
+                await createLiveMoment(formData);
+            }
+
+            // Reset only if successful create (update keeps user on page usually, but our action redirects/revalidates)
+            // Ideally we'd reset state if we stay, but the server action revalidates path.
+
+        } catch (e: any) {
+            console.error(e);
+            setUploadError(e.message);
+            setIsUploading(false); // Stop loading on error
+            return; // Don't proceed
+        }
+
+        setIsUploading(false);
+    };
+
+    return (
+        <form action={handleSubmit} className="space-y-4">
+            {uploadError && (
+                <div className="bg-red-500/10 border border-red-500 text-red-400 p-3 rounded text-sm">
+                    {uploadError}
+                </div>
+            )}
+
+            {/* Player Name */}
+            <div>
+                <label className="block text-sm text-gray-400 mb-1">選手名 (Player Name)</label>
+                <input
+                    name="playerName"
+                    required
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                    placeholder="例: 大谷翔平 / Shohei Ohtani"
+                />
+            </div>
+
+            {/* AI Text Generation Control */}
+            <div className="bg-gray-800/50 p-3 rounded border border-gray-700/50 flex flex-col gap-2">
+                <div className="flex gap-2 items-center">
+                    <input
+                        value={draftKeywords}
+                        onChange={(e) => setDraftKeywords(e.target.value)}
+                        placeholder="AI生成用キーワード (例: 甲子園, 場外弾, 逆転サヨナラ)"
+                        className="flex-1 bg-black/50 border border-white/20 rounded px-3 py-2 text-white text-sm focus:border-[#FFD700] outline-none"
+                    />
+                    <button
+                        type="button"
+                        onClick={handleAiDraft}
+                        disabled={isDrafting}
+                        className="bg-teal-600 hover:bg-teal-500 text-white text-sm font-bold px-4 py-2 rounded flex items-center gap-2 transition-colors whitespace-nowrap"
+                    >
+                        {isDrafting ? <Loader2 className="w-4 h-4 animate-spin" /> : '✨ AI Draft (Claude)'}
+                    </button>
+                </div>
+                <p className="text-[10px] text-gray-500">
+                    ※ 選手名とキーワードから、タイトル・説明・熱狂度を自動生成します。
+                </p>
+            </div>
+
+            <div>
+                <label className="block text-sm text-gray-400 mb-1">タイトル (Title)</label>
+                <input
+                    name="title"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                    placeholder="例: Walk-off Home Run"
+                />
+            </div>
+
+            {/* Match Status */}
+            <div className="bg-black/30 p-3 rounded border border-white/10 space-y-3">
+                <label className="block text-sm text-gray-400 -mb-2">試合状況 (Match Status)</label>
+
+                {/* Visitor */}
+                <div className="flex gap-2 items-center">
+                    <span className="text-xs text-gray-500 w-12">ビジター</span>
+                    <select
+                        name="teamVisitor"
+                        required
+                        defaultValue={defaultValues.visitor}
+                        className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                    >
+                        <option value="">チーム選択...</option>
+                        {TEAM_GROUPS.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                                {group.teams.map((team) => (
+                                    <option key={team.code} value={team.code}>{team.name}</option>
+                                ))}
+                            </optgroup>
+                        ))}
+                    </select>
+                    <input
+                        name="scoreVisitor"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        defaultValue={defaultValues.scoreV}
+                        className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
+                    />
+                </div>
+
+                {/* Home */}
+                <div className="flex gap-2 items-center">
+                    <span className="text-xs text-gray-500 w-12">ホーム</span>
+                    <select
+                        name="teamHome"
+                        required
+                        defaultValue={defaultValues.home}
+                        className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                    >
+                        <option value="">チーム選択...</option>
+                        {TEAM_GROUPS.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                                {group.teams.map((team) => (
+                                    <option key={team.code} value={team.code}>{team.name}</option>
+                                ))}
+                            </optgroup>
+                        ))}
+                    </select>
+                    <input
+                        name="scoreHome"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        defaultValue={defaultValues.scoreH}
+                        className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
+                    />
+                </div>
+
+                {/* Progress */}
+                <div className="flex gap-2 items-center">
+                    <span className="text-xs text-gray-500 w-12">進行</span>
+                    <select
+                        name="progress"
+                        defaultValue={editingMoment ? defaultValues.progress : (defaultValues.progress || 'Top 1st')}
+                        className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
+                    >
+                        <option value="Top 1st">Top 1st (1回表)</option>
+                        <option value="Bot 1st">Bot 1st (1回裏)</option>
+                        <option value="Top 2nd">Top 2nd (2回表)</option>
+                        <option value="Bot 2nd">Bot 2nd (2回裏)</option>
+                        <option value="Top 3rd">Top 3rd (3回表)</option>
+                        <option value="Bot 3rd">Bot 3rd (3回裏)</option>
+                        <option value="Top 4th">Top 4th (4回表)</option>
+                        <option value="Bot 4th">Bot 4th (4回裏)</option>
+                        <option value="Top 5th">Top 5th (5回表)</option>
+                        <option value="Bot 5th">Bot 5th (5回裏)</option>
+                        <option value="Top 6th">Top 6th (6回表)</option>
+                        <option value="Bot 6th">Bot 6th (6回裏)</option>
+                        <option value="Top 7th">Top 7th (7回表)</option>
+                        <option value="Bot 7th">Bot 7th (7回裏)</option>
+                        <option value="Top 8th">Top 8th (8回表)</option>
+                        <option value="Bot 8th">Bot 8th (8回裏)</option>
+                        <option value="Top 9th">Top 9th (9回表)</option>
+                        <option value="Bot 9th">Bot 9th (9回裏)</option>
+                        <option value="Top 10th">Top 10th (10回表)</option>
+                        <option value="Bot 10th">Bot 10th (10回裏)</option>
+                        <option value="Top 11th">Top 11th (11回表)</option>
+                        <option value="Bot 11th">Bot 11th (11回裏)</option>
+                        <option value="Top 12th">Top 12th (12回表)</option>
+                        <option value="Bot 12th">Bot 12th (12回裏)</option>
+                        <option value="Final">Final (試合終了)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-sm text-gray-400 mb-1">イベントタイプ (Type)</label>
+                <select
+                    name="type"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                >
+                    <option value="HOMERUN">ホームラン (Homerun)</option>
+                    <option value="STRIKEOUT">奪三振 (Strikeout)</option>
+                    <option value="TIMELY">タイムリー/長打 (Timely/Hit)</option>
+                    <option value="VICTORY">勝利 (Victory)</option>
+                    <option value="RECORD_BREAK">記録達成 (Record Breaker)</option>
+                    <option value="BIG_PLAY">好プレー/その他 (Big Play)</option>
+                </select>
+            </div>
+            <div>
+                <label className="block text-sm text-gray-400 mb-1">熱狂度 (Intensity 1-5)</label>
+                <select
+                    name="intensity"
+                    value={intensity}
+                    onChange={(e) => setIntensity(e.target.value)}
+                    className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                >
+                    <option value="5">5 - Legendary (伝説級)</option>
+                    <option value="4">4 - High (高)</option>
+                    <option value="3">3 - Medium (中)</option>
+                    <option value="2">2 - Low (低)</option>
+                    <option value="1">1 - Minimal (最小)</option>
+                </select>
+            </div>
+            <div>
+                <label className="block text-sm text-gray-400 mb-1">詳細説明 (Description)</label>
+                <textarea
+                    name="description"
+                    rows={5}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
+                    placeholder="試合の文脈や詳細など..."
+                />
+            </div>
+
+            {/* AI Image Generation Section */}
+            <div className={`border rounded-lg p-4 transition-colors ${isAutoFilled ? 'border-purple-500/50 bg-purple-900/10' : 'border-white/10 bg-white/5'}`}>
+                <div className="flex justify-between items-center mb-4">
+                    <label className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                        <span>🖼️ カードアート (Card Art)</span>
+                        {isAutoFilled && <span className="text-[10px] bg-purple-500 text-white px-2 py-0.5 rounded-full">Recommended</span>}
+                    </label>
+                </div>
+
+                {/* Generated Image Preview */}
+                {(generatedImage || editingMoment?.image_url) && (
+                    <div className="mb-4 relative w-full aspect-square max-w-sm mx-auto rounded overflow-hidden border border-white/20">
+                        <Image
+                            src={generatedImage || editingMoment.image_url}
+                            alt="Card Art"
+                            fill
+                            className="object-cover"
+                        />
+                        {generatedImage && (
+                            <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                Preview (Unsaved)
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <button
+                    id="generate-btn"
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !description}
+                    className={`w-full py-2 rounded font-bold text-sm flex items-center justify-center gap-2 transition-all
+                        ${isGenerating ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/50'}
+                    `}
+                >
+                    {isGenerating ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Generating Art...
+                        </>
+                    ) : (
+                        <>
+                            <span>⚡ Generate Card Art (DALL-E 3)</span>
+                        </>
+                    )}
+                </button>
+                <p className="text-[10px] text-gray-500 mt-2 text-center">
+                    ※ 生成には数秒かかります。気に入るまで何度でも再生成可能です。<br />
+                    保存時に自動的にアップロードされます。
+                </p>
+            </div>
+
+            <button
+                type="submit"
+                disabled={isUploading}
+                className={`w-full font-bold py-3 rounded transition-colors flex items-center justify-center gap-2
+                    ${editingMoment ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-[#FFD700] hover:bg-[#F0C000] text-black'}
+                    ${isUploading ? 'opacity-70 cursor-wait' : ''}
+                `}
+            >
+                {isUploading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {editingMoment ? '変更を保存 (Update)' : 'モーメントを発行 (Broadcast)'}
+            </button>
+        </form>
+    );
+}
+</file>
+
 <file path="frontend/app/admin/moments/page.tsx">
 import { createClient } from '@supabase/supabase-js';
-import { createLiveMoment, finalizeMoment, updateLiveMoment, deleteLiveMoment } from '@/app/actions/admin';
+import { finalizeMoment } from '@/app/actions/admin';
 import { TEAM_GROUPS } from '@/lib/teams';
 import Link from 'next/link';
 import DeleteMomentButton from './DeleteMomentButton';
+import MomentForm from './MomentForm';
 
 // Admin Client for fetching list
 const supabaseAdmin = createClient(
@@ -1790,6 +2235,30 @@ export default async function AdminMomentsPage({
     let defaultScoreH = "";
     let defaultProgress = "";
 
+    // External Parameters (Auto-fill)
+    const extPlayer = typeof params?.player === 'string' ? params.player : '';
+    const extTitle = typeof params?.title === 'string' ? params.title : '';
+    const extDesc = typeof params?.desc === 'string' ? params.desc : '';
+    const extIntensity = typeof params?.intensity === 'string' ? params.intensity : '3';
+    const extVisitor = typeof params?.visitor === 'string' ? params.visitor : '';
+    const extHome = typeof params?.home === 'string' ? params.home : '';
+    const extVisitorScore = typeof params?.visitorScore === 'string' ? params.visitorScore : '';
+    const extHomeScore = typeof params?.homeScore === 'string' ? params.homeScore : '';
+    // User requested defaults for these:
+    // User requested defaults for these:
+    const extType = typeof params?.type === 'string' ? params.type : '';
+    const extProgress = typeof params?.progress === 'string' ? params.progress : '';
+
+    // Check if any *meaningful* params are present for the banner (checking keys directly avoids default vals triggering it)
+    const hasExternalParams = !editId && (
+        !!params?.player || !!params?.title || !!params?.desc ||
+        !!params?.visitor || !!params?.home ||
+        !!params?.visitorScore || !!params?.homeScore ||
+        !!params?.progress || !!params?.type
+    );
+
+    const isAutoFilled = hasExternalParams;
+
     if (editingMoment?.match_result) {
         try {
             const regex = /^(.+?)\s+(\d+)\s+-\s+(\d+)\s+(.+?)\s+\((.+)\)$/;
@@ -1804,6 +2273,14 @@ export default async function AdminMomentsPage({
         } catch (e) {
             console.error("Failed to parse match result", e);
         }
+    } else if (isAutoFilled) {
+        // Apply external params if valid
+        console.log('[AutoFill] Applying external params:', { extVisitor, extHome, extProgress });
+        defaultVisitor = extVisitor;
+        defaultHome = extHome;
+        defaultScoreV = extVisitorScore;
+        defaultScoreH = extHomeScore;
+        defaultProgress = extProgress;
     }
 
     return (
@@ -1817,6 +2294,12 @@ export default async function AdminMomentsPage({
                         <h3 className={`text-lg font-bold ${editingMoment ? 'text-blue-400' : 'text-[#FFD700]'}`}>
                             {editingMoment ? 'イベント登録情報の修正' : '新規イベント登録'}
                         </h3>
+                        {isAutoFilled && (
+                            <div className="ml-4 flex items-center gap-1 bg-purple-900/40 border border-purple-500/30 text-purple-300 text-xs px-2 py-1 rounded animate-pulse w-fit">
+                                <span>⚡</span>
+                                <span>外部データから自動入力</span>
+                            </div>
+                        )}
                         {editingMoment && (
                             <Link href="/admin/moments" className="text-xs text-gray-400 hover:text-white border border-gray-600 px-2 py-1 rounded">
                                 キャンセル
@@ -1824,160 +2307,22 @@ export default async function AdminMomentsPage({
                         )}
                     </div>
 
-                    <form action={editingMoment ? updateLiveMoment.bind(null, editingMoment.id) : createLiveMoment} className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">選手名 (Player Name)</label>
-                            <input
-                                name="playerName"
-                                required
-                                defaultValue={editingMoment?.player_name || ''}
-                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
-                                placeholder="例: 大谷翔平 / Shohei Ohtani"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">タイトル (Title)</label>
-                            <input
-                                name="title"
-                                required
-                                defaultValue={editingMoment?.title || ''}
-                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
-                                placeholder="例: Walk-off Home Run"
-                            />
-                        </div>
-
-                        {/* Match Status */}
-                        <div className="bg-black/30 p-3 rounded border border-white/10 space-y-3">
-                            <label className="block text-sm text-gray-400 -mb-2">試合状況 (Match Status)</label>
-
-                            {/* Visitor */}
-                            <div className="flex gap-2 items-center">
-                                <span className="text-xs text-gray-500 w-12">ビジター</span>
-                                <select
-                                    name="teamVisitor"
-                                    required
-                                    defaultValue={defaultVisitor || ''}
-                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
-                                >
-                                    <option value="">チーム選択...</option>
-                                    {TEAM_GROUPS.map((group) => (
-                                        <optgroup key={group.label} label={group.label}>
-                                            {group.teams.map((team) => (
-                                                <option key={team.code} value={team.code}>{team.name}</option>
-                                            ))}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                                <input
-                                    name="scoreVisitor"
-                                    type="number"
-                                    min="0"
-                                    placeholder="0"
-                                    defaultValue={defaultScoreV || ''}
-                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
-                                />
-                            </div>
-
-                            {/* Home */}
-                            <div className="flex gap-2 items-center">
-                                <span className="text-xs text-gray-500 w-12">ホーム</span>
-                                <select
-                                    name="teamHome"
-                                    required
-                                    defaultValue={defaultHome || ''}
-                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
-                                >
-                                    <option value="">チーム選択...</option>
-                                    {TEAM_GROUPS.map((group) => (
-                                        <optgroup key={group.label} label={group.label}>
-                                            {group.teams.map((team) => (
-                                                <option key={team.code} value={team.code}>{team.name}</option>
-                                            ))}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                                <input
-                                    name="scoreHome"
-                                    type="number"
-                                    min="0"
-                                    placeholder="0"
-                                    defaultValue={defaultScoreH || ''}
-                                    className="w-16 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-center focus:border-[#FFD700]"
-                                />
-                            </div>
-
-                            {/* Progress */}
-                            <div className="flex gap-2 items-center">
-                                <span className="text-xs text-gray-500 w-12">進行</span>
-                                <select
-                                    name="progress"
-                                    defaultValue={defaultProgress || 'Top 1st'}
-                                    className="flex-1 bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm focus:border-[#FFD700]"
-                                >
-                                    <option value="Top 1st">Top 1st (1回表)</option>
-                                    <option value="Bot 1st">Bot 1st (1回裏)</option>
-                                    <option value="Top 2nd">Top 2nd (2回表)</option>
-                                    <option value="Bot 2nd">Bot 2nd (2回裏)</option>
-                                    <option value="Top 3rd">Top 3rd (3回表)</option>
-                                    <option value="Bot 3rd">Bot 3rd (3回裏)</option>
-                                    <option value="Top 4th">Top 4th (4回表)</option>
-                                    <option value="Bot 4th">Bot 4th (4回裏)</option>
-                                    <option value="Top 5th">Top 5th (5回表)</option>
-                                    <option value="Bot 5th">Bot 5th (5回裏)</option>
-                                    <option value="Top 6th">Top 6th (6回表)</option>
-                                    <option value="Bot 6th">Bot 6th (6回裏)</option>
-                                    <option value="Top 7th">Top 7th (7回表)</option>
-                                    <option value="Bot 7th">Bot 7th (7回裏)</option>
-                                    <option value="Top 8th">Top 8th (8回表)</option>
-                                    <option value="Bot 8th">Bot 8th (8回裏)</option>
-                                    <option value="Top 9th">Top 9th (9回表)</option>
-                                    <option value="Bot 9th">Bot 9th (9回裏)</option>
-                                    <option value="Final">Final (試合終了)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">イベントタイプ (Type)</label>
-                            <select
-                                name="type"
-                                defaultValue={editingMoment?.type || 'HOMERUN'}
-                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
-                            >
-                                <option value="HOMERUN">ホームラン (Homerun)</option>
-                                <option value="VICTORY">勝利 (Victory)</option>
-                                <option value="RECORD_BREAK">記録達成 (Record Breaker)</option>
-                                <option value="BIG_PLAY">ビッグプレイ/三振 (Big Play)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">熱狂度 (Intensity 1-5)</label>
-                            <select
-                                name="intensity"
-                                defaultValue={editingMoment?.intensity || '3'}
-                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
-                            >
-                                <option value="5">5 - Legendary (伝説級)</option>
-                                <option value="4">4 - High (高)</option>
-                                <option value="3">3 - Medium (中)</option>
-                                <option value="2">2 - Low (低)</option>
-                                <option value="1">1 - Minimal (最小)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-1">詳細説明 (Description)</label>
-                            <textarea
-                                name="description"
-                                rows={5}
-                                defaultValue={editingMoment?.description || ''}
-                                className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white focus:border-[#FFD700] outline-none"
-                                placeholder="試合の文脈や詳細など..."
-                            />
-                        </div>
-                        <button type="submit" className={`w-full font-bold py-3 rounded transition-colors ${editingMoment ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-[#FFD700] hover:bg-[#F0C000] text-black'}`}>
-                            {editingMoment ? '変更を保存 (Update)' : 'モーメントを発行 (Broadcast)'}
-                        </button>
-                    </form>
+                    <MomentForm
+                        editingMoment={editingMoment}
+                        defaultValues={{
+                            player: extPlayer,
+                            title: extTitle,
+                            desc: extDesc,
+                            intensity: extIntensity,
+                            visitor: defaultVisitor,
+                            home: defaultHome,
+                            scoreV: defaultScoreV,
+                            scoreH: defaultScoreH,
+                            progress: defaultProgress,
+                            type: extType
+                        }}
+                        isAutoFilled={isAutoFilled}
+                    />
                 </div>
 
                 {/* List Section */}
@@ -2315,7 +2660,7 @@ export default async function AdminLayout({
     const { data: { user } } = await supabase.auth.getUser();
 
     // Double check (Middleware should catch this, but safe to have)
-    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
+    const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || '').split(/[,;|]+/).map(e => e.trim());
     if (!user || !user.email || !adminEmails.some(email => email.toLowerCase() === user.email?.toLowerCase())) {
         redirect('/');
     }
@@ -2523,6 +2868,173 @@ export default async function AdminDashboard() {
             </div>
         </div>
     );
+}
+</file>
+
+<file path="frontend/app/api/ai/image/route.ts">
+import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+export const maxDuration = 60; // Allow 60 seconds (DALL-E can be slow)
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
+    try {
+        const { prompt } = await req.json();
+
+        if (!prompt) {
+            return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+        }
+
+        if (!process.env.OPENAI_API_KEY) {
+            return NextResponse.json({ error: 'OpenAI API Key is missing' }, { status: 500 });
+        }
+
+        console.log('Generating image for prompt:', prompt);
+
+        // 1. Common Base Style
+        const baseStyle = [
+            "Premium high-end trading card digital illustration",
+            "hyper-realistic art style rendered from a photograph",
+            "player wearing full professional uniform", // ユニフォーム着用は絶対
+            "authentic professional baseball mechanics",
+            "dynamic stadium night lighting",
+            "subtle energy particle effects",
+            "ultra-detailed texture",
+            "masterpiece",
+            "8k resolution"
+        ].join(", ");
+
+        // 2. Role Detection & Action Specification
+        const lowerPrompt = prompt.toLowerCase();
+        let role = 'generic';
+        let actionKeywords = "";
+
+        // Basic keyword matching
+        if (lowerPrompt.includes('pitch') || lowerPrompt.includes('strikeout') || lowerPrompt.includes('strike out') || lowerPrompt.includes('mound') || lowerPrompt.includes('save') || lowerPrompt.includes('throw')) {
+            role = 'pitcher';
+            actionKeywords = "Pitching action, on the mound, throwing a baseball, holding a ball in hand (NO BAT), dynamic pitching form, athletic posture";
+        } else if (lowerPrompt.includes('catch') || lowerPrompt.includes('diving') || lowerPrompt.includes('defense') || lowerPrompt.includes('field') || lowerPrompt.includes('glove')) {
+            role = 'fielder';
+            actionKeywords = "Fielding action, catching a ball with baseball glove, diving play, defensive stance, wearing a baseball glove (NO BAT)";
+        } else {
+            // Default to Batter for hits, homeruns, or generic
+            role = 'batter';
+            actionKeywords = "Batting action, swinging a baseball bat, holding a bat with both hands, hitting a ball, dynamic swing, athletic batting stance";
+        }
+
+        console.log(`Detected Role: ${role} for prompt: "${prompt}"`);
+
+        const enhancedPrompt = `${baseStyle}. ${actionKeywords}. Context: ${prompt}`;
+
+        const response = await openai.images.generate({
+            model: "dall-e-3",
+            prompt: enhancedPrompt,
+            n: 1,
+            size: "1024x1024",
+            response_format: "b64_json",
+            quality: "standard", // "hd" is more expensive, standard is fine for preview -> compress
+        });
+
+        const image = response.data?.[0];
+
+        if (!image?.b64_json) {
+            throw new Error("No b64_json received from OpenAI");
+        }
+
+        return NextResponse.json({ b64_json: image.b64_json });
+
+    } catch (error: any) {
+        console.error("AI Image Generation Error:", error);
+        return NextResponse.json(
+            { error: error?.message || 'Failed to generate image' },
+            { status: 500 }
+        );
+    }
+}
+</file>
+
+<file path="frontend/app/api/ai/text/route.ts">
+import { NextResponse } from 'next/server';
+import Anthropic from '@anthropic-ai/sdk';
+
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
+    try {
+        const { keywords } = await req.json();
+
+        if (!keywords) {
+            return NextResponse.json({ error: 'Keywords are required' }, { status: 400 });
+        }
+
+        if (!process.env.ANTHROPIC_API_KEY) {
+            return NextResponse.json({ error: 'Anthropic API Key is missing' }, { status: 500 });
+        }
+
+        const anthropic = new Anthropic({
+            apiKey: process.env.ANTHROPIC_API_KEY,
+        });
+
+        const systemPrompt = `
+あなたはプロ野球トレーディングカードの敏腕編集者です。
+ユーザーから提供されたキーワードを元に、ファンが熱狂し、購買意欲をそそるようなテキストを作成してください。
+出力は必ずJSON形式のみとしてください。
+        `;
+
+        const userPrompt = `
+Target Keywords: "${keywords}"
+
+以下の要件でコンテンツを作成してください：
+1. Title: 20文字以内の劇的でキャッチーなタイトル。体言止め推奨。
+2. Desc: 60文字程度の状況描写。情景が浮かぶようなエモーショナルな表現で。
+3. Intensity: 1〜5の熱量スコア（5が最高）。
+
+Response format (JSON only):
+{ "title": "...", "desc": "...", "intensity": "..." }
+        `;
+
+        const msg = await anthropic.messages.create({
+            model: "claude-sonnet-4-5-20250929", // Latest confirmed working model
+            max_tokens: 1000,
+            temperature: 0.7,
+            system: systemPrompt,
+            messages: [
+                {
+                    "role": "user",
+                    "content": userPrompt
+                }
+            ]
+        });
+
+        const content = msg.content[0];
+        if (content.type !== 'text') {
+            throw new Error('Unexpected response type from Claude');
+        }
+
+        // Extract JSON from response (in case of extra text)
+        const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error('Failed to parse JSON from Claude response');
+        }
+
+        const result = JSON.parse(jsonMatch[0]);
+
+        return NextResponse.json(result);
+
+    } catch (error: any) {
+        console.error("AI Text Generation Error:", error);
+        return NextResponse.json(
+            { error: error?.message || 'Failed to generate text' },
+            { status: 500 }
+        );
+    }
 }
 </file>
 
@@ -4609,9 +5121,9 @@ export default async function DebugAdminPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const adminEmailsRaw = process.env.ADMIN_EMAILS || 'NOT SET';
-    const publicAdminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'NOT SET';
-    const adminEmailsList = adminEmailsRaw.split(',').map(e => e.trim().toLowerCase());
+    const adminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || 'NOT SET';
+    // const publicAdminEmailsRaw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'NOT SET'; // Removed redundancy
+    const adminEmailsList = adminEmailsRaw.split(/[,;|]+/).map(e => e.trim().toLowerCase());
 
     const currentUserEmail = user?.email?.toLowerCase() || 'NOT LOGGED IN';
     const isMatched = user?.email ? adminEmailsList.includes(currentUserEmail) : false;
@@ -12772,18 +13284,63 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 <file path="frontend/lib/teams.ts">
 export const TEAM_GROUPS = [
     {
-        label: "MLB (メジャーリーグ)",
+        label: "ア・リーグ 東地区",
         teams: [
-            { code: "LAD", name: "ドジャース (LAD)" },
-            { code: "NYY", name: "ヤンキース (NYY)" },
-            { code: "SD", name: "パドレス (SD)" },
-            { code: "LAA", name: "エンゼルス (LAA)" },
-            { code: "TOR", name: "ブルージェイズ (TOR)" },
-            { code: "BOS", name: "レッドソックス (BOS)" },
-            { code: "NYM", name: "メッツ (NYM)" },
-            { code: "PHI", name: "フィリーズ (PHI)" },
-            { code: "ATL", name: "ブレーブス (ATL)" },
-            { code: "HOU", name: "アストロズ (HOU)" },
+            { code: 'BAL', name: 'オリオールズ' },
+            { code: 'BOS', name: 'レッドソックス' },
+            { code: 'NYY', name: 'ヤンキース' },
+            { code: 'TB', name: 'レイズ' },
+            { code: 'TOR', name: 'ブルージェイズ' },
+        ]
+    },
+    {
+        label: "ア・リーグ 中地区",
+        teams: [
+            { code: 'CWS', name: 'ホワイトソックス' },
+            { code: 'CLE', name: 'ガーディアンズ' },
+            { code: 'DET', name: 'タイガース' },
+            { code: 'KC', name: 'ロイヤルズ' },
+            { code: 'MIN', name: 'ツインズ' },
+        ]
+    },
+    {
+        label: "ア・リーグ 西地区",
+        teams: [
+            { code: 'HOU', name: 'アストロズ' },
+            { code: 'LAA', name: 'エンゼルス' },
+            { code: 'OAK', name: 'アスレチックス' },
+            { code: 'SEA', name: 'マリナーズ' },
+            { code: 'TEX', name: 'レンジャーズ' },
+        ]
+    },
+    {
+        label: "ナ・リーグ 東地区",
+        teams: [
+            { code: 'ATL', name: 'ブレーブス' },
+            { code: 'MIA', name: 'マーリンズ' },
+            { code: 'NYM', name: 'メッツ' },
+            { code: 'PHI', name: 'フィリーズ' },
+            { code: 'WSH', name: 'ナショナルズ' },
+        ]
+    },
+    {
+        label: "ナ・リーグ 中地区",
+        teams: [
+            { code: 'CHC', name: 'カブス' },
+            { code: 'CIN', name: 'レッズ' },
+            { code: 'MIL', name: 'ブリュワーズ' },
+            { code: 'PIT', name: 'パイレーツ' },
+            { code: 'STL', name: 'カージナルス' },
+        ]
+    },
+    {
+        label: "ナ・リーグ 西地区",
+        teams: [
+            { code: 'AZ', name: 'ダイヤモンドバックス' },
+            { code: 'COL', name: 'ロッキーズ' },
+            { code: 'LAD', name: 'ドジャース' },
+            { code: 'SD', name: 'パドレス' },
+            { code: 'SF', name: 'ジャイアンツ' },
         ]
     },
     {
@@ -13513,6 +14070,13 @@ create policy "Users can delete own images" on storage.objects for delete using 
 );
 </file>
 
+<file path="frontend/migrations/33_add_image_url_to_live_moments.sql">
+-- Migration: Add image_url to live_moments
+-- id: 33_add_image_url_to_live_moments
+ALTER TABLE public.live_moments
+ADD COLUMN IF NOT EXISTS image_url text;
+</file>
+
 <file path="frontend/migrations/debug_helper.sql">
 -- Migration: Debug Helper (Expose Policies)
 -- Creates an RPC to list policies for debugging purposes.
@@ -14183,6 +14747,108 @@ async function check() {
 check();
 </file>
 
+<file path="frontend/scripts/fix_sakamoto.ts">
+import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+import path from 'path';
+
+// Load env from frontend/.env.local because that's where the new secret is (and likely other configs)
+// Load env from .env.local in frontend root
+dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase credentials');
+    process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function main() {
+    console.log('Searching for Sakamoto moment...');
+
+    const { data: moments, error } = await supabase
+        .from('live_moments')
+        .select('*')
+        .ilike('player_name', '%坂本%')
+        .ilike('title', '%2000%');
+
+    if (error) {
+        console.error('Error fetching moments:', error);
+        return;
+    }
+
+    if (!moments || moments.length === 0) {
+        console.log('No matching moment found.');
+        return;
+    }
+
+    console.log(`Found ${moments.length} moment(s).`);
+
+    for (const m of moments) {
+        console.log(`Updating Moment: ${m.title} (${m.id})`);
+        console.log(`Current Result: ${m.match_result}`);
+
+        // Regex to replace content inside parentheses with '9回裏'
+        // Or simply replace "Top 1st" if present.
+        // User wants "9回裏".
+        let newResult = m.match_result;
+
+        // Strategy: Replace the text inside the last parentheses
+        if (newResult.includes('(') && newResult.includes(')')) {
+            newResult = newResult.replace(/\([^)]+\)$/, '(9回裏)');
+        } else {
+            // Append if not present?
+            newResult = `${newResult} (9回裏)`;
+        }
+
+        console.log(`New Result: ${newResult}`);
+
+        // Update live_moments
+        const { error: updateError } = await supabase
+            .from('live_moments')
+            .update({ match_result: newResult })
+            .eq('id', m.id);
+
+        if (updateError) {
+            console.error('Failed to update live_moments:', updateError);
+        } else {
+            console.log('✅ live_moments updated.');
+        }
+
+        // Also update history in listing_items (Sync)
+        // Similar logic to finalizeMoment
+        const { data: items, error: fetchError } = await supabase
+            .from('listing_items')
+            .select('id, moment_history')
+            .contains('moment_history', JSON.stringify([{ moment_id: m.id }]));
+
+        if (items && items.length > 0) {
+            console.log(`Syncing ${items.length} cards...`);
+            for (const item of items) {
+                const history = item.moment_history as any[];
+                const updatedHistory = history.map(h => {
+                    if (h.moment_id === m.id) {
+                        return { ...h, match_result: newResult };
+                    }
+                    return h;
+                });
+
+                await supabase
+                    .from('listing_items')
+                    .update({ moment_history: updatedHistory })
+                    .eq('id', item.id);
+            }
+            console.log('✅ Cards synced.');
+        }
+    }
+}
+
+main();
+</file>
+
 <file path="frontend/scripts/seed.ts">
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
@@ -14780,8 +15446,21 @@ export async function updateSession(request: NextRequest) {
 
         if (!user || !userEmail || !adminEmails.includes(userEmail)) {
             // Internal redirect to a specific error page if needed, but for now just console/home
+            const reason = !user
+                ? 'no_user'
+                : !userEmail
+                    ? 'no_email'
+                    : `not_in_list`;
+
+            // Create debug URL
+            const debugUrl = new URL('/', request.url);
+            debugUrl.searchParams.set('debug_error', 'admin_access_denied');
+            debugUrl.searchParams.set('debug_reason', reason);
+            debugUrl.searchParams.set('debug_email', userEmail || 'none');
+            debugUrl.searchParams.set('debug_env_len', String(adminEmails.length));
+
             console.log(`[AUTH] Access Denied: User "${userEmail || 'none'}" not in admin list: [${adminEmails.join('|')}]`);
-            return NextResponse.redirect(new URL('/', request.url))
+            return NextResponse.redirect(debugUrl)
         }
     }
 
@@ -16511,6 +17190,7 @@ module.exports = nextConfig;
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.45",
+    "@anthropic-ai/sdk": "^0.73.0",
     "@hookform/resolvers": "^5.2.2",
     "@react-email/components": "^1.0.1",
     "@supabase/ssr": "^0.8.0",
@@ -16519,6 +17199,7 @@ module.exports = nextConfig;
     "framer-motion": "^12.23.25",
     "lucide-react": "^0.563.0",
     "next": "^16.0.7",
+    "openai": "^6.18.0",
     "pg": "^8.16.3",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",

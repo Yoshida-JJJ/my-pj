@@ -335,9 +335,13 @@ export async function getSellerOrders() {
             id,
             status,
             total_amount,
+            fee_rate,
+            platform_fee,
+            net_earnings,
             created_at,
+            completed_at,
             listing:listing_items!listing_id (
-                title, player_name, images, series_name
+                player_name, images, series_name, manufacturer, year
             )
         `)
         .eq('seller_id', user.id)
@@ -370,8 +374,13 @@ export async function getBuyerOrders() {
             status,
             total_amount,
             created_at,
+            completed_at,
+            seller_id,
+            seller:profiles!seller_id (
+                display_name
+            ),
             listing:listing_items!listing_id (
-                title, player_name, images, series_name
+                player_name, images, series_name, manufacturer, year
             )
         `)
         .eq('buyer_id', user.id)
@@ -384,6 +393,94 @@ export async function getBuyerOrders() {
 
     return data.map((order: any) => ({
         ...order,
+        seller: Array.isArray(order.seller) ? order.seller[0] : order.seller,
         listing: Array.isArray(order.listing) ? order.listing[0] : order.listing
     }));
+}
+
+// ===== 共通の注文取得ベース（内部関数） =====
+
+interface OrderHistoryOptions {
+    statusFilter?: 'all' | 'completed';
+}
+
+async function fetchOrders(
+    role: 'seller' | 'buyer',
+    options: OrderHistoryOptions = { statusFilter: 'all' }
+) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const selectFields = role === 'buyer'
+        ? `
+            id,
+            status,
+            total_amount,
+            fee_rate,
+            platform_fee,
+            net_earnings,
+            created_at,
+            completed_at,
+            seller_id,
+            seller:profiles!seller_id (
+                display_name
+            ),
+            listing:listing_items!listing_id (
+                id, player_name, images, series_name, manufacturer, year
+            )
+        `
+        : `
+            id,
+            status,
+            total_amount,
+            fee_rate,
+            platform_fee,
+            net_earnings,
+            created_at,
+            completed_at,
+            listing:listing_items!listing_id (
+                id, player_name, images, series_name, manufacturer, year
+            )
+        `;
+
+    let query = getAdminClient()
+        .from('orders')
+        .select(selectFields)
+        .eq(role === 'seller' ? 'seller_id' : 'buyer_id', user.id)
+        .order('created_at', { ascending: false });
+
+    // ステータスフィルタ
+    if (options.statusFilter === 'completed') {
+        query = query.eq('status', 'completed');
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error(`Error fetching ${role} orders:`, error);
+        return [];
+    }
+
+    return (data || []).map((order: any) => ({
+        ...order,
+        seller: Array.isArray(order.seller) ? order.seller[0] : order.seller,
+        listing: Array.isArray(order.listing) ? order.listing[0] : order.listing,
+    }));
+}
+
+/**
+ * 完了済み販売履歴の取得
+ * 用途: /collection の Sold History, /payouts の売上明細
+ */
+export async function getCompletedSales() {
+    return fetchOrders('seller', { statusFilter: 'completed' });
+}
+
+/**
+ * 完了済み購入履歴の取得
+ * 用途: /collection の Purchase History
+ */
+export async function getCompletedPurchases() {
+    return fetchOrders('buyer', { statusFilter: 'completed' });
 }

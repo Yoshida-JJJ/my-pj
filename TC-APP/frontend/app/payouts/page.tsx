@@ -10,7 +10,8 @@ import {
     getPayoutHistory,
     getBankAccount,
     updateProfileKana,
-    getProfileKana
+    getProfileKana,
+    getWithdrawalFeeTiers
 } from '../actions/payout';
 import { BankAccount, Payout } from '../../types';
 
@@ -21,10 +22,12 @@ export default function PayoutPage() {
     const [userId, setUserId] = useState<string | null>(null);
 
     // Data State
-    const [balanceData, setBalanceData] = useState({ available: 0, totalEarnings: 0, withdrawn: 0 });
+    const [balanceData, setBalanceData] = useState({ available: 0, totalEarnings: 0, totalFees: 0, withdrawn: 0, orderCount: 0 });
     const [bankAccount, setBankAccount] = useState<BankAccount | null>(null);
     const [payoutHistory, setPayoutHistory] = useState<Payout[]>([]);
     const [profileKana, setProfileKana] = useState<string | null>(null);
+
+    const [feeTiers, setFeeTiers] = useState<{ upTo: number; fee: number; label: string }[]>([]);
 
     // Form State
     const [payoutAmount, setPayoutAmount] = useState<number>(0);
@@ -90,16 +93,19 @@ export default function PayoutPage() {
 
     const refreshData = async (uid: string) => {
         try {
-            const [bal, bank, hist, kana] = await Promise.all([
+            const [bal, bank, hist, kana, tiers] = await Promise.all([
                 getAvailableBalance(uid),
                 getBankAccount(uid),
                 getPayoutHistory(uid),
-                getProfileKana(uid)
+                getProfileKana(uid),
+                getWithdrawalFeeTiers()
             ]);
             setBalanceData(bal);
             setBankAccount(bank);
             setPayoutHistory(hist || []);
             setProfileKana(kana);
+
+            setFeeTiers(tiers);
 
             // Pre-fill bank form if exists
             if (bank) {
@@ -227,6 +233,16 @@ export default function PayoutPage() {
         setShowBranchList(false);
     };
 
+    // Calculate withdrawal fee based on tiered structure
+    const calcFee = (amount: number): number => {
+        for (const tier of feeTiers) {
+            if (tier.upTo === 0 || amount <= tier.upTo) {
+                return tier.fee;
+            }
+        }
+        return feeTiers.length > 0 ? feeTiers[feeTiers.length - 1].fee : 0;
+    };
+
     if (loading) return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-brand-gold">Loading...</div>;
     if (!userId) return <div className="min-h-screen bg-brand-dark p-10 text-white">Please Log In</div>;
 
@@ -237,7 +253,7 @@ export default function PayoutPage() {
             <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 flex-1">
 
                 <h1 className="text-3xl font-heading font-bold text-white mb-8 border-b border-white/10 pb-4">
-                    Earnings & Payouts
+                    売上管理
                 </h1>
 
                 {errorMsg && (
@@ -254,35 +270,41 @@ export default function PayoutPage() {
                 {/* --- 1. Dashboard: Balance --- */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
                     <div className="p-6 rounded-2xl bg-brand-dark-light/50 border border-brand-gold/20 shadow-[0_0_30px_rgba(234,179,8,0.05)]">
-                        <p className="text-brand-platinum/60 text-sm font-medium uppercase tracking-wider mb-2">Available Balance</p>
+                        <p className="text-brand-platinum/60 text-sm font-medium uppercase tracking-wider mb-2">振込可能残高</p>
                         <p className="text-4xl text-brand-gold font-heading font-bold">
                             ¥{balanceData.available.toLocaleString()}
                         </p>
                     </div>
                     <div className="p-6 rounded-2xl bg-brand-dark-light/30 border border-white/5">
-                        <p className="text-brand-platinum/60 text-sm font-medium uppercase tracking-wider mb-2">Total Earnings</p>
+                        <p className="text-brand-platinum/60 text-sm font-medium uppercase tracking-wider mb-2">累計収益</p>
                         <p className="text-2xl text-white font-heading font-bold">
                             ¥{balanceData.totalEarnings.toLocaleString()}
                         </p>
+                        <p className="text-xs text-brand-platinum/50 mt-1">
+                            {balanceData.orderCount}件の取引 / 手数料 ¥{balanceData.totalFees.toLocaleString()}
+                        </p>
                     </div>
                     <div className="p-6 rounded-2xl bg-brand-dark-light/30 border border-white/5">
-                        <p className="text-brand-platinum/60 text-sm font-medium uppercase tracking-wider mb-2">Withdrawn/Pending</p>
+                        <p className="text-brand-platinum/60 text-sm font-medium uppercase tracking-wider mb-2">出金済み/申請中</p>
                         <p className="text-2xl text-white font-heading font-bold">
                             ¥{balanceData.withdrawn.toLocaleString()}
                         </p>
                     </div>
                 </div>
 
+
+
+
                 {/* --- 2. Bank Settings & Profile Name --- */}
                 <div className="mb-10">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-white">Bank Account</h2>
+                        <h2 className="text-xl font-bold text-white">口座登録</h2>
                         {!bankAccount && (
                             <button
                                 onClick={() => setSettingBank(true)}
                                 className="px-4 py-2 bg-brand-blue/10 text-brand-blue border border-brand-blue/30 rounded-lg hover:bg-brand-blue/20 transition-all font-bold text-sm"
                             >
-                                Register Account
+                                口座を登録
                             </button>
                         )}
                         {bankAccount && (
@@ -290,7 +312,7 @@ export default function PayoutPage() {
                                 onClick={() => setSettingBank(true)}
                                 className="px-4 py-2 bg-brand-platinum/10 text-brand-platinum border border-brand-platinum/20 rounded-lg hover:bg-brand-platinum/20 transition-all font-bold text-sm"
                             >
-                                Edit Account
+                                口座を編集
                             </button>
                         )}
                     </div>
@@ -298,59 +320,61 @@ export default function PayoutPage() {
                     <div className="p-6 rounded-2xl bg-brand-dark-light/30 border border-white/10">
                         {bankAccount ? (
                             <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div><span className="text-brand-platinum/50 block">Bank</span> <span className="text-white">{bankAccount.bank_name}</span></div>
-                                <div><span className="text-brand-platinum/50 block">Branch</span> <span className="text-white">{bankAccount.branch_name}</span></div>
-                                <div><span className="text-brand-platinum/50 block">Type</span> <span className="text-white">{bankAccount.account_type === 'ordinary' ? '普通' : '当座'}</span></div>
-                                <div><span className="text-brand-platinum/50 block">Number</span> <span className="text-white">****{bankAccount.account_number.slice(-4)}</span></div>
+                                <div><span className="text-brand-platinum/50 block">金融機関</span> <span className="text-white">{bankAccount.bank_name}</span></div>
+                                <div><span className="text-brand-platinum/50 block">支店</span> <span className="text-white">{bankAccount.branch_name}</span></div>
+                                <div><span className="text-brand-platinum/50 block">種別</span> <span className="text-white">{bankAccount.account_type === 'ordinary' ? '普通' : '当座'}</span></div>
+                                <div><span className="text-brand-platinum/50 block">口座番号</span> <span className="text-white">****{bankAccount.account_number.slice(-4)}</span></div>
                                 <div className="col-span-2 border-t border-white/5 pt-2 mt-2">
-                                    <span className="text-brand-platinum/50 block">Holder Name</span>
+                                    <span className="text-brand-platinum/50 block">名義人</span>
                                     <span className="text-brand-gold font-mono">{bankAccount.account_holder_name}</span>
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-brand-platinum/50 italic">No bank account registered.</p>
+                            <p className="text-brand-platinum/50 italic">口座情報が登録されていません。</p>
                         )}
                     </div>
                 </div>
 
                 {/* --- 3. Withdraw Action --- */}
                 <div className="mb-10 p-6 rounded-2xl bg-brand-dark-light/30 border border-white/10">
-                    <h2 className="text-xl font-bold text-white mb-4">Request Payout</h2>
+                    <h2 className="text-xl font-bold text-white mb-4">出金申請</h2>
                     <div className="flex flex-col md:flex-row gap-6 items-start md:items-end">
                         <div className="flex-1 w-full">
-                            <label className="block text-brand-platinum/60 text-xs uppercase mb-2">Withdrawal Amount (Net)</label>
+                            <label className="block text-brand-platinum/60 text-xs uppercase mb-2">出金希望額</label>
                             <input
                                 type="number"
                                 value={payoutAmount || ''}
                                 onChange={(e) => setPayoutAmount(Math.max(0, parseInt(e.target.value) || 0))}
                                 className="w-full bg-brand-dark border border-brand-platinum/20 rounded-lg px-4 py-3 text-white focus:border-brand-gold focus:outline-none mb-2"
-                                placeholder="Min ¥1,000"
+                                placeholder="最低 ￥1,000"
                             />
 
                             {/* Fee Calculation Display */}
                             <div className="bg-brand-dark p-3 rounded-lg border border-white/5 text-sm space-y-1">
                                 <div className="flex justify-between text-brand-platinum/60">
-                                    <span>Withdrawal Amount:</span>
-                                    <span>¥{payoutAmount.toLocaleString()}</span>
+                                    <span>出金希望額:</span>
+                                    <span>￥{payoutAmount.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between text-brand-platinum/60">
-                                    <span>Fee:</span>
-                                    {/* Fee Rule: If Input >= 30,000, 0. Else 250. */}
+                                    <span>振込手数料:</span>
                                     <span className="text-red-400">
-                                        {(payoutAmount >= 30000) ? '¥0' : '¥250'}
+                                        ￥{calcFee(payoutAmount).toLocaleString()}
                                     </span>
                                 </div>
                                 <div className="border-t border-white/10 my-1"></div>
                                 <div className="flex justify-between font-bold text-white">
-                                    <span>Total Deduction:</span>
+                                    <span>合計減算額:</span>
                                     <span className="text-brand-gold">
-                                        ¥{(payoutAmount + (payoutAmount >= 30000 ? 0 : 250)).toLocaleString()}
+                                        ￥{(payoutAmount + calcFee(payoutAmount)).toLocaleString()}
                                     </span>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-brand-platinum/50 mt-2">
-                                ※ Fee is ¥250. Free for withdrawals ¥30,000 or more.
-                            </p>
+                            <div className="mt-3 text-[10px] text-brand-platinum/50 space-y-0.5">
+                                <p className="font-bold mb-1">※ 振込手数料</p>
+                                {feeTiers.map((tier, i) => (
+                                    <p key={i}>{tier.label}: ¥{tier.fee.toLocaleString()}</p>
+                                ))}
+                            </div>
                         </div>
 
                         <button
@@ -358,46 +382,46 @@ export default function PayoutPage() {
                             disabled={
                                 !bankAccount ||
                                 payoutAmount < 1000 ||
-                                (payoutAmount + (payoutAmount >= 30000 ? 0 : 250)) > balanceData.available
+                                (payoutAmount + calcFee(payoutAmount)) > balanceData.available
                             }
                             className="w-full md:w-auto bg-brand-gold text-brand-dark font-bold px-8 py-3 rounded-lg hover:bg-brand-gold-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[50px]"
                         >
-                            Request Payout
+                            出金を申請
                         </button>
                     </div>
-                    {(!bankAccount) && <p className="text-red-400 text-xs mt-2">Please register a bank account first.</p>}
+                    {(!bankAccount) && <p className="text-red-400 text-xs mt-2">先に口座情報を登録してください。</p>}
                     {/* Error if Total > Balance */}
-                    {((payoutAmount + (payoutAmount >= 30000 ? 0 : 250)) > balanceData.available) &&
-                        <p className="text-red-400 text-xs mt-2">Insufficient balance for Amount + Fee.</p>}
-                    {(payoutAmount > 0 && payoutAmount < 1000) && <p className="text-red-400 text-xs mt-2">Minimum withdrawal is ¥1,000.</p>}
+                    {((payoutAmount + calcFee(payoutAmount)) > balanceData.available) &&
+                        <p className="text-red-400 text-xs mt-2">残高が不足しています。</p>}
+                    {(payoutAmount > 0 && payoutAmount < 1000) && <p className="text-red-400 text-xs mt-2">最低出金額は￥1,000です。</p>}
                 </div>
 
                 {/* --- 4. History --- */}
                 <div>
-                    <h2 className="text-xl font-bold text-white mb-4">Payout History</h2>
+                    <h2 className="text-xl font-bold text-white mb-4">出金履歴</h2>
                     <div className="rounded-xl overflow-hidden border border-white/10">
                         <table className="w-full text-left text-sm text-brand-platinum">
                             <thead className="bg-brand-dark-light/50 text-brand-platinum/60 uppercase text-xs">
                                 <tr>
-                                    <th className="px-6 py-3">Date</th>
-                                    <th className="px-6 py-3">Amount</th>
-                                    <th className="px-6 py-3">Status</th>
+                                    <th className="px-6 py-3">日付</th>
+                                    <th className="px-6 py-3">金額</th>
+                                    <th className="px-6 py-3">ステータス</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {payoutHistory.length === 0 ? (
-                                    <tr><td colSpan={3} className="px-6 py-8 text-center opacity-50">No history found.</td></tr>
+                                    <tr><td colSpan={3} className="px-6 py-8 text-center opacity-50">出金履歴はありません</td></tr>
                                 ) : (
                                     payoutHistory.map(p => (
                                         <tr key={p.id} className="hover:bg-white/5">
-                                            <td className="px-6 py-4">{new Date(p.created_at).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-white font-mono">¥{p.amount.toLocaleString()}</td>
+                                            <td className="px-6 py-4">{new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
+                                            <td className="px-6 py-4 text-white font-mono">￥{p.amount.toLocaleString()}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-xs border ${p.status === 'paid' ? 'border-green-500/30 text-green-400 bg-green-500/10' :
                                                     p.status === 'rejected' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
                                                         'border-yellow-500/30 text-yellow-400 bg-yellow-500/10'
                                                     }`}>
-                                                    {p.status.toUpperCase()}
+                                                    {p.status === 'paid' ? '振込済' : p.status === 'rejected' ? '却下' : '申請中'}
                                                 </span>
                                             </td>
                                         </tr>

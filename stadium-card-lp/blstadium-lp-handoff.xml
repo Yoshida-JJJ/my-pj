@@ -1,0 +1,1776 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: node_modules/**, dist/**, build/**, .next/**, *.log, .env*, .DS_Store, coverage/**
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  concept/
+    page.tsx
+  globals.css
+  layout.tsx
+  page.tsx
+components/
+  AIScanning.tsx
+  Button.tsx
+  Footer.tsx
+  FutureVision.tsx
+  HeatTrade.tsx
+  Hero.tsx
+  LayoutTransition.tsx
+  LiveMoments.tsx
+  MemorialTag.tsx
+  Navbar.tsx
+  Roadmap.tsx
+  Scanner.tsx
+  UserStory.tsx
+  VaultSection.tsx
+public/
+  images/
+    ai_scan.png
+    concept_hero.png
+    connection.png
+    defi_future.png
+    fusion_core.png
+    hero_card.png
+    live_moment.png
+    phantom_ace_pitcher.png
+    yamamoto_pitcher.png
+.gitignore
+next-env.d.ts
+next.config.js
+package.json
+postcss.config.js
+README.md
+tailwind.config.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/concept/page.tsx">
+"use client";
+
+import { motion, useScroll, useTransform } from "framer-motion";
+import Image from "next/image";
+import Link from "next/link";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { ArrowLeft, Sparkles, History, Zap, ArrowRightLeft, Box, Smartphone } from "lucide-react";
+import { useRef } from "react";
+
+export default function ConceptPage() {
+    const containerRef = useRef(null);
+    const { scrollYProgress } = useScroll({
+        target: containerRef,
+        offset: ["start start", "end end"]
+    });
+
+    return (
+        <main ref={containerRef} className="min-h-screen bg-stadium-black text-white selection:bg-neon-blue selection:text-black">
+            <Navbar />
+
+            {/* Hero Section: The Fusion */}
+            <section className="relative h-screen flex items-center justify-center overflow-hidden pt-20">
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,240,255,0.1),transparent_70%)]" />
+                </div>
+
+                <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center z-10">
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 1 }}
+                    >
+                        <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-white transition-colors mb-12 group">
+                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                            <span className="text-xs font-bold tracking-widest uppercase">Back to Top</span>
+                        </Link>
+
+                        <h1 className="text-5xl md:text-8xl font-display font-extrabold leading-[1.1] tracking-tighter mb-4">
+                            Physical Weight,<br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-red">
+                                Digital Soul.
+                            </span>
+                        </h1>
+                        <div className="inline-flex flex-col items-start gap-2 mb-8">
+                            <div className="px-3 py-1 border border-neon-red/50 bg-neon-red/10 rounded text-neon-red text-[10px] font-bold tracking-widest uppercase shadow-[0_0_10px_rgba(255,0,0,0.2)]">
+                                Under Development / Future Roadmap
+                            </div>
+                            <p className="text-[10px] text-gray-400">※掲載されている機能は現在開発中の構想です。</p>
+                        </div>
+                        <p className="text-xl md:text-2xl text-gray-400 font-light leading-relaxed max-w-xl">
+                            手に取れる重みと、色褪せない魂。<br />
+                            Stadium Cardは、物理的なカードの感触と、デジタルがもたらす永続的な躍動を一つに融合させます。
+                        </p>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                        className="relative aspect-square flex items-center justify-center"
+                    >
+                        <div className="relative w-full h-full p-8">
+                            <Image
+                                src="/images/concept_hero.png"
+                                alt="Baseball Concept Hero"
+                                fill
+                                className="object-contain"
+                                priority
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                            />
+                            <p className="absolute bottom-4 right-4 text-[8px] text-gray-600 z-20">※画面は開発中のイメージです</p>
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-stadium-black/50" />
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* Section 2: The Connection */}
+            <section className="relative py-32 overflow-hidden border-y border-white/5">
+                <div className="max-w-5xl mx-auto px-6">
+                    <div className="text-center mb-24">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-6"
+                        >
+                            <History size={14} className="text-neon-blue" />
+                            <span className="text-[10px] font-bold tracking-widest uppercase">Living Resume</span>
+                        </motion.div>
+                        <h2 className="text-4xl md:text-6xl font-display font-extrabold tracking-tighter mb-8">
+                            世代を超える、想いの継承
+                        </h2>
+                        <p className="text-lg text-gray-400 font-light max-w-2xl mx-auto">
+                            カードは人から人へ渡るたびに、単なるデータではない「物語」を蓄積していきます。<br /><br />
+                            「伝説の10.8決戦での落合博満の背中」から「2025年ワールドシリーズで見せた山本由伸の気迫」まで。オーナーが刻む独自のストーリー（メモリアル・タグ）は、ブロックチェーンによって永遠の価値となり、次なる継承者へと手渡される未来を描いています。
+                        </p>
+                        <p className="text-[10px] text-gray-600 mt-4 text-center">※メモリアル・タグ機能は開発構想段階です</p>
+                    </div>
+
+                    <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl">
+                        <Image
+                            src="/images/connection.png"
+                            alt="Connection Concept"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 1024px"
+                        />
+                        {/* Scroll-linked overlay blur or darkening */}
+                        <motion.div
+                            style={{ opacity: useTransform(scrollYProgress, [0.3, 0.5], [0.5, 0]) }}
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center"
+                        >
+                            <span className="text-sm font-bold tracking-[0.5em] text-white/40 uppercase">Keep Scrolling</span>
+                        </motion.div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 3: The Infrastructure (Vaulting & Liquidity) */}
+            <section id="roadmap" className="relative py-48 overflow-hidden bg-stadium-black">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                        <div className="relative">
+                            <div className="absolute -top-20 -left-20 w-64 h-64 bg-neon-blue/10 rounded-full blur-[100px]" />
+                            <div className="inline-flex items-center gap-2 mb-6">
+                                <div className="px-2 py-0.5 rounded border border-neon-blue/30 bg-neon-blue/10 text-[10px] font-bold text-neon-blue uppercase tracking-widest animate-pulse">Phygital</div>
+                            </div>
+                            <h3 className="text-4xl md:text-7xl font-display font-extrabold mb-4 tracking-tighter leading-tight">
+                                The Phygital<br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-white to-neon-blue [background-size:200%_auto] animate-shimmer">Evolution</span>
+                            </h3>
+                            <p className="text-neon-blue font-bold mb-8 text-lg">物理(Physical)とデジタル(Digital)の融合</p>
+                            <p className="text-lg text-gray-400 font-light mb-12 leading-relaxed">
+                                「持つ」喜びを、デジタルの速度で。<br /><br />
+                                専用Vault（倉庫）と連携し、物理カードを安全に保管しながら、アプリ上で瞬時に取引・管理できる「Phygital」な体験を提供します。
+                            </p>
+
+                            <div className="flex flex-col gap-6">
+                                {[
+                                    { icon: <Box size={20} />, title: "Secure Vaulting", desc: "物理カードは最高峰のセキュリティを誇る専用倉庫で安全に保管。" },
+                                    { icon: <Smartphone size={20} />, title: "Instant Access", desc: "アプリを通じて、手元のカードを操作するような感覚で瞬時に取引・管理。" }
+                                ].map((item, i) => (
+                                    <div key={i} className="flex gap-6 p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+                                        <div className="text-neon-blue">{item.icon}</div>
+                                        <div>
+                                            <div className="font-bold mb-1">{item.title}</div>
+                                            <div className="text-sm text-gray-200">{item.desc}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="relative pointer-events-none">
+                            <div className="aspect-square relative flex items-center justify-center">
+                                <div className="w-full h-full border border-white/5 rounded-full absolute animate-spin" style={{ animationDuration: '20s' }} />
+                                <div className="w-[80%] h-[80%] border border-white/10 rounded-full absolute animate-spin" style={{ animationDuration: '15s', animationDirection: 'reverse' }} />
+                                <div className="w-[60%] h-[60%] border border-white/20 rounded-full absolute animate-spin" style={{ animationDuration: '10s' }} />
+
+                                <motion.div
+                                    animate={{ scale: [1, 1.1, 1], rotate: [0, 5, 0] }}
+                                    transition={{ repeat: Infinity, duration: 8 }}
+                                    className="w-48 h-64 bg-gradient-to-br from-neon-blue/20 to-stadium-blue/20 backdrop-blur-2xl rounded-2xl border border-white/20 shadow-2xl flex items-center justify-center p-8 text-center"
+                                >
+                                    <div className="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-4 uppercase">Connected</div>
+                                    <div className="text-2xl font-display font-extrabold leading-tight">THE VAULT ARCHIVE</div>
+                                </motion.div>
+                            </div>
+                            <p className="text-[8px] text-gray-700 text-center mt-2">※ボールト機構の開発イメージ</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 4: The Future (DeFi & Social Commerce) */}
+            <section className="relative py-48 overflow-hidden bg-stadium-gray/20">
+                <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        className="order-2 lg:order-1"
+                    >
+                        <div className="relative aspect-square rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(255,0,0,0.2)]">
+                            <Image
+                                src="/images/defi_future.png"
+                                alt="Value Unleashed: DeFi & Social"
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                            />
+                            {/* Overlay for depth */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                            <div className="absolute bottom-4 left-4 right-4">
+                                <div className="px-3 py-1 inline-block bg-black/60 backdrop-blur-md border border-white/10 rounded-lg">
+                                    <span className="text-[10px] font-bold text-neon-red tracking-widest uppercase">Concept Visual</span>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    <div className="order-1 lg:order-2">
+                        <h2 className="text-neon-red font-display font-bold tracking-[0.2em] mb-6 uppercase text-sm">Future Horizon</h2>
+                        <h3 className="text-4xl md:text-7xl font-display font-extrabold mb-8 tracking-tighter leading-tight">
+                            Value Unleashed:<br />DeFi & Social
+                        </h3>
+                        <p className="text-lg text-gray-400 font-light mb-12 leading-relaxed">
+                            カードは単なるコレクションから、活用可能な資産へと進化することを目指します。<br /><br />
+                            保管中のカードNFTを担保にしたレンディング（資金融資）や、TikTok/Instagramでのライブコマース統合。SNSの熱狂をそのまま取引へと繋げ、2.0時代の所有体験の定義を計画しています。
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <div className="text-neon-red font-bold mb-2">DeFi Integration</div>
+                                <div className="text-sm text-gray-400">コレクションを休ませない。レンディング機能で資本効率の最大化を構想。</div>
+                            </div>
+                            <div>
+                                <div className="text-neon-red font-bold mb-2">Social Commerce</div>
+                                <div className="text-sm text-gray-400">SNSでの衝動買いに応える、秒速のソーシャル連動取引の実装予定。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 5: Hyper-Reality (AR & 3D Scan) */}
+            <section className="relative py-32 overflow-hidden">
+                <div className="max-w-4xl mx-auto px-6 text-center">
+                    <h2 className="text-white font-display font-bold tracking-[0.2em] mb-6 uppercase text-sm">Unprecedented Fidelity</h2>
+                    <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-12 tracking-tighter">
+                        そこに「ある」という、究極の体験。
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-left bg-white/5 p-12 rounded-[3.5rem] border border-white/5">
+                        {[
+                            { title: "3D Scan Viewer", desc: "紙の繊維、ホログラムの輝き。ジャイロ連動で手元に。" },
+                            { title: "AR Exhibition", desc: "リビングがスタジアムに。カードを等身大で召喚。" },
+                            { title: "Metaverse Gallery", desc: "URL一つで世界中のコレクターと共有。" }
+                        ].map((item, i) => (
+                            <div key={i}>
+                                <div className="text-neon-blue font-bold mb-3">{item.title}</div>
+                                <p className="text-sm text-gray-400 leading-relaxed">{item.desc} (開発予定)</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <Footer />
+        </main>
+    );
+}
+</file>
+
+<file path="app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 5, 5, 5;
+  --background-end-rgb: 10, 10, 10;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: #0a0a0a;
+  color: #ffffff;
+}
+
+.font-display {
+  font-family: var(--font-outfit), sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  .neon-glow-blue {
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4), 0 0 30px rgba(0, 240, 255, 0.2);
+  }
+
+  .neon-glow-red {
+    box-shadow: 0 0 15px rgba(255, 0, 60, 0.4), 0 0 30px rgba(255, 0, 60, 0.2);
+  }
+
+  .neon-text-blue {
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.8), 0 0 20px rgba(0, 240, 255, 0.4);
+  }
+
+  .neon-border-blue {
+    border: 1px solid rgba(0, 240, 255, 0.5);
+    box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.2), 0 0 10px rgba(0, 240, 255, 0.2);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Inter, Outfit } from "next/font/google";
+import "./globals.css";
+import clsx from "clsx";
+import { LayoutTransition } from "@/components/LayoutTransition";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
+
+export const metadata: Metadata = {
+    title: "Stadium Card - Your Cards are Alive",
+    description: "Next Generation MLB/NPB Trading Card Marketplace",
+};
+
+export default function RootLayout({
+    children,
+}: Readonly<{
+    children: React.ReactNode;
+}>) {
+    return (
+        <html lang="ja">
+            <body className={clsx(inter.className, outfit.variable, "bg-stadium-black text-white antialiased")}>
+                <LayoutTransition>
+                    {children}
+                </LayoutTransition>
+            </body>
+        </html>
+    );
+}
+</file>
+
+<file path="app/page.tsx">
+import { Navbar } from "@/components/Navbar";
+import { Hero } from "@/components/Hero";
+import { HeatTrade } from "@/components/HeatTrade";
+import { MemorialTag } from "@/components/MemorialTag";
+import { UserStory } from "@/components/UserStory";
+import { FutureVision } from "@/components/FutureVision";
+import { Footer } from "@/components/Footer";
+
+export default function Home() {
+    return (
+        <main className="min-h-screen bg-stadium-black text-white selection:bg-neon-blue selection:text-black">
+            <Navbar />
+            <Hero />
+            <HeatTrade />
+            <MemorialTag />
+            <UserStory />
+            <FutureVision />
+            <Footer />
+        </main>
+    );
+}
+</file>
+
+<file path="components/AIScanning.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import Image from "next/image";
+
+export const AIScanning = () => {
+    return (
+        <section className="py-32 bg-gradient-to-b from-stadium-black to-stadium-gray relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-6 flex flex-col lg:flex-row-reverse gap-20 items-center">
+                <motion.div
+                    initial={{ opacity: 0, x: 30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
+                    className="lg:w-1/2"
+                >
+                    <h2 className="text-neon-red font-display font-bold tracking-[0.2em] mb-4 uppercase text-sm">Hyper-Reality</h2>
+                    <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-8 leading-tight tracking-tighter">
+                        超高精細、<br />
+                        デジタルツイン。
+                    </h3>
+                    <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light">
+                        これは単なる「所有権の証明」ではありません。カードの繊維、ホログラムの微細な輝きまでを3Dスキャンで完全再現。手元にあるような実体感を提供します。
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                        {[
+                            { title: "3D Scan Viewer", desc: "ジャイロ連動。スマホを傾ければ光が美しく反射。" },
+                            { title: "AR Exhibition", desc: "現実空間にカードを等身大で召喚。" },
+                            { title: "Metaverse Gallery", desc: "URL一つで友人を招待できるバーチャル展示。" },
+                        ].map((feat, i) => (
+                            <div key={i} className="flex gap-4 items-start">
+                                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-neon-red shadow-[0_0_10px_#ff004c]" />
+                                <div>
+                                    <div className="font-bold text-sm mb-1">{feat.title}</div>
+                                    <div className="text-xs text-gray-400 leading-relaxed">{feat.desc}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        {[
+                            { label: "Scan Resolution", value: "8K Ultra", detail: "肉眼を超える再現" },
+                            { label: "Data Integrity", value: "Verified", detail: "NFTと1対1対応" },
+                        ].map((stat, i) => (
+                            <div key={i} className="glass p-8 rounded-[2rem] border border-white/5 group hover:border-white/10 transition-colors">
+                                <div className="text-[10px] text-gray-500 mb-2 uppercase tracking-widest font-bold">{stat.label}</div>
+                                <div className="text-3xl font-bold font-display mb-1">{stat.value}</div>
+                                <div className="text-xs text-neon-red/60 font-medium">{stat.detail}</div>
+                            </div>
+                        ))}
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
+                    className="lg:w-1/2 relative flex justify-center"
+                >
+                    <div className="relative w-full max-w-[420px] aspect-[9/18.5] rounded-[3rem] p-3 border-[10px] border-stadium-light-gray/50 shadow-2xl overflow-hidden bg-black ring-1 ring-white/10">
+                        <Image
+                            src="/images/ai_scan.png"
+                            alt="AI Scanning UI"
+                            fill
+                            className="object-cover opacity-80"
+                            sizes="(max-width: 768px) 100vw, 420px"
+                        />
+                        {/* Scanning Line Animation - Refined */}
+                        <motion.div
+                            animate={{ top: ["5%", "95%", "5%"] }}
+                            transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                            className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-neon-blue to-transparent shadow-[0_0_20px_#00f0ff] z-20 pointer-events-none"
+                        />
+
+                        {/* AI Data Points Overlay - Refined Vibe */}
+                        <div className="absolute inset-x-8 bottom-16 z-20">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                className="glass p-5 rounded-2xl border border-white/10 backdrop-blur-xl"
+                            >
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="relative">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-neon-blue" />
+                                        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-neon-blue animate-ping" />
+                                    </div>
+                                    <span className="text-[9px] font-bold text-neon-blue uppercase tracking-[0.2em]">Matrix Analysis</span>
+                                </div>
+                                <div className="text-base font-bold tracking-tight mb-1">LEGENDARY FOUND</div>
+                                <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Shohei Ohtani / BP-18-RC</div>
+                            </motion.div>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/Button.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { ReactNode } from "react";
+
+interface ButtonProps {
+    children: ReactNode;
+    variant?: "primary" | "outline" | "neon";
+    className?: string;
+    onClick?: () => void;
+}
+
+export const Button = ({ children, variant = "primary", className = "", onClick }: ButtonProps) => {
+    const variants = {
+        primary: "bg-white text-black hover:bg-gray-200",
+        outline: "border border-white/20 hover:bg-white/10 text-white",
+        neon: "bg-transparent border border-neon-blue text-neon-blue hover:bg-neon-blue/10 neon-border-blue",
+    };
+
+    return (
+        <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onClick}
+            className={`px-8 py-4 rounded-xl font-bold transition-all duration-300 ${variants[variant]} ${className}`}
+        >
+            {children}
+        </motion.button>
+    );
+};
+</file>
+
+<file path="components/Footer.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { Twitter, Disc as Discord, Github } from "lucide-react";
+import Link from "next/link";
+
+export const Footer = () => {
+    return (
+        <footer className="py-32 bg-stadium-black border-t border-white/5 relative overflow-hidden">
+            {/* Background glow */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-neon-blue/5 rounded-full blur-[120px] pointer-events-none" />
+
+            <div className="max-w-7xl mx-auto px-6 text-center relative z-10">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                >
+                    <div className="flex items-center justify-center gap-3 mb-10">
+                        <div className="w-8 h-8 bg-gradient-to-br from-neon-blue to-neon-red rounded-lg" />
+                        <span className="text-xl font-display font-bold tracking-tighter">STADIUM <span className="text-neon-blue">CARD</span></span>
+                    </div>
+
+                    <h2 className="text-4xl md:text-6xl font-display font-extrabold mb-16 tracking-tighter leading-[1.1]">
+                        その瞬間を、歴史に変えよう。
+                    </h2>
+
+                    <div className="flex flex-wrap justify-center gap-12 mb-20 text-sm font-medium tracking-widest uppercase text-gray-500">
+                        <Link href="/" className="hover:text-white transition-colors">Top</Link>
+                        <Link href="/concept" className="hover:text-white transition-colors">Concept</Link>
+                        <a href="#roadmap" className="hover:text-white transition-colors">Evolution</a>
+                        <a href="#" className="hover:text-white transition-colors">Policy</a>
+                    </div>
+
+                    <div className="flex justify-center gap-6 mb-16">
+                        {[
+                            { icon: <Twitter size={20} />, href: "#" },
+                            { icon: <Discord size={20} />, href: "#" },
+                            { icon: <Github size={20} />, href: "#" }
+                        ].map((social, i) => (
+                            <motion.a
+                                key={i}
+                                href={social.href}
+                                whileHover={{ y: -5, scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-full border border-white/5 hover:border-neon-blue/50 hover:text-neon-blue transition-colors shadow-lg hover:shadow-neon-blue/20"
+                            >
+                                {social.icon}
+                            </motion.a>
+                        ))}
+                    </div>
+
+                    <div className="text-gray-600 text-xs tracking-widest font-medium uppercase">
+                        © 2026 Stadium Card Inc. / Redefining the Collection.
+                    </div>
+                </motion.div>
+            </div>
+        </footer>
+    );
+};
+</file>
+
+<file path="components/FutureVision.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { Box, Sparkles, ArrowRightLeft, Shield } from "lucide-react";
+import Link from "next/link";
+import { Button } from "./Button";
+
+export const FutureVision = () => {
+    const visions = [
+        {
+            icon: <Box className="text-neon-blue" />,
+            title: "Connected Collectibles",
+            desc: "物理カードとデジタルツインを完全同期。物流の制約を超えた取引インフラ。"
+        },
+        {
+            icon: <Sparkles className="text-neon-red" />,
+            title: "Hyper-Reality Experience",
+            desc: "8K 3DスキャンとAR展示。手元にあるような質感と輝きをデジタルで。"
+        },
+        {
+            icon: <Shield className="text-neon-blue" />,
+            title: "Safe Vaulting & DeFi",
+            desc: "厳重な保管庫と分散型金融の融合。眠れる資産に流動性を。"
+        }
+    ];
+
+    return (
+        <section id="future" className="py-32 bg-stadium-gray/20 relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-6">
+                <div className="flex flex-col lg:flex-row gap-20 items-center">
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        className="lg:w-1/2"
+                    >
+                        <h2 className="text-neon-blue font-display font-bold tracking-[0.2em] mb-4 uppercase text-sm">Upcoming Evolution</h2>
+                        <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-8 leading-tight tracking-tighter">
+                            カードの在り方を、<br />
+                            <span className="text-white">アップデート</span>
+                        </h3>
+                        <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light">
+                            Stadium Cardの旅は、まだ始まったばかりです。物流とWeb3の融合、そして現実を超える視覚体験。これから実装される進化は、あなたの所有体験を根底から書き換えます。
+                        </p>
+                        <Link href="/concept">
+                            <Button variant="outline" className="border-neon-blue text-neon-blue hover:bg-neon-blue/10">
+                                開発構想（ロードマップ）を見る
+                            </Button>
+                        </Link>
+                    </motion.div>
+
+                    <div className="lg:w-1/2 grid grid-cols-1 gap-6">
+                        {visions.map((v, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, x: 30 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 }}
+                                className="glass p-8 rounded-3xl border border-white/5 flex gap-6 items-start hover:border-white/14 transition-all"
+                            >
+                                <div className="p-4 rounded-2xl bg-white/5">
+                                    {v.icon}
+                                </div>
+                                <div>
+                                    <h4 className="text-xl font-bold mb-2">{v.title}</h4>
+                                    <p className="text-gray-400 text-sm leading-relaxed">{v.desc}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                        <motion.div
+                            initial={{ opacity: 0, x: 30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.3 }}
+                            className="glass p-8 rounded-3xl border border-white/5 flex gap-6 items-start hover:border-white/14 transition-all"
+                        >
+                            <div className="p-4 rounded-2xl bg-white/5">
+                                <Sparkles className="text-neon-red" />
+                            </div>
+                            <div>
+                                <h4 className="text-xl font-bold mb-2">Social Impulse</h4>
+                                <p className="text-gray-400 text-sm leading-relaxed">TikTok/Instagramライブコマース完全統合。SNSの熱狂をそのまま取引へ昇華。</p>
+                            </div>
+                        </motion.div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/HeatTrade.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import Image from "next/image";
+
+export const HeatTrade = () => {
+    const isFever = true;
+
+    return (
+        <section id="heat-trade" className="py-32 bg-stadium-black relative overflow-hidden">
+            {/* Dynamic Background Glow */}
+            <div className={`absolute inset-0 transition-opacity duration-1000 ${isFever ? "opacity-20" : "opacity-0"}`}>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle,rgba(255,165,0,0.3)_0%,transparent_70%)] animate-pulse" />
+            </div>
+
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
+                <motion.div
+                    initial={{ opacity: 0, x: -30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
+                >
+                    <div className="flex items-center gap-3 mb-6">
+                        <span className="text-neon-blue font-display font-bold tracking-[0.2em] uppercase text-sm">Live Engagement</span>
+                        {isFever && (
+                            <motion.span
+                                animate={{ scale: [1, 1.1, 1], opacity: [1, 0.8, 1] }}
+                                transition={{ repeat: Infinity, duration: 0.5 }}
+                                className="px-3 py-1 rounded-full bg-orange-500 text-black text-[10px] font-black tracking-tighter uppercase"
+                            >
+                                Fever Time Active
+                            </motion.span>
+                        )}
+                    </div>
+
+                    <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-8 leading-tight tracking-tighter">
+                        ライブ連動型取引<br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">
+                            ヒート・トレード
+                        </span>
+                    </h3>
+                    <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light">
+                        スタジアムが揺れる。その瞬間、マーケットも共鳴する。特定の選手が活躍した刹那、アプリ内では「フィーバータイム」が発動。<br /><br />
+                        それは、あなたがスタジアムの熱狂と完全にシンクロした証。特別なエフェクトが刻まれたカードは、その瞬間の興奮を永遠に封じ込めます。
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-6 rounded-2xl bg-white/5 border border-white/10 group hover:border-orange-500/50 transition-colors">
+                            <div className="text-xs font-bold text-orange-400 mb-2 uppercase">Stadium Sync</div>
+                            <div className="text-3xl font-bold font-display">FEVER MODE</div>
+                        </div>
+                        <div className="p-6 rounded-2xl bg-white/5 border border-white/10 group hover:border-neon-blue/50 transition-colors">
+                            <div className="text-xs font-bold text-neon-blue mb-2 uppercase">Proof of Passion</div>
+                            <div className="text-3xl font-bold font-display">IGNITION</div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1 }}
+                    className="relative aspect-square flex items-center justify-center"
+                >
+                    {/* Heat Card Display */}
+                    <div className="relative w-[80%] aspect-[3/4] rounded-2xl overflow-hidden border border-orange-500/50 shadow-[0_0_50px_rgba(255,165,0,0.3)]">
+                        <Image
+                            src="/images/live_moment.png"
+                            alt="Heat Trade Fever"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 50vw"
+                        />
+                        {/* Fever Overlay */}
+                        <motion.div
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ repeat: Infinity, duration: 2 }}
+                            className="absolute inset-0 bg-gradient-to-t from-orange-500/40 via-transparent to-transparent pointer-events-none"
+                        />
+                        <div className="absolute top-4 right-4 glass px-3 py-1 rounded-full border border-orange-500/50 text-[10px] font-bold text-orange-400">
+                            HOT MOMENT
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/Hero.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { Button } from "./Button";
+import Image from "next/image";
+// Trigger Vercel Deploy 2
+import Link from "next/link";
+
+export const Hero = () => {
+    return (
+        <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+            {/* Background Particles/Glow */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute top-1/4 -left-20 w-96 h-96 bg-neon-blue/20 rounded-full blur-[120px] animate-pulse" />
+                <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-neon-red/20 rounded-full blur-[120px] animate-pulse delay-1000" />
+            </div>
+
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center z-10">
+                <motion.div
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                    <motion.h1
+                        className="text-5xl md:text-7xl font-display font-extrabold leading-[1.1] tracking-tighter mb-8"
+                    >
+                        その重みに、<br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-blue to-neon-red">
+                            魂が宿る。
+                        </span>
+                    </motion.h1>
+                    <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-lg leading-relaxed">
+                        Physical Weight, Digital Soul.<br />
+                        ただの所有から、体験する所有へ。リアルとデジタルが交差する、カードコレクションの新たな夜明け。
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                        <Link href="https://tc-app-staging.vercel.app/">
+                            <Button variant="primary" className="!px-10">
+                                今すぐ始める
+                            </Button>
+                        </Link>
+                        <Link href="/concept">
+                            <Button variant="outline">
+                                開発構想（ロードマップ）を見る
+                            </Button>
+                        </Link>
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 2 }}
+                    transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+                    className="relative aspect-square flex items-center justify-center"
+                >
+                    {/* Main Card Visual with Glassmorphism Border */}
+                    <div className="relative w-full max-w-[400px] aspect-[3/4] rounded-2xl overflow-hidden neon-glow-blue border border-white/20 transform hover:scale-105 transition-transform duration-500 shadow-[0_0_50px_rgba(0,240,255,0.2)]">
+                        <Image
+                            src="/images/hero_card.png"
+                            alt="Stadium Card Visual"
+                            fill
+                            className="object-cover"
+                            priority
+                            sizes="(max-width: 768px) 100vw, 400px"
+                        />
+                        {/* Holographic Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
+                    </div>
+
+                    {/* Floating UI Elements */}
+                    <motion.div
+                        animate={{ y: [0, -10, 0] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute -top-10 -right-5 md:right-0 glass p-5 rounded-2xl border border-neon-blue/30 neon-glow-blue"
+                    >
+                        <div className="text-[10px] text-neon-blue font-bold mb-1 tracking-widest uppercase">Spirit Record</div>
+                        <div className="text-lg font-bold font-display tracking-tight">INTENSITY: BEYOND LIMIT</div>
+                    </motion.div>
+
+                    <motion.div
+                        animate={{ y: [0, 10, 0] }}
+                        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                        className="absolute -bottom-10 -left-5 md:left-0 glass p-5 rounded-2xl border border-neon-red/30 neon-glow-red"
+                    >
+                        <div className="text-[10px] text-neon-red font-bold mb-1 tracking-widest uppercase">Legacy Value</div>
+                        <div className="text-lg font-bold font-display tracking-tight">UNFATHOMABLE</div>
+                    </motion.div>
+                </motion.div>
+            </div>
+
+            {/* Scroll Indicator */}
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
+                <span className="text-[10px] font-bold tracking-[0.3em] text-white/40 uppercase">Scroll to Discover</span>
+                <motion.div
+                    animate={{ y: [0, 10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-5 h-8 border-2 border-white/10 rounded-full flex justify-center p-1"
+                >
+                    <div className="w-1 h-1.5 bg-white/40 rounded-full" />
+                </motion.div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/LayoutTransition.tsx">
+"use client";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { ReactNode } from "react";
+
+export const LayoutTransition = ({ children }: { children: ReactNode }) => {
+    const pathname = usePathname();
+
+    return (
+        <AnimatePresence mode="wait">
+            <motion.div
+                key={pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+            >
+                {children}
+            </motion.div>
+        </AnimatePresence>
+    );
+};
+</file>
+
+<file path="components/LiveMoments.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import Image from "next/image";
+
+export const LiveMoments = () => {
+    const timelineEvents = [
+        { time: "The Beginning", event: "真実が刻まれる瞬間", active: false },
+        { time: "The Journey", event: "オーナーの手を渡り継ぐ", active: false },
+        { time: "The Legend", event: "唯一無二の物語へと進化", active: true },
+    ];
+
+    return (
+        <section id="features" className="py-32 bg-stadium-black relative overflow-hidden">
+            {/* Decorative Grids */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(circle, #333 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
+                <motion.div
+                    initial={{ opacity: 0, x: -30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
+                >
+                    <h2 className="text-neon-blue font-display font-bold tracking-[0.2em] mb-4 uppercase text-sm">Living History</h2>
+                    <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-8 leading-tight tracking-tighter">
+                        データではなく、<br />
+                        「物語」を刻め。
+                    </h3>
+                    <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light">
+                        Live Momentsは単なる統計ではありません。それは、白球が空を切り、歓喜がスタジアムを揺らしたその瞬間の記憶。<br /><br />
+                        あなたのカードは、ただそこにあるだけの静止画ではなく、現実の世界と同期し、共に呼吸し、成長し続ける「生きたアーカイブ」です。
+                    </p>
+
+                    <div className="space-y-6">
+                        {timelineEvents.map((item, i) => (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.2 }}
+                                key={i}
+                                className={`flex items-center gap-6 p-5 rounded-2xl border transition-all duration-500 ${item.active ? "border-neon-blue/40 bg-neon-blue/5 neon-glow-blue" : "border-white/5 bg-white/5"}`}
+                            >
+                                <span className={`text-[10px] font-bold tracking-widest uppercase ${item.active ? "text-neon-blue" : "text-gray-500"}`}>{item.time}</span>
+                                <span className="font-medium text-lg tracking-tight">{item.event}</span>
+                                {item.active && (
+                                    <motion.div
+                                        animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                                        transition={{ repeat: Infinity, duration: 2 }}
+                                        className="ml-auto w-2 h-2 rounded-full bg-neon-blue shadow-[0_0_10px_#00f0ff]"
+                                    />
+                                )}
+                            </motion.div>
+                        ))}
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9, rotate: 3 }}
+                    whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className="relative aspect-[4/5] lg:aspect-square"
+                >
+                    <div className="relative w-full h-full rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
+                        <Image
+                            src="/images/live_moment.png"
+                            alt="Live Moment Feature"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 50vw"
+                        />
+                        {/* Dynamic Aura */}
+                        <motion.div
+                            animate={{ opacity: [0.2, 0.4, 0.2] }}
+                            transition={{ repeat: Infinity, duration: 4 }}
+                            className="absolute inset-0 bg-gradient-to-br from-neon-blue/30 via-transparent to-neon-red/20 pointer-events-none"
+                        />
+                    </div>
+                </motion.div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/MemorialTag.tsx">
+"use client";
+
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { Quote, Sparkles, History } from "lucide-react";
+import { useState } from "react";
+
+const STORIES = [
+    {
+        id: "legend",
+        label: "LEGEND",
+        icon: <History size={14} />,
+        subtitle: "1994.10.08 / Nagoya",
+        title: "落合博満",
+        description: "30年前のあの日、ナゴヤ球場で目撃した勝負師の矜持。",
+        quote: [
+            "「1994年10月8日。ナゴヤ球場の空気が、あんなにも重く、それでいて狂おしいほど熱かったことはありません。巨人と中日、勝った方が優勝。野球の長い歴史でも、これほどの極限状態は二度とないでしょう。」",
+            "「巨人の4番・落合博満。不敵な笑みを浮かべ、満身創痍の体で放った先制ソロとタイムリー。勝負師の魂そのものでした。しかし、彼は死闘の途中で負傷退場。その時の彼の背中、そして静かに流した涙こそが、プロの矜持を教えてくれました。」",
+            "「このカードに触れるたび、あの日のスタジアムの怒号と、落合さんの凄み、そして静寂が蘇る。これは単なる記念品じゃない。私の情熱の記憶、そのものです。」"
+        ],
+        owner: "Legend Watcher",
+        image: "/images/hero_card.png",
+        tag: "Memorial Artifact",
+        tagDetail: "1994.10.08 / vs Dragons / Championship Game"
+    },
+    {
+        id: "modern",
+        label: "NEW ERA",
+        icon: <Sparkles size={14} />,
+        subtitle: "2025.11.01 / Toronto",
+        title: "山本由伸",
+        description: "常識を覆した死闘。世界を跪かせた、静かなる覇気。",
+        quote: [
+            "「第6戦で1失点完投、そのわずか24時間後。第7戦の九回、マウンドに彼が立っているのを見て震えが止まりませんでした。中0日。監督に自ら志願したブルペン入り。あの『投げることへの執念』が形になった瞬間でした。」",
+            "「10回、11回と回が進む中で、スタンドの誰もが『交代するな、彼でいってくれ』と祈るように願っていました。この熱投を終わらせたくない、伝説の目撃者であり続けたい。あの時のスタジアムの一体感は、一生忘れられません。」",
+            "「ランディ・ジョンソン以来のWS3勝。異次元の記録以上に、気迫が凄かった。満塁のピンチを切り抜けた刹那、吠えた彼の姿。このカードを保有することは、現代野球の奇跡を所有することと同じなんです。」"
+        ],
+        owner: "Global Ace Collector",
+        image: "/images/phantom_ace_pitcher.png",
+        tag: "World Series Hero",
+        tagDetail: "2025.11.01 / WS Game 7 / Series MVP"
+    }
+];
+
+export const MemorialTag = () => {
+    const [activeTab, setActiveTab] = useState(1);
+    const story = STORIES[activeTab];
+
+    return (
+        <section className="py-32 bg-stadium-gray relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                <motion.div
+                    initial={{ opacity: 0, x: 30 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="lg:order-2"
+                >
+                    <h2 className="text-neon-red font-display font-bold tracking-[0.2em] mb-4 uppercase text-sm">Emotional Asset</h2>
+                    <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-8 leading-tight tracking-tighter">
+                        想いを宿す、<br />
+                        <span className="text-white/50">メモリアル・タグ</span>
+                    </h3>
+
+                    <div className="flex gap-4 mb-10">
+                        {STORIES.map((s, idx) => (
+                            <button
+                                key={s.id}
+                                onClick={() => setActiveTab(idx)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 ${activeTab === idx
+                                    ? "bg-neon-red border-neon-red text-white shadow-[0_0_15px_rgba(255,0,0,0.3)]"
+                                    : "bg-white/5 border-white/10 text-gray-400 hover:border-white/30"
+                                    }`}
+                            >
+                                {s.icon}
+                                <span className="text-[10px] font-bold tracking-widest uppercase">{s.label}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={story.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.5 }}
+                        >
+                            <h4 className="text-3xl font-display font-bold mb-6 text-white">
+                                {story.title}
+                            </h4>
+                            <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light">
+                                {story.description}<br /><br />
+                                {story.id === "legend" ? (
+                                    <>カードの状態だけでなく、あなたの「思い出」を価値にする。ブロックチェーンに刻まれた「ファンの熱量」が、カードの真価を証明します。</>
+                                ) : (
+                                    <>記録は塗り替えられるが、記憶は永遠に色褪せない。あの日、あの場所で共有した熱狂こそが、このカードに唯一無二の価値を与えます。</>
+                                )}
+                            </p>
+
+                            <div className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl relative">
+                                <Quote className="absolute top-6 left-6 text-white/10" size={48} />
+                                <div className="text-gray-300 italic mb-6 relative z-10 pl-8 pt-4 leading-relaxed">
+                                    {story.quote.map((q, i) => (
+                                        <p key={i} className="mb-4 last:mb-0">{q}</p>
+                                    ))}
+                                </div>
+                                <div className="flex items-center gap-4 pl-8">
+                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${activeTab === 0 ? 'from-orange-500 to-neon-blue' : 'from-neon-blue to-neon-red'} shadow-[0_0_15px_rgba(255,255,255,0.1)]`} />
+                                    <div>
+                                        <div className="text-sm font-bold tracking-tight">Original Owner: {story.owner}</div>
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest">{story.subtitle}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </AnimatePresence>
+                </motion.div>
+
+                <div className="lg:order-1 flex justify-center sticky top-32">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={story.id}
+                            initial={{ opacity: 0, scale: 0.9, rotateY: 90 }}
+                            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, rotateY: -90 }}
+                            transition={{ duration: 0.8, type: "spring", stiffness: 100 }}
+                            className="relative w-full max-w-[420px] aspect-[4/5] rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl"
+                        >
+                            <Image
+                                src={story.image}
+                                alt={story.title}
+                                fill
+                                className="object-cover opacity-60"
+                                sizes="(max-width: 768px) 100vw, 420px"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-stadium-black via-transparent to-transparent" />
+
+                            {/* Tag Overlay */}
+                            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-[85%]">
+                                <motion.div
+                                    initial={{ y: 20, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    transition={{ delay: 0.5 }}
+                                    className="glass p-5 rounded-2xl border border-neon-blue/20"
+                                >
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-4 h-4 rounded-full bg-neon-blue/20 flex items-center justify-center">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-neon-blue shadow-[0_0_5px_#00f0ff]" />
+                                        </div>
+                                        <span className="text-[9px] font-bold text-neon-blue uppercase tracking-widest">{story.tag}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-400 line-clamp-2">
+                                        {story.tagDetail}
+                                    </div>
+                                </motion.div>
+                            </div>
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/Navbar.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+
+export const Navbar = () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
+            <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 bg-gradient-to-br from-neon-blue to-neon-red rounded-lg animate-glow-pulse" />
+                    <span className="text-2xl font-display font-bold tracking-tighter">
+                        STADIUM <span className="text-neon-blue">CARD</span>
+                    </span>
+                </div>
+
+                {/* Desktop Menu */}
+                <div className="hidden md:flex items-center gap-8">
+                    <button className="px-6 py-2 bg-white text-black text-sm font-bold rounded-full hover:bg-neon-blue transition-all duration-300 transform hover:scale-105 active:scale-95">
+                        Beta Access
+                    </button>
+                </div>
+
+                {/* Mobile Toggle */}
+                <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
+                    {isOpen ? <X /> : <Menu />}
+                </button>
+            </div>
+
+            {/* Mobile Menu */}
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="md:hidden glass border-b border-white/10 p-6 flex flex-col gap-4"
+                >
+                    <button className="w-full py-4 bg-white text-black font-bold rounded-xl active:bg-neon-blue">
+                        Beta Access
+                    </button>
+                </motion.div>
+            )}
+        </nav>
+    );
+};
+</file>
+
+<file path="components/Roadmap.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+
+export const Roadmap = () => {
+    const steps = [
+        {
+            title: "Connected Infrastructure",
+            date: "COMING SOON",
+            desc: "Vaulting開始。物理カードのデジタルツイン化と、秒速取引インフラを一般公開。",
+            status: "active"
+        },
+        {
+            title: "DeFi Fusion",
+            date: "FUTURE VISION",
+            desc: "カードNFTを担保とした資産流動化（レンディング）の実装。眠れる資産を資本へ。",
+            status: "upcoming"
+        },
+        {
+            title: "Social Impulse",
+            date: "FUTURE VISION",
+            desc: "TikTok/Instagramライブコマース完全統合。SNSの熱狂をそのまま取引へ昇華。",
+            status: "upcoming"
+        }
+    ];
+
+    return (
+        <section id="roadmap" className="py-24 bg-stadium-black relative">
+            <div className="max-w-7xl mx-auto px-6">
+                <h2 className="text-4xl md:text-5xl font-display font-extrabold mb-16 text-center">
+                    Evolution Waiting
+                </h2>
+
+                <div className="relative border-l-2 border-white/10 ml-4 md:ml-0 md:flex md:border-l-0 md:border-t-2 md:pt-12 gap-8">
+                    {steps.map((step, i) => (
+                        <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.2 }}
+                            className="relative mb-12 md:mb-0 md:flex-1 pl-8 md:pl-0"
+                        >
+                            {/* Dot */}
+                            <div className={`absolute top-0 -left-[9px] md:top-[-49px] md:left-0 w-4 h-4 rounded-full border-2 bg-stadium-black ${step.status === 'active' ? 'border-neon-blue' : 'border-white/20'}`}>
+                                {step.status === 'active' && <div className="absolute inset-0 rounded-full bg-neon-blue animate-ping opacity-50" />}
+                            </div>
+
+                            <div className="text-neon-blue text-sm font-bold mb-2 uppercase tracking-widest">{step.date}</div>
+                            <h4 className="text-2xl font-bold mb-4">{step.title}</h4>
+                            <p className="text-gray-400 leading-relaxed text-sm md:text-base">{step.desc}</p>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/Scanner.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { Scan, Smartphone } from "lucide-react";
+
+export default function Scanner() {
+    return (
+        <section className="bg-stadium-black py-20 text-white relative overflow-hidden">
+            {/* Background Grid */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+
+            <div className="mx-auto max-w-7xl px-4 relative z-10">
+                <div className="flex flex-col items-center text-center mb-16">
+                    <h2 className="text-4xl font-bold mb-4">
+                        Magic Scan with <span className="text-neon-blue">Gemini</span>
+                    </h2>
+                    <p className="text-lg text-gray-400 max-w-2xl">
+                        出品は、写真を撮るだけ。AIが選手名、年度、グレードを3秒で解析。
+                        面倒な入力作業は一切不要です。
+                    </p>
+                </div>
+
+                <div className="flex justify-center">
+                    <div className="relative w-[300px] h-[600px] rounded-[3rem] border-8 border-[#333] bg-[#000] shadow-2xl overflow-hidden">
+                        {/* Phone Notch */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#333] rounded-b-xl z-20" />
+
+                        {/* Camera View */}
+                        <div className="relative h-full w-full bg-gray-900 flex items-center justify-center">
+                            {/* Card Object */}
+                            <div className="w-48 h-72 bg-gray-800 rounded-lg border border-white/20 relative">
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-gray-600 font-bold">CARD</span>
+                                </div>
+                            </div>
+
+                            {/* Scanning Overlay */}
+                            <motion.div
+                                animate={{
+                                    top: ["10%", "80%", "10%"]
+                                }}
+                                transition={{
+                                    duration: 3,
+                                    repeat: Infinity,
+                                    ease: "linear"
+                                }}
+                                className="absolute left-0 right-0 h-1 bg-neon-blue shadow-[0_0_20px_rgba(0,240,255,1)] z-10 opacity-80"
+                            />
+
+                            {/* Recognition Box */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: [0, 1, 1, 0], scale: 1 }}
+                                transition={{
+                                    duration: 3,
+                                    repeat: Infinity,
+                                    times: [0, 0.4, 0.8, 1]
+                                }}
+                                className="absolute p-4 top-2/3 bg-white/10 backdrop-blur-md rounded-xl border border-neon-blue/50 text-left w-64"
+                            >
+                                <div className="flex items-center gap-2 text-neon-blue text-xs font-bold mb-1">
+                                    <Scan className="w-4 h-4" /> SCAN COMPLETE
+                                </div>
+                                <div className="text-white font-bold">Shohei Ohtani</div>
+                                <div className="text-gray-300 text-sm">2024 Chrome Reference</div>
+                                <div className="text-neon-blue text-lg font-bold mt-1">PSA 10 GEM MT</div>
+                            </motion.div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+</file>
+
+<file path="components/UserStory.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { Clock, Zap, MessageSquare, TrendingUp } from "lucide-react";
+
+export const UserStory = () => {
+    const storySteps = [
+        {
+            time: "17:50",
+            title: "予感：帰宅中のスタメン・デッキ",
+            desc: "「本日のスタメン・デッキ」機能で、期待の若手選手をチェック。今夜、何かが起きる予感がする。直感に従い、数枚のカードを青田買いして試合に備える。",
+            icon: <TrendingUp className="text-neon-blue" size={24} />,
+            phase: "PREDICTION"
+        },
+        {
+            time: "19:30",
+            title: "熱狂：逆転満塁ホームランの瞬間",
+            desc: "4番打者が放った白球が夜空を裂く！アプリが球団カラーに染まり、画面には『FEVER TIME』の文字。興奮のまま手持ちのサインカードを出品。取引が成立すると、そこには金色に輝く『Liveタグ』が自動で刻まれた。あの瞬間の記憶が、永遠の資産に変わる。",
+            icon: <Zap className="text-orange-500" size={24} />,
+            phase: "FEVER"
+        },
+        {
+            time: "21:45",
+            title: "余韻：ビクトリー・マーケットでの対話",
+            desc: "試合終了後、勝利の興奮冷めやらぬマーケット。チャットには「今日のホームラン最高でしたね！」の声が飛び交う。売買は単なる取引を超え、ファン同士の深い絆へと変わっていく。",
+            icon: <MessageSquare className="text-neon-blue" size={24} />,
+            phase: "VICTORY"
+        }
+    ];
+
+    return (
+        <section className="py-32 bg-stadium-black relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-6">
+                <div className="text-center mb-20">
+                    <h2 className="text-neon-red font-display font-bold tracking-[0.2em] mb-4 uppercase text-sm">Live Trading Experience</h2>
+                    <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-6 tracking-tighter leading-tight">
+                        その瞬間が、永遠の価値になる。<br />
+                        <span className="text-white/50">〜 あるナイターの夜 〜</span>
+                    </h3>
+                    <p className="text-xl text-gray-400 font-light max-w-2xl mx-auto">
+                        試合の熱狂を、資産に変えろ。そのカードには、あなただけのドラマが刻まれている。
+                    </p>
+                </div>
+
+                <div className="relative">
+                    {/* Timeline Line */}
+                    <div className="absolute left-[39px] md:left-1/2 md:-translate-x-1/2 top-0 bottom-0 w-[2px] bg-gradient-to-b from-neon-blue via-orange-500 to-neon-blue opacity-20" />
+
+                    <div className="space-y-24">
+                        {storySteps.map((step, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.8, delay: i * 0.2 }}
+                                className={`flex flex-col ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-12 relative`}
+                            >
+                                {/* Center Icon */}
+                                <div className="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-20 h-20 rounded-full bg-stadium-black border-2 border-white/10 flex items-center justify-center z-10 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
+                                    <div className="text-neon-blue">{step.icon}</div>
+                                </div>
+
+                                <div className={`w-full md:w-1/2 pl-24 md:pl-0 ${i % 2 === 0 ? 'md:pr-24 md:text-right' : 'md:pl-24 text-left'}`}>
+                                    <div className="inline-block px-4 py-1 rounded-full bg-white/5 border border-white/10 mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <Clock size={12} className="text-neon-blue" />
+                                            <span className="text-xs font-bold tracking-widest text-white/70 uppercase">{step.time}</span>
+                                        </div>
+                                    </div>
+                                    <h4 className="text-2xl md:text-3xl font-bold mb-4">{step.title}</h4>
+                                    <p className="text-gray-400 leading-relaxed font-light">
+                                        {step.desc}
+                                    </p>
+                                    {step.phase === "FEVER" && (
+                                        <div className="mt-6 flex flex-wrap gap-3 justify-start md:justify-end">
+                                            <div className="px-3 py-1 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-bold uppercase tracking-widest">Live Tag Activated</div>
+                                            <div className="px-3 py-1 rounded-md bg-neon-blue/10 border border-neon-blue/20 text-neon-blue text-[10px] font-bold uppercase tracking-widest">Memory assetized</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="hidden md:block w-1/2" />
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mt-24 text-center">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        className="p-12 glass rounded-[3rem] border border-white/5 inline-block max-w-2xl"
+                    >
+                        <p className="text-lg text-gray-300 italic leading-relaxed">
+                            「勝利の後に成立したカードを眺める。そこには、あの歓声と震えるような興奮が『金の刻印』として残されている。それは、単なる取引ではない。私の野球人生の一部を所有するということなんだ。」
+                        </p>
+                        <div className="mt-6 text-sm font-bold text-neon-blue tracking-widest uppercase">— ある一人のDragons Fan</div>
+                    </motion.div>
+                </div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path="components/VaultSection.tsx">
+"use client";
+
+import { motion } from "framer-motion";
+import { Shield, Zap, Box, ArrowRightLeft } from "lucide-react";
+
+export const VaultSection = () => {
+    const features = [
+        {
+            icon: <Box className="text-neon-blue" />,
+            title: "Safe Vaulting",
+            desc: "鑑定・保管庫（ボールト）へ預け入れ。物理カードを厳重に保護。"
+        },
+        {
+            icon: <Zap className="text-neon-blue" />,
+            title: "Digital Twin",
+            desc: "即座にNFT化。所有権をブロックチェーン上で管理可能に。"
+        },
+        {
+            icon: <ArrowRightLeft className="text-neon-blue" />,
+            title: "Instant Trade",
+            desc: "物理配送不要。秒速・低コストでのボーダレスな売買。"
+        },
+        {
+            icon: <Shield className="text-neon-blue" />,
+            title: "Zero Risk",
+            desc: "輸送紛失リスクを排除。資産価値の透明性を100%保証。"
+        }
+    ];
+
+    return (
+        <section className="py-32 bg-stadium-black relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-6">
+                <div className="flex flex-col lg:flex-row gap-20 items-center">
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        className="lg:w-1/2"
+                    >
+                        <h2 className="text-neon-blue font-display font-bold tracking-[0.2em] mb-4 uppercase text-sm">Web3 x Logistics</h2>
+                        <h3 className="text-4xl md:text-6xl font-display font-extrabold mb-8 leading-tight tracking-tighter">
+                            Connected Collectibles:<br />
+                            <span className="text-white">所有の概念を書き換える。</span>
+                        </h3>
+                        <p className="text-xl text-gray-400 mb-10 leading-relaxed font-light">
+                            物理カードを預ける。それだけで、資産は自由に羽ばたくインフラとなります。<br /><br />
+                            「物理的制約」という枷を取り払い、すべてのトレカに圧倒的な「流動性」と「透明性」を。既存産業とWeb3を繋ぐ架け橋が、ここにあります。
+                        </p>
+                    </motion.div>
+
+                    <div className="lg:w-1/2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {features.map((f, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 }}
+                                className="glass p-8 rounded-3xl border border-white/5 hover:border-neon-blue/30 transition-all group"
+                            >
+                                <div className="mb-4 p-3 rounded-xl bg-white/5 w-fit group-hover:bg-neon-blue/10 transition-colors">
+                                    {f.icon}
+                                </div>
+                                <h4 className="text-xl font-bold mb-2">{f.title}</h4>
+                                <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+</file>
+
+<file path=".gitignore">
+.vercel
+</file>
+
+<file path="next-env.d.ts">
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/basic-features/typescript for more information.
+</file>
+
+<file path="next.config.js">
+/** @type {import('next').NextConfig} */
+const nextConfig = {};
+
+module.exports = nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "promotion-lp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0",
+    "framer-motion": "^11.0.3",
+    "lucide-react": "^0.330.0",
+    "next": "14.1.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwind-merge": "^2.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="postcss.config.js">
+module.exports = {
+    plugins: {
+        tailwindcss: {},
+        autoprefixer: {},
+    },
+};
+</file>
+
+<file path="README.md">
+# Promotion LP
+
+Project initialized.
+</file>
+
+<file path="tailwind.config.ts">
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+    content: [
+        "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+        "./components/**/*.{js,ts,jsx,tsx,mdx}",
+        "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    ],
+    theme: {
+        extend: {
+            colors: {
+                "stadium-black": "#0a0a0a",
+                "neon-blue": "#00f0ff",
+                "neon-red": "#ff003c",
+                "stadium-gray": "#1a1a1a",
+                "stadium-light-gray": "#333333",
+            },
+            fontFamily: {
+                sans: ["Inter", "sans-serif"],
+                display: ["Outfit", "sans-serif"],
+            },
+            backgroundImage: {
+                "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+                "gradient-conic":
+                    "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+                "glass-gradient": "linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))",
+            },
+            animation: {
+                "glow-pulse": "glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                "shimmer": "shimmer 3s ease-in-out infinite",
+            },
+            keyframes: {
+                "glow-pulse": {
+                    "0%, 100%": { opacity: "1", filter: "brightness(100%)" },
+                    "50%": { opacity: "0.8", filter: "brightness(150%) blur(2px)" },
+                },
+                "shimmer": {
+                    "0%, 100%": { "background-position": "200% 0" },
+                    "50%": { "background-position": "0 0" },
+                },
+            },
+        },
+    },
+    plugins: [],
+};
+export default config;
+</file>
+
+<file path="tsconfig.json">
+{
+    "compilerOptions": {
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "esnext"
+        ],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "jsx": "preserve",
+        "incremental": true,
+        "plugins": [
+            {
+                "name": "next"
+            }
+        ],
+        "paths": {
+            "@/*": [
+                "./*"
+            ]
+        }
+    },
+    "include": [
+        "next-env.d.ts",
+        "**/*.ts",
+        "**/*.tsx",
+        ".next/types/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
+</file>
+
+</files>

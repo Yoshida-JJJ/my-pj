@@ -110,14 +110,14 @@ export default function OrderSuccessPage() {
                             </svg>
                         </div>
 
-                        <h2 className="text-3xl font-heading font-bold text-white mb-2 tracking-tight">Purchase Successful!</h2>
+                        <h2 className="text-3xl font-heading font-bold text-white mb-2 tracking-tight">購入が完了しました！</h2>
                         <p className="text-brand-platinum/60 mb-8 max-w-md mx-auto">
-                            Thank you for your order. Your transaction has been completed and the card is now part of your collection.
+                            ご注文ありがとうございます。決済が完了し、カードがあなたのコレクションに追加されました。
                         </p>
 
                         {/* Order ID Box */}
                         <div className="bg-black/40 rounded-xl p-4 mb-8 border border-white/5 inline-block mx-auto">
-                            <p className="text-[10px] text-brand-platinum/40 uppercase tracking-widest mb-1 font-bold">Order ID</p>
+                            <p className="text-[10px] text-brand-platinum/40 uppercase tracking-widest mb-1 font-bold">注文ID</p>
                             <p className="font-mono text-xs text-brand-blue-glow break-all px-4">{id}</p>
                         </div>
 
@@ -133,7 +133,7 @@ export default function OrderSuccessPage() {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-brand-gold text-xs font-bold uppercase tracking-widest mb-1">Newly Acquired</p>
+                                    <p className="text-brand-gold text-xs font-bold uppercase tracking-widest mb-1">新規取得</p>
                                     <h3 className="text-2xl font-bold text-white mb-1">{listing.player_name}</h3>
                                     <p className="text-brand-platinum/70 text-sm mb-4">
                                         {listing.year} {listing.manufacturer} {listing.series_name}
@@ -151,7 +151,7 @@ export default function OrderSuccessPage() {
                         <div className="text-left mb-8 border-t border-white/5 pt-8">
                             <h3 className="text-xs font-bold text-brand-platinum/40 uppercase tracking-widest mb-6 flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse"></span>
-                                {buyerItem ? "Start Your Card's Legend" : (retryCount < 10 ? "Preparing your card for memories..." : "Recording delayed - You can add memories later in Collection")}
+                                {buyerItem ? "カードの伝説を始めましょう" : (retryCount < 10 ? "カード情報を準備中..." : "同期に時間がかかっています - コレクションから後で追加できます")}
                             </h3>
                             {(() => {
                                 let displayHistory = [...(buyerItem?.history || listing?.moment_history || [])];
@@ -187,7 +187,7 @@ export default function OrderSuccessPage() {
                                         <div className="p-8 rounded-xl bg-white/5 border border-dashed border-white/10 text-center">
                                             <div className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-brand-gold mb-2"></div>
                                             <p className="text-xs text-brand-platinum/30 uppercase tracking-widest">
-                                                {retryCount < 10 ? "Syncing Ownership..." : "Sync taking longer than expected"}
+                                                {retryCount < 10 ? "所有権を同期中..." : "同期に時間がかかっています"}
                                             </p>
                                         </div>
                                     );
@@ -211,19 +211,19 @@ export default function OrderSuccessPage() {
                                 className="flex-1 flex justify-center items-center py-4 px-6 rounded-xl text-sm font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                Go to Collection
+                                コレクションへ
                             </Link>
                             <Link
                                 href="/market"
                                 className="flex-1 flex justify-center items-center py-4 px-6 border border-transparent rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.3)] text-sm font-bold text-white bg-brand-blue hover:bg-brand-blue-glow transition-all hover:scale-[1.02] active:scale-[0.98]"
                             >
-                                Back to Market
+                                マーケットに戻る
                                 <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                             </Link>
                         </div>
 
                         <p className="mt-8 text-[10px] text-brand-platinum/30 uppercase tracking-[0.2em] font-light">
-                            Secured and Verified by Stadium Card Chain
+                            Stadium Card Chain による安全な取引
                         </p>
                     </div>
                 </div>
