@@ -6,6 +6,7 @@ import { createClient } from '../../utils/supabase/client';
 import Footer from '../../components/Footer';
 import PremiumCardImage from '../../components/PremiumCardImage';
 import MarketPriceLinks from '../../components/MarketPriceLinks';
+import CardImageUploader from '../../components/CardImageUploader';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -494,7 +495,28 @@ function SellContent() {
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <form onSubmit={handleSubmit(onSubmit as any)} className="p-8 space-y-12">
 
-                    {/* --- 0. Image Upload --- */}
+                    {/* --- 0a. Optimized Card Image Upload --- */}
+                    <div className="mb-8">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            カード画像の最適化アップロード
+                        </h3>
+                        <p className="text-sm text-brand-platinum/50 mb-4">表面・裏面の画像を自動で800x1120px WebP形式に最適化します</p>
+                        <CardImageUploader
+                            onUploadComplete={(optimizedImages) => {
+                                const currentImages = getValues('images') || [];
+                                const newUrls: string[] = [];
+                                if (optimizedImages.front) newUrls.push(optimizedImages.front.url);
+                                if (optimizedImages.back) newUrls.push(optimizedImages.back.url);
+                                setValue('images', [...currentImages, ...newUrls]);
+                                if (currentImages.length === 0 && newUrls.length > 0) {
+                                    setSelectedImageIndices([0]);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {/* --- 0b. Image Upload --- */}
                     <div className="mb-6">
                         <label
                             onDragOver={handleDragOver}
