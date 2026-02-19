@@ -509,8 +509,8 @@ function SellContent() {
                                 if (optimizedImages.front) newUrls.push(optimizedImages.front.url);
                                 if (optimizedImages.back) newUrls.push(optimizedImages.back.url);
                                 setValue('images', [...currentImages, ...newUrls]);
-                                if (currentImages.length === 0 && newUrls.length > 0) {
-                                    setSelectedImageIndices([0]);
+                                if (newUrls.length > 0) {
+                                    setSelectedImageIndices([currentImages.length]);
                                 }
                             }}
                         />
