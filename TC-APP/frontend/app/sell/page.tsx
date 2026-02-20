@@ -7,7 +7,7 @@ import Footer from '../../components/Footer';
 import PremiumCardImage from '../../components/PremiumCardImage';
 import MarketPriceLinks from '../../components/MarketPriceLinks';
 import CardImageUploader from '../../components/CardImageUploader';
-import AuthenticityRiskScore from '../../components/AuthenticityRiskScore';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -616,10 +616,12 @@ function SellContent() {
                                     >
                                         {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AI解析を実行</span>}
                                     </button>
-                                    <AuthenticityRiskScore
-                                        imageUrls={images}
-                                        selectedImageIndices={selectedImageIndices}
-                                    />
+                                    <Link
+                                        href="/check"
+                                        className="text-brand-blue hover:text-brand-blue-glow text-sm flex items-center gap-1 transition-colors"
+                                    >
+                                        🛡️ AI真贋チェック
+                                    </Link>
                                 </div>
                             )}
                         </div>
