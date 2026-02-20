@@ -21,6 +21,7 @@ export default function AuthenticityCheckPage() {
   const [showTutorial, setShowTutorial] = useState(true);
   const [result, setResult] = useState<AuthenticityResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -56,6 +57,7 @@ export default function AuthenticityCheckPage() {
 
   const processImage = async (frontImage: string, backImage?: string) => {
     setStep('processing');
+    setIsProcessing(true);
     setError(null);
 
     try {
@@ -94,6 +96,8 @@ export default function AuthenticityCheckPage() {
       console.error('Processing error:', err);
       setError(err instanceof Error ? err.message : '処理中にエラーが発生しました');
       setStep('select');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -184,7 +188,7 @@ export default function AuthenticityCheckPage() {
             ) : (
               <ImageUploader
                 onUpload={handleUpload}
-                isLoading={step === 'processing'}
+                isLoading={isProcessing}
               />
             )}
           </div>
@@ -193,7 +197,7 @@ export default function AuthenticityCheckPage() {
         {step === 'upload' && (
           <ImageUploader
             onUpload={handleUpload}
-            isLoading={step === 'processing'}
+            isLoading={isProcessing}
           />
         )}
 
