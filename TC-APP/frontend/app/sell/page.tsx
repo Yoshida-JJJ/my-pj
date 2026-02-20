@@ -7,10 +7,15 @@ import Footer from '../../components/Footer';
 import PremiumCardImage from '../../components/PremiumCardImage';
 import MarketPriceLinks from '../../components/MarketPriceLinks';
 import CardImageUploader from '../../components/CardImageUploader';
-import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Shield, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, Camera, Upload, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { checkImageQuality } from '@/lib/imageQuality';
+import { AuthenticityResult, ImageQualityResult } from '@/types/authenticity';
+import CameraCapture from '@/components/AuthenticityCheck/CameraCapture';
+import ShootingTutorial from '@/components/AuthenticityCheck/ShootingTutorial';
 
 // --- Data Constants ---
 const MLB_TEAMS = [
@@ -96,6 +101,17 @@ function SellContent() {
 
     // Country logic (Default JP)
     const [country, setCountry] = useState<'USA' | 'JP'>('JP');
+
+    // Authenticity Check State
+    const [isMobile, setIsMobile] = useState(false);
+    const [showAuthCheck, setShowAuthCheck] = useState(false);
+    const [authChecking, setAuthChecking] = useState(false);
+    const [authResult, setAuthResult] = useState<AuthenticityResult | null>(null);
+    const [authError, setAuthError] = useState<string | null>(null);
+    const [authImageQuality, setAuthImageQuality] = useState<ImageQualityResult | null>(null);
+    const [showCameraCapture, setShowCameraCapture] = useState(false);
+    const [showTutorial, setShowTutorial] = useState(false);
+    const [retakeMode, setRetakeMode] = useState(false);
 
     // Image Selection for AI
     const [selectedImageIndices, setSelectedImageIndices] = useState<number[]>([0]);
@@ -192,6 +208,175 @@ function SellContent() {
         };
         init();
     }, [source, sourceId, sourceType, reset]);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    const blobToBase64 = (blob: Blob): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    };
+
+    const runAuthenticityCheck = async (targetImageUrl?: string) => {
+        const currentImages = getValues('images');
+        const imageToCheck = targetImageUrl || (currentImages && currentImages[0]);
+
+        if (!imageToCheck) {
+            setAuthError('画像をアップロードしてください');
+            return;
+        }
+
+        setAuthChecking(true);
+        setAuthError(null);
+        setAuthResult(null);
+        setAuthImageQuality(null);
+
+        try {
+            const frontResponse = await fetch(imageToCheck);
+            const frontBlob = await frontResponse.blob();
+            const frontBase64 = await blobToBase64(frontBlob);
+
+            let backBase64: string | undefined;
+            if (currentImages && currentImages.length > 1 && !targetImageUrl) {
+                const backResponse = await fetch(currentImages[1]);
+                const backBlob = await backResponse.blob();
+                backBase64 = await blobToBase64(backBlob);
+            }
+
+            const imageQuality = await checkImageQuality(frontBlob);
+            setAuthImageQuality(imageQuality);
+
+            if (imageQuality.recommendation === 'retake') {
+                setAuthError('quality_low');
+                setAuthChecking(false);
+                return;
+            }
+
+            const response = await fetch('/api/authenticity-check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    frontImage: frontBase64,
+                    backImage: backBase64,
+                    imageQuality,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('判定に失敗しました');
+            }
+
+            const result = await response.json();
+            setAuthResult({
+                ...result,
+                imageQuality,
+            });
+            setRetakeMode(false);
+
+        } catch (err: unknown) {
+            console.error('Authenticity check error:', err);
+            setAuthError(err instanceof Error ? err.message : 'チェック中にエラーが発生しました');
+        } finally {
+            setAuthChecking(false);
+        }
+    };
+
+    const handleStartCamera = () => {
+        const hasSeenTutorial = localStorage.getItem('authenticity-tutorial-seen');
+        if (!hasSeenTutorial) {
+            setShowTutorial(true);
+        } else {
+            setShowCameraCapture(true);
+        }
+    };
+
+    const handleTutorialComplete = () => {
+        localStorage.setItem('authenticity-tutorial-seen', 'true');
+        setShowTutorial(false);
+        setShowCameraCapture(true);
+    };
+
+    const handleTutorialSkip = () => {
+        localStorage.setItem('authenticity-tutorial-seen', 'true');
+        setShowTutorial(false);
+        setShowCameraCapture(true);
+    };
+
+    const handleCameraCapture = async (imageData: string) => {
+        setShowCameraCapture(false);
+        try {
+            const response = await fetch(imageData);
+            const blob = await response.blob();
+            const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+            const supabase = createClient();
+            const fileName = `${Math.random()}.jpg`;
+            const { error: uploadError } = await supabase.storage
+                .from('card-images')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('card-images')
+                .getPublicUrl(fileName);
+
+            const currentImages = getValues('images') || [];
+            const newImages = [...currentImages, publicUrl];
+            setValue('images', newImages);
+
+            if (retakeMode) {
+                setTimeout(() => {
+                    runAuthenticityCheck(publicUrl);
+                }, 500);
+            }
+        } catch (err) {
+            console.error('Camera upload error:', err);
+            setAuthError('画像のアップロードに失敗しました');
+        }
+    };
+
+    const handleRetakeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+
+        const file = e.target.files[0];
+        try {
+            const supabase = createClient();
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('card-images')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('card-images')
+                .getPublicUrl(fileName);
+
+            const currentImages = getValues('images') || [];
+            const newImages = [...currentImages, publicUrl];
+            setValue('images', newImages);
+
+            setTimeout(() => {
+                runAuthenticityCheck(publicUrl);
+            }, 500);
+        } catch (err) {
+            console.error('Upload error:', err);
+            setAuthError('画像のアップロードに失敗しました');
+        }
+    };
 
     const uploadFiles = async (files: FileList) => {
         setUploading(true);
@@ -616,16 +801,323 @@ function SellContent() {
                                     >
                                         {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AI解析を実行</span>}
                                     </button>
-                                    <Link
-                                        href="/check"
-                                        className="text-brand-blue hover:text-brand-blue-glow text-sm flex items-center gap-1 transition-colors"
-                                    >
-                                        🛡️ AI真贋チェック
-                                    </Link>
                                 </div>
                             )}
                         </div>
                     </div>
+
+                    {/* --- AI Authenticity Check Section --- */}
+                    {images && images.length > 0 && (
+                        <div className="mt-6 border border-white/10 rounded-2xl overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setShowAuthCheck(!showAuthCheck)}
+                                className="w-full px-4 sm:px-6 py-4 bg-brand-dark-light/50 flex items-center justify-between hover:bg-brand-dark-light/70 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-brand-blue/20 flex items-center justify-center flex-shrink-0">
+                                        <Shield className="w-5 h-5 text-brand-blue" />
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-white font-medium">AI真贋チェック</h3>
+                                        <p className="text-brand-platinum/60 text-sm hidden sm:block">
+                                            出品前にカードをAIがチェックします（任意）
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {authResult && (
+                                        <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full ${
+                                            authResult.riskLevel === 'low'
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : authResult.riskLevel === 'medium'
+                                                ? 'bg-yellow-500/20 text-yellow-400'
+                                                : 'bg-red-500/20 text-red-400'
+                                        }`}>
+                                            {authResult.riskLevel === 'low' ? '低リスク' :
+                                             authResult.riskLevel === 'medium' ? '中リスク' : '高リスク'}
+                                        </span>
+                                    )}
+                                    {showAuthCheck ? (
+                                        <ChevronUp className="w-5 h-5 text-brand-platinum/50" />
+                                    ) : (
+                                        <ChevronDown className="w-5 h-5 text-brand-platinum/50" />
+                                    )}
+                                </div>
+                            </button>
+
+                            <AnimatePresence>
+                                {showAuthCheck && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="p-4 sm:p-6 border-t border-white/10">
+
+                                            {!authResult && !authChecking && authError !== 'quality_low' && (
+                                                <div className="text-center">
+                                                    <p className="text-brand-platinum/70 text-sm mb-4">
+                                                        アップロードした画像をAIが分析し、<br />
+                                                        偽造の可能性を示すリスクスコアを表示します。
+                                                    </p>
+
+                                                    {authError && authError !== 'quality_low' && (
+                                                        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                                                            {authError}
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => runAuthenticityCheck()}
+                                                        className="px-6 py-3 bg-brand-blue hover:bg-brand-blue-glow text-white rounded-xl font-medium transition-colors"
+                                                    >
+                                                        AIチェックを実行
+                                                    </button>
+
+                                                    <p className="text-brand-platinum/50 text-xs mt-4">
+                                                        ※ この機能は参考情報であり、確定的な真贋判定ではありません
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {authChecking && (
+                                                <div className="text-center py-8">
+                                                    <div className="w-12 h-12 border-3 border-brand-blue/30 border-t-brand-blue rounded-full animate-spin mx-auto mb-4" />
+                                                    <p className="text-white">AIが画像を分析中...</p>
+                                                    <p className="text-brand-platinum/50 text-sm mt-1">
+                                                        通常10〜20秒かかります
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {authError === 'quality_low' && !authChecking && (
+                                                <div className="text-center">
+                                                    <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+                                                        <AlertTriangle className="w-8 h-8 text-yellow-400" />
+                                                    </div>
+                                                    <h4 className="text-white font-medium mb-2">
+                                                        画像品質が低いため判定できません
+                                                    </h4>
+                                                    <p className="text-brand-platinum/60 text-sm mb-6">
+                                                        より鮮明な画像で再度お試しください
+                                                    </p>
+
+                                                    {authImageQuality && (
+                                                        <div className="mb-6 p-3 bg-brand-dark rounded-lg text-left">
+                                                            <p className="text-brand-platinum/70 text-xs mb-2">検出された問題:</p>
+                                                            <ul className="text-sm space-y-1">
+                                                                {!authImageQuality.checks.resolution.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        解像度が低い（1200×1600px以上推奨）
+                                                                    </li>
+                                                                )}
+                                                                {!authImageQuality.checks.brightness.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        {authImageQuality.checks.brightness.message}
+                                                                    </li>
+                                                                )}
+                                                                {!authImageQuality.checks.focus.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        ピントが合っていない
+                                                                    </li>
+                                                                )}
+                                                                {!authImageQuality.checks.cardDetection.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        カードが検出できない
+                                                                    </li>
+                                                                )}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="space-y-3">
+                                                        {isMobile && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setRetakeMode(true);
+                                                                    handleStartCamera();
+                                                                }}
+                                                                className="w-full py-3 bg-brand-blue hover:bg-brand-blue-glow text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+                                                            >
+                                                                <Camera className="w-5 h-5" />
+                                                                カメラで撮り直す（推奨）
+                                                            </button>
+                                                        )}
+
+                                                        <label className={`block w-full py-3 border rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors ${
+                                                            isMobile
+                                                                ? 'border-white/20 text-brand-platinum/70 hover:bg-white/5'
+                                                                : 'border-brand-blue text-brand-blue hover:bg-brand-blue/10'
+                                                        }`}>
+                                                            <Upload className="w-5 h-5" />
+                                                            別の画像をアップロード
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={handleRetakeUpload}
+                                                                className="hidden"
+                                                            />
+                                                        </label>
+                                                    </div>
+
+                                                    <div className="mt-6 p-4 bg-brand-dark-light/50 rounded-xl text-left">
+                                                        <h5 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
+                                                            撮影のコツ
+                                                        </h5>
+                                                        <ul className="text-brand-platinum/60 text-xs space-y-1">
+                                                            <li>・明るい場所で撮影（窓際や照明下）</li>
+                                                            <li>・カードに対して真上から水平に</li>
+                                                            <li>・無地の背景（白・黒・グレー）を使用</li>
+                                                            <li>・スリーブは外すと精度UP</li>
+                                                            <li>・手ブレに注意（両手で固定）</li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAuthError(null);
+                                                            setAuthImageQuality(null);
+                                                        }}
+                                                        className="mt-4 text-brand-platinum/50 text-sm hover:text-white transition-colors"
+                                                    >
+                                                        キャンセル
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {authResult && !authChecking && (
+                                                <div>
+                                                    <div className={`p-4 rounded-xl mb-4 ${
+                                                        authResult.riskLevel === 'low'
+                                                            ? 'bg-green-500/10 border border-green-500/20'
+                                                            : authResult.riskLevel === 'medium'
+                                                            ? 'bg-yellow-500/10 border border-yellow-500/20'
+                                                            : 'bg-red-500/10 border border-red-500/20'
+                                                    }`}>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                                                authResult.riskLevel === 'low'
+                                                                    ? 'bg-green-500/20'
+                                                                    : authResult.riskLevel === 'medium'
+                                                                    ? 'bg-yellow-500/20'
+                                                                    : 'bg-red-500/20'
+                                                            }`}>
+                                                                {authResult.riskLevel === 'low' ? (
+                                                                    <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8 text-green-400" />
+                                                                ) : (
+                                                                    <AlertTriangle className={`w-7 h-7 sm:w-8 sm:h-8 ${
+                                                                        authResult.riskLevel === 'medium'
+                                                                            ? 'text-yellow-400'
+                                                                            : 'text-red-400'
+                                                                    }`} />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className={`text-2xl sm:text-3xl font-bold ${
+                                                                        authResult.riskLevel === 'low'
+                                                                            ? 'text-green-400'
+                                                                            : authResult.riskLevel === 'medium'
+                                                                            ? 'text-yellow-400'
+                                                                            : 'text-red-400'
+                                                                    }`}>
+                                                                        {authResult.riskScore}
+                                                                    </span>
+                                                                    <span className="text-brand-platinum/50 text-sm">/ 100</span>
+                                                                </div>
+                                                                <p className={`text-sm ${
+                                                                    authResult.riskLevel === 'low'
+                                                                        ? 'text-green-400'
+                                                                        : authResult.riskLevel === 'medium'
+                                                                        ? 'text-yellow-400'
+                                                                        : 'text-red-400'
+                                                                }`}>
+                                                                    {authResult.riskLevel === 'low'
+                                                                        ? '明らかな異常は検出されませんでした'
+                                                                        : authResult.riskLevel === 'medium'
+                                                                        ? '一部確認が必要な点があります'
+                                                                        : '慎重な確認を推奨します'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {authResult.factors && authResult.factors.length > 0 && (
+                                                        <div className="mb-4">
+                                                            <h4 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
+                                                                <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                                                                検出された懸念点
+                                                            </h4>
+                                                            <ul className="space-y-2">
+                                                                {authResult.factors.map((factor, idx) => (
+                                                                    <li
+                                                                        key={idx}
+                                                                        className={`p-3 rounded-lg text-sm ${
+                                                                            factor.severity === 'critical'
+                                                                                ? 'bg-red-500/10 text-red-300'
+                                                                                : factor.severity === 'warning'
+                                                                                ? 'bg-yellow-500/10 text-yellow-300'
+                                                                                : 'bg-blue-500/10 text-blue-300'
+                                                                        }`}
+                                                                    >
+                                                                        <span className="font-medium">{factor.category}:</span> {factor.description}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {authResult.positiveSignals && authResult.positiveSignals.length > 0 && (
+                                                        <div className="mb-4">
+                                                            <h4 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
+                                                                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                                                                正規品の特徴
+                                                            </h4>
+                                                            <ul className="space-y-1">
+                                                                {authResult.positiveSignals.slice(0, 3).map((signal, idx) => (
+                                                                    <li key={idx} className="text-brand-platinum/70 text-sm flex items-start gap-2">
+                                                                        <span className="text-green-400 mt-0.5">✓</span>
+                                                                        {signal}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="p-3 bg-brand-dark rounded-lg mb-4">
+                                                        <p className="text-brand-platinum/50 text-xs">
+                                                            この判定はAIによる参考情報です。高額カードは公式鑑定機関（PSA, BGS等）の利用を推奨します。
+                                                        </p>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAuthResult(null);
+                                                            setAuthError(null);
+                                                        }}
+                                                        className="w-full py-2 border border-white/20 text-brand-platinum/70 rounded-lg text-sm hover:bg-white/5 transition-colors"
+                                                    >
+                                                        別の画像でチェック
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
 
                     {/* --- Form Sections (Revealed after Analysis) --- */}
                     {hasAnalyzed && (
@@ -932,6 +1424,23 @@ function SellContent() {
 
                 </form >
             </div >
+
+            {showCameraCapture && (
+                <CameraCapture
+                    onCapture={handleCameraCapture}
+                    onCancel={() => {
+                        setShowCameraCapture(false);
+                        setRetakeMode(false);
+                    }}
+                />
+            )}
+
+            {showTutorial && (
+                <ShootingTutorial
+                    onComplete={handleTutorialComplete}
+                    onSkip={handleTutorialSkip}
+                />
+            )}
         </div >
     );
 }

@@ -456,23 +456,6 @@ export default function ListingDetail() {
                                 </div>
                             )}
 
-                            {/* --- AI Authenticity Check Link --- */}
-                            <div className="border-t border-brand-platinum/10 py-6">
-                                <Link
-                                    href="/check"
-                                    className="flex items-center gap-3 p-4 rounded-xl bg-brand-blue/5 border border-brand-blue/20 hover:bg-brand-blue/10 transition-colors group"
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-brand-blue/20 flex items-center justify-center">
-                                        <span className="text-brand-blue text-lg">🛡️</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-white font-medium text-sm">AI真贋チェック</p>
-                                        <p className="text-brand-platinum/50 text-xs">カード画像をAIが分析しリスクスコアを表示します</p>
-                                    </div>
-                                    <span className="text-brand-blue group-hover:translate-x-1 transition-transform">→</span>
-                                </Link>
-                            </div>
-
                             <div className="border-t border-brand-platinum/10 py-8">
                                 <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-6">状態・グレーディング (Condition)</h3>
                                 <div className="grid grid-cols-2 gap-y-6 gap-x-4">
