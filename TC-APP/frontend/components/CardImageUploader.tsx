@@ -157,6 +157,15 @@ export default function CardImageUploader({ onUploadComplete }: CardImageUploade
       setUploadResult(data.images);
       setSuccessMessage('画像のアップロードと最適化が完了しました！');
       onUploadComplete(data.images);
+
+      if (frontPreview) URL.revokeObjectURL(frontPreview);
+      if (backPreview) URL.revokeObjectURL(backPreview);
+      setFrontFile(null);
+      setBackFile(null);
+      setFrontPreview(null);
+      setBackPreview(null);
+      if (frontInputRef.current) frontInputRef.current.value = '';
+      if (backInputRef.current) backInputRef.current.value = '';
     } catch (err) {
       const message = err instanceof Error ? err.message : ERROR_MESSAGES.uploadFailed;
       setError(message);
@@ -278,6 +287,7 @@ export default function CardImageUploader({ onUploadComplete }: CardImageUploade
           onChange={(e) => {
             const selectedFile = e.target.files?.[0];
             if (selectedFile) handleFileSelect(selectedFile, side);
+            if (e.target) e.target.value = '';
           }}
         />
       </div>
