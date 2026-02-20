@@ -302,90 +302,95 @@ function SellContent() {
         const currentImages = getValues('images');
         if (!currentImages || currentImages.length === 0) return;
         if (selectedImageIndices.length === 0) {
-            setFormError("Please select at least one image to analyze.");
+            setFormError('解析する画像を選択してください。');
+            return;
+        }
+
+        const imageIndex = selectedImageIndices[0];
+        const imageUrl = currentImages[imageIndex];
+
+        if (!imageUrl) {
+            setFormError('選択された画像が見つかりません。画像を再選択してください。');
             return;
         }
 
         setAnalyzing(true);
         setAiFeedback(null);
         setFormError(null);
-        setSuggestedData(null);
-
 
         try {
-            const imageIndex = selectedImageIndices[0];
-            const imageUrl = currentImages[imageIndex];
-
             const response = await fetch(imageUrl);
+            if (!response.ok) {
+                throw new Error(`画像の取得に失敗しました (${response.status})`);
+            }
             const blob = await response.blob();
-            const reader = new FileReader();
 
-            reader.onloadend = async () => {
-                const base64data = reader.result;
-                try {
-                    const apiRes = await fetch('/api/analyze-card', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: base64data }),
-                    });
+            const base64data = await new Promise<string | ArrayBuffer | null>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('画像の読み込みに失敗しました。'));
+                reader.readAsDataURL(blob);
+            });
 
-                    if (!apiRes.ok) {
-                        const errorData = await apiRes.json().catch(() => ({}));
-                        throw new Error(errorData.error || `AI Analysis failed with status ${apiRes.status}`);
-                    }
-                    const data = await apiRes.json();
+            if (!base64data) {
+                throw new Error('画像データの変換に失敗しました。');
+            }
 
-                    const missingFields = [];
-                    if (!data.playerName?.value) missingFields.push('Player Name');
-                    if (!data.year?.value) missingFields.push('Year');
+            const apiRes = await fetch('/api/analyze-card', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64data }),
+            });
 
-                    const hasAnalysis = missingFields.length < 2;
+            if (!apiRes.ok) {
+                const errorData = await apiRes.json().catch(() => ({}));
+                throw new Error(errorData.error || `AI解析に失敗しました (${apiRes.status})`);
+            }
+            const data = await apiRes.json();
 
-                    if (!hasAnalysis) {
-                        setFormError("AI could not identify Player or Year. Please fill in manually.");
-                        setAnalyzing(false);
-                        return;
-                    }
+            const missingFields = [];
+            if (!data.playerName?.value) missingFields.push('Player Name');
+            if (!data.year?.value) missingFields.push('Year');
 
-                    setSuggestedData(data);
-                    setHasAnalyzed(true);
+            const hasAnalysis = missingFields.length < 2;
 
-                    if (data.playerName?.value) setValue('playerName', data.playerName.value);
-                    if (data.year?.value) setValue('year', data.year.value);
+            if (!hasAnalysis) {
+                setFormError('AIが選手名・年を特定できませんでした。手動で入力してください。');
+                setAnalyzing(false);
+                return;
+            }
 
-                    if (data.variation?.value) setValue('variation', data.variation.value);
-                    if (data.serialNumber?.value) setValue('serialNumber', data.serialNumber.value);
-                    if (data.isRookie?.value === 'true') setValue('isRookie', true);
-                    if (data.isAutograph?.value === 'true') setValue('isAutograph', true);
+            setSuggestedData(data);
+            setHasAnalyzed(true);
 
-                    if (data.isGraded?.value === 'true') {
-                        setValue('isGraded', true);
-                        if (data.gradingCompany?.value) setValue('gradingCompany', data.gradingCompany.value);
-                        if (data.grade?.value) setValue('grade', data.grade.value);
-                    } else if (data.condition?.value) {
-                        setValue('condition', data.condition.value);
-                    }
+            if (data.playerName?.value) setValue('playerName', data.playerName.value);
+            if (data.year?.value) setValue('year', data.year.value);
 
-                    // Handle Parallel/Variation logic
-                    let variationVal = data.variation?.value || '';
-                    if (data.parallelType?.value) {
-                        variationVal = variationVal ? `${variationVal} / ${data.parallelType.value}` : data.parallelType.value;
-                    }
-                    if (variationVal) setValue('variation', variationVal);
+            if (data.variation?.value) setValue('variation', data.variation.value);
+            if (data.serialNumber?.value) setValue('serialNumber', data.serialNumber.value);
+            if (data.isRookie?.value === 'true') setValue('isRookie', true);
+            if (data.isAutograph?.value === 'true') setValue('isAutograph', true);
 
+            if (data.isGraded?.value === 'true') {
+                setValue('isGraded', true);
+                if (data.gradingCompany?.value) setValue('gradingCompany', data.gradingCompany.value);
+                if (data.grade?.value) setValue('grade', data.grade.value);
+            } else if (data.condition?.value) {
+                setValue('condition', data.condition.value);
+            }
 
+            // Handle Parallel/Variation logic
+            let variationVal = data.variation?.value || '';
+            if (data.parallelType?.value) {
+                variationVal = variationVal ? `${variationVal} / ${data.parallelType.value}` : data.parallelType.value;
+            }
+            if (variationVal) setValue('variation', variationVal);
 
-                } catch (err) {
-                    console.error(err);
-                    setFormError('Failed to analyze image.');
-                } finally {
-                    setAnalyzing(false);
-                }
-            };
-            reader.readAsDataURL(blob);
         } catch (err) {
-            console.error(err);
-            setFormError('Could not process image.');
+            console.error('AI Analysis Error:', err);
+            const message = err instanceof Error ? err.message : '画像解析に失敗しました。もう一度お試しください。';
+            setFormError(message);
+        } finally {
             setAnalyzing(false);
         }
     };
