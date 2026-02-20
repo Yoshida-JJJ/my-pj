@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import type { ImagePreset } from '../lib/image-processor';
+
+const IMAGE_PRESET_OPTIONS: { value: ImagePreset; label: string; description: string }[] = [
+  { value: 'standard', label: '標準 (800x1120)', description: '5:7比率・白背景パディング' },
+  { value: 'high-res', label: '高解像度 (1200x1680)', description: '細かい文字も鮮明' },
+  { value: 'original-ratio', label: 'オリジナル比率', description: '見切れ防止・元の比率維持' },
+];
 
 interface UploadedImage {
   url: string;
@@ -34,6 +41,8 @@ export default function CardImageUploader({ onUploadComplete }: CardImageUploade
   const [backFile, setBackFile] = useState<File | null>(null);
   const [frontPreview, setFrontPreview] = useState<string | null>(null);
   const [backPreview, setBackPreview] = useState<string | null>(null);
+  const [frontPreset, setFrontPreset] = useState<ImagePreset>('standard');
+  const [backPreset, setBackPreset] = useState<ImagePreset>('standard');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -120,8 +129,14 @@ export default function CardImageUploader({ onUploadComplete }: CardImageUploade
 
     try {
       const formData = new FormData();
-      if (frontFile) formData.append('front', frontFile);
-      if (backFile) formData.append('back', backFile);
+      if (frontFile) {
+        formData.append('front', frontFile);
+        formData.append('frontPreset', frontPreset);
+      }
+      if (backFile) {
+        formData.append('back', backFile);
+        formData.append('backPreset', backPreset);
+      }
 
       setProgress(30);
 
@@ -150,13 +165,59 @@ export default function CardImageUploader({ onUploadComplete }: CardImageUploade
     }
   };
 
+  const renderPresetSelector = (
+    side: 'front' | 'back',
+    currentPreset: ImagePreset,
+    setPreset: (preset: ImagePreset) => void
+  ) => (
+    <div className="mt-3 space-y-1.5">
+      {IMAGE_PRESET_OPTIONS.map((option) => (
+        <label
+          key={option.value}
+          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${
+            currentPreset === option.value
+              ? 'bg-brand-gold/10 border border-brand-gold/30'
+              : 'bg-transparent border border-transparent hover:bg-white/5'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="radio"
+            name={`preset-${side}`}
+            value={option.value}
+            checked={currentPreset === option.value}
+            onChange={() => setPreset(option.value)}
+            className="sr-only"
+          />
+          <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+            currentPreset === option.value
+              ? 'border-brand-gold'
+              : 'border-brand-platinum/30'
+          }`}>
+            {currentPreset === option.value && (
+              <div className="w-1.5 h-1.5 rounded-full bg-brand-gold" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className={`text-xs font-medium ${
+              currentPreset === option.value ? 'text-brand-gold' : 'text-brand-platinum/70'
+            }`}>{option.label}</p>
+            <p className="text-[10px] text-brand-platinum/40 truncate">{option.description}</p>
+          </div>
+        </label>
+      ))}
+    </div>
+  );
+
   const renderDropZone = (
     side: 'front' | 'back',
     label: string,
     file: File | null,
     preview: string | null,
     isDragging: boolean,
-    inputRef: React.RefObject<HTMLInputElement | null>
+    inputRef: React.RefObject<HTMLInputElement | null>,
+    currentPreset: ImagePreset,
+    setPreset: (preset: ImagePreset) => void
   ) => (
     <div className="flex-1">
       <label className="text-sm font-medium text-brand-platinum mb-2 block">{label}</label>
@@ -225,14 +286,15 @@ export default function CardImageUploader({ onUploadComplete }: CardImageUploade
           {file.name} ({formatBytes(file.size)})
         </p>
       )}
+      {renderPresetSelector(side, currentPreset, setPreset)}
     </div>
   );
 
   return (
     <div className="space-y-6">
       <div className="flex gap-4">
-        {renderDropZone('front', '表面（フロント）', frontFile, frontPreview, isDraggingFront, frontInputRef)}
-        {renderDropZone('back', '裏面（バック）', backFile, backPreview, isDraggingBack, backInputRef)}
+        {renderDropZone('front', '表面（フロント）', frontFile, frontPreview, isDraggingFront, frontInputRef, frontPreset, setFrontPreset)}
+        {renderDropZone('back', '裏面（バック）', backFile, backPreview, isDraggingBack, backInputRef, backPreset, setBackPreset)}
       </div>
 
       {error && (

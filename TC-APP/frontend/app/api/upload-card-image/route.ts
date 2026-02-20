@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../utils/supabase/server';
-import { processCardImage, ImageProcessingError } from '../../../lib/image-processor';
+import { processCardImage, ImageProcessingError, IMAGE_PRESETS } from '../../../lib/image-processor';
+import type { ImagePreset } from '../../../lib/image-processor';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -10,6 +11,10 @@ interface ImageUploadResult {
   originalSize: number;
   processedSize: number;
   dimensions: string;
+}
+
+function isValidPreset(value: string): value is ImagePreset {
+  return value in IMAGE_PRESETS;
 }
 
 export async function POST(request: NextRequest) {
@@ -29,6 +34,11 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const frontFile = formData.get('front') as File | null;
     const backFile = formData.get('back') as File | null;
+    const frontPresetRaw = (formData.get('frontPreset') as string) || 'standard';
+    const backPresetRaw = (formData.get('backPreset') as string) || 'standard';
+
+    const frontPreset: ImagePreset = isValidPreset(frontPresetRaw) ? frontPresetRaw : 'standard';
+    const backPreset: ImagePreset = isValidPreset(backPresetRaw) ? backPresetRaw : 'standard';
 
     if (!frontFile && !backFile) {
       return NextResponse.json(
@@ -42,7 +52,8 @@ export async function POST(request: NextRequest) {
 
     const processAndUpload = async (
       file: File,
-      side: 'front' | 'back'
+      side: 'front' | 'back',
+      preset: ImagePreset
     ): Promise<ImageUploadResult> => {
       if (!ALLOWED_MIME_TYPES.includes(file.type)) {
         throw new ImageProcessingError(
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(arrayBuffer);
       const originalSize = buffer.length;
 
-      const processed = await processCardImage(buffer, file.name);
+      const processed = await processCardImage(buffer, file.name, preset);
 
       const storagePath = `${user.id}/${timestamp}_${side}.webp`;
       const { error: uploadError } = await supabase.storage
@@ -89,11 +100,11 @@ export async function POST(request: NextRequest) {
     };
 
     if (frontFile) {
-      results.front = await processAndUpload(frontFile, 'front');
+      results.front = await processAndUpload(frontFile, 'front', frontPreset);
     }
 
     if (backFile) {
-      results.back = await processAndUpload(backFile, 'back');
+      results.back = await processAndUpload(backFile, 'back', backPreset);
     }
 
     return NextResponse.json({
