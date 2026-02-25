@@ -10,6 +10,8 @@ import Footer from '../../../components/Footer';
 import { ListingItem } from '../../../types';
 import AddToShowcaseModal from '../../../components/AddToShowcaseModal';
 import MomentHistoryPanel from '../../../components/MomentHistoryPanel';
+import AuthenticityResultDisplay, { AuthenticityNoScoreDisplay } from '@/components/AuthenticityCheck/AuthenticityResultDisplay';
+import { AuthenticityResult, MetadataCheckResult } from '@/types/authenticity';
 
 export default function ListingDetail() {
     const params = useParams();
@@ -455,6 +457,28 @@ export default function ListingDetail() {
                                     <p className="text-brand-platinum/80 leading-relaxed whitespace-pre-wrap">{listing.description}</p>
                                 </div>
                             )}
+
+                            {/* --- AI Authenticity Check Result --- */}
+                            {listing.trust_score != null && listing.trust_level ? (
+                                <div className="border-t border-brand-platinum/10 py-6">
+                                    <AuthenticityResultDisplay
+                                        result={{
+                                            trustScore: listing.trust_score,
+                                            trustLevel: listing.trust_level,
+                                            factors: (listing.factors as AuthenticityResult['factors']) ?? undefined,
+                                            positiveSignals: (listing.positive_signals as string[]) ?? undefined,
+                                            overallComment: listing.overall_comment ?? undefined,
+                                            metadataCheck: (listing.metadata_check as unknown as MetadataCheckResult) ?? undefined,
+                                            scoreNote: listing.score_note ?? undefined,
+                                        }}
+                                        isDetailPage={true}
+                                    />
+                                </div>
+                            ) : listing.trust_score === null && listing.trust_level === null ? (
+                                <div className="border-t border-brand-platinum/10 py-6">
+                                    <AuthenticityNoScoreDisplay />
+                                </div>
+                            ) : null}
 
                             <div className="border-t border-brand-platinum/10 py-8">
                                 <h3 className="text-sm font-bold text-brand-platinum/40 uppercase tracking-widest mb-6">状態・グレーディング (Condition)</h3>

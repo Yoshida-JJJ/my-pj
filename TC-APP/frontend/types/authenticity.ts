@@ -18,20 +18,33 @@ export interface QualityCheck {
 }
 
 export interface AuthenticityResult {
-  riskScore: number;
-  riskLevel: 'low' | 'medium' | 'high';
-  confidence: 'high' | 'medium' | 'low';
-  factors: RiskFactor[];
-  positiveSignals: string[];
-  limitations: string[];
-  imageQuality: ImageQualityResult;
+  trustScore: number;
+  trustLevel: 'high' | 'medium' | 'low';
+  factors?: AuthenticityFactor[];
+  positiveSignals?: string[];
+  overallComment?: string;
+  imageQuality?: ImageQualityResult;
+  metadataCheck?: MetadataCheckResult;
+  scoreNote?: string | null;
 }
 
-export interface RiskFactor {
+export interface AuthenticityFactor {
   category: string;
   description: string;
   severity: 'info' | 'warning' | 'critical';
   confidence: number;
+}
+
+export interface MetadataCheckResult {
+  hasExif: boolean;
+  hasDeviceInfo: boolean;
+  hasCaptureDate: boolean;
+  hasGPS: boolean;
+  deviceMake?: string;
+  deviceModel?: string;
+  captureDate?: string;
+  imageSource: 'camera' | 'screenshot' | 'unknown';
+  warnings: string[];
 }
 
 export interface CameraGuideState {

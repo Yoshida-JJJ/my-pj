@@ -10,18 +10,19 @@ const google = createGoogleGenerativeAI({
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-const riskFactorSchema = z.object({
-  category: z.string().describe('リスクカテゴリ（例: 印刷品質、色味、フォント、ホログラム）'),
-  description: z.string().describe('検出内容の説明（日本語）'),
+const factorSchema = z.object({
+  category: z.string().describe('懸念カテゴリ（例: 印刷品質、色味、フォント、ホログラム）'),
+  description: z.string().describe('具体的な説明（日本語）'),
   severity: z.enum(['info', 'warning', 'critical']).describe('深刻度'),
   confidence: z.number().min(0).max(100).describe('この判定の確信度（0-100）'),
 });
 
 const authenticitySchema = z.object({
-  riskScore: z.number().min(0).max(100).describe('総合リスクスコア（0=低リスク、100=高リスク）'),
-  factors: z.array(riskFactorSchema).describe('検出されたリスク要因'),
+  trustScore: z.number().min(0).max(100).describe('信頼スコア（0-100。100に近いほど本物のカードである信頼度が高い）'),
+  trustLevel: z.enum(['high', 'medium', 'low']).describe('信頼レベル'),
+  factors: z.array(factorSchema).describe('検出された懸念点'),
   positiveSignals: z.array(z.string()).describe('正規品の特徴として検出された点（日本語）'),
-  uncertainAreas: z.array(z.string()).describe('画像品質により判定が困難だった点（日本語）'),
+  overallComment: z.string().describe('総合コメント（日本語）'),
 });
 
 export async function POST(req: NextRequest) {
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     const backBase64 = backImage?.replace(/^data:image\/[a-z]+;base64,/, '');
 
     const qualityNote = imageQuality?.score < 75
-      ? '注意: 画像品質が低いため、判定精度が低下する可能性があります。判定が困難な点はuncertainAreasに含めてください。'
+      ? '注意: 画像品質が低いため、判定精度が低下する可能性があります。'
       : '';
 
     const imageContent: { type: 'image'; image: string }[] = [
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
             {
               type: 'text',
               text: `あなたはトレーディングカードの真贋判定の専門家です。
-提供された画像を分析し、偽造の可能性を示すリスク要因を特定してください。
+提供された画像を分析し、本物のカードである信頼度を評価してください。
 
 ${qualityNote}
 
@@ -71,16 +72,21 @@ ${qualityNote}
 6. エッジ/裁断: カットの精度、角の状態
 7. センタリング: 枠のバランス
 
-【重要な注意事項】
-- これは参考情報であり、確定的な真贋判定ではありません
-- 高精度の偽造品は検出できない可能性があります
-- 画像品質が低い場合、誤判定のリスクが高まります
-- 判定が困難な点は正直にuncertainAreasに記載してください
+【信頼スコアガイドライン】
+- 70-100: 高信頼（正規品の特徴が多く確認できる）
+- 40-69: 中程度（一部確認が必要な点があるが大きな問題なし）
+- 0-39: 低信頼（複数の懸念点があり、慎重な確認を推奨）
 
-【スコアガイドライン】
-- 0-30: 低リスク（明らかな異常なし）
-- 31-60: 中リスク（一部確認が必要な点あり）
-- 61-100: 高リスク（複数の懸念点あり、慎重な確認を推奨）`,
+trustLevelの設定:
+- trustScore >= 70 → "high"
+- trustScore >= 40 → "medium"
+- trustScore < 40 → "low"
+
+【重要な注意事項】
+- これはAIによる簡易チェックであり、公式鑑定ではありません
+- 正規品の特徴が確認できた点はpositiveSignalsに記載してください
+- 懸念点はfactorsに記載してください
+- overallCommentには総合的な判定コメントを日本語で記載してください`,
             },
             ...imageContent,
           ],
@@ -88,55 +94,12 @@ ${qualityNote}
       ],
     });
 
-    let riskLevel: 'low' | 'medium' | 'high';
-    if (object.riskScore <= 30) {
-      riskLevel = 'low';
-    } else if (object.riskScore <= 60) {
-      riskLevel = 'medium';
-    } else {
-      riskLevel = 'high';
-    }
-
-    const avgFactorConfidence = object.factors.length > 0
-      ? object.factors.reduce((sum: number, f: { confidence: number }) => sum + f.confidence, 0) / object.factors.length
-      : 50;
-    const qualityScore = imageQuality?.score || 50;
-    const combinedConfidence = (avgFactorConfidence + qualityScore) / 2;
-
-    let confidence: 'high' | 'medium' | 'low';
-    if (combinedConfidence >= 75) {
-      confidence = 'high';
-    } else if (combinedConfidence >= 50) {
-      confidence = 'medium';
-    } else {
-      confidence = 'low';
-    }
-
-    const limitations = [
-      'この判定はAIによる参考情報であり、公式鑑定機関の判定とは異なります',
-      '高精度の偽造品は検出できない場合があります',
-    ];
-
-    if (imageQuality?.score < 75) {
-      limitations.push('画像品質が低いため、判定精度が低下している可能性があります');
-    }
-
-    if (!backImage) {
-      limitations.push('裏面画像がないため、一部の検証ができていません');
-    }
-
-    if (object.uncertainAreas.length > 0) {
-      limitations.push(`以下の点は判定が困難でした: ${object.uncertainAreas.join('、')}`);
-    }
-
     return Response.json({
-      riskScore: object.riskScore,
-      riskLevel,
-      confidence,
+      trustScore: object.trustScore,
+      trustLevel: object.trustLevel,
       factors: object.factors,
       positiveSignals: object.positiveSignals,
-      limitations,
-      imageQuality,
+      overallComment: object.overallComment,
     });
 
   } catch (error: unknown) {
