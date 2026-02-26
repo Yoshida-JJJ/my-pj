@@ -270,7 +270,11 @@ function SellContent() {
 
         } catch (err: unknown) {
             console.error('Authenticity check error:', err);
-            setAuthError(err instanceof Error ? err.message : 'チェック中にエラーが発生しました');
+            if (err instanceof TypeError) {
+                setAuthError('ネットワークエラーが発生しました。接続を確認して再度お試しください。');
+            } else {
+                setAuthError(err instanceof Error ? err.message : 'チェック中にエラーが発生しました');
+            }
         } finally {
             setAuthChecking(false);
         }
@@ -745,8 +749,8 @@ function SellContent() {
                                                 ? 'bg-yellow-500/20 text-yellow-400'
                                                 : 'bg-red-500/20 text-red-400'
                                         }`}>
-                                            {authResult.trustLevel === 'high' ? '低リスク' :
-                                             authResult.trustLevel === 'medium' ? '中リスク' : '高リスク'}
+                                            {authResult.trustLevel === 'high' ? '高信頼' :
+                                             authResult.trustLevel === 'medium' ? '要確認' : '低信頼'}
                                         </span>
                                     )}
                                     {showAuthCheck ? (
@@ -938,6 +942,15 @@ function SellContent() {
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    {/* 総合コメント */}
+                                                    {authResult.overallComment && (
+                                                        <div className="mb-4 p-3 bg-brand-dark-light/30 rounded-lg">
+                                                            <p className="text-brand-platinum/80 text-sm">
+                                                                {authResult.overallComment}
+                                                            </p>
+                                                        </div>
+                                                    )}
 
                                                     {/* 懸念点 */}
                                                     {authResult.factors && authResult.factors.length > 0 && (

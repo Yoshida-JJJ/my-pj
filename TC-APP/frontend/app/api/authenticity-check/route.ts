@@ -27,6 +27,7 @@ const authenticitySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // TODO: AUTH-004以降で認証チェック（ログイン必須）とレート制限を追加する
     const { frontImage, backImage, imageQuality } = await req.json();
 
     if (!frontImage) {
