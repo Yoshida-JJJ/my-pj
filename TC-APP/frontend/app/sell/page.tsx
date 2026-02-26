@@ -10,6 +10,10 @@ import CardImageUploader from '../../components/CardImageUploader';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Shield, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Upload, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { checkImageQuality } from '@/lib/imageQuality';
+import { AuthenticityResult, ImageQualityResult } from '@/types/authenticity';
 
 // --- Data Constants ---
 const MLB_TEAMS = [
@@ -95,6 +99,13 @@ function SellContent() {
 
     // Country logic (Default JP)
     const [country, setCountry] = useState<'USA' | 'JP'>('JP');
+
+    // Authenticity Check State
+    const [showAuthCheck, setShowAuthCheck] = useState(false);
+    const [authChecking, setAuthChecking] = useState(false);
+    const [authResult, setAuthResult] = useState<AuthenticityResult | null>(null);
+    const [authError, setAuthError] = useState<string | null>(null);
+    const [authImageQuality, setAuthImageQuality] = useState<ImageQualityResult | null>(null);
 
     // Image Selection for AI
     const [selectedImageIndices, setSelectedImageIndices] = useState<number[]>([0]);
@@ -191,6 +202,95 @@ function SellContent() {
         };
         init();
     }, [source, sourceId, sourceType, reset]);
+
+    const blobToBase64 = (blob: Blob): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    };
+
+    const runAuthenticityCheck = async () => {
+        const currentImages = getValues('images');
+        if (!currentImages || currentImages.length === 0) {
+            setAuthError('画像をアップロードしてください');
+            return;
+        }
+
+        setAuthChecking(true);
+        setAuthError(null);
+        setAuthResult(null);
+        setAuthImageQuality(null);
+
+        try {
+            const frontImageUrl = currentImages[0];
+            const backImageUrl = currentImages.length > 1 ? currentImages[1] : undefined;
+
+            const frontResponse = await fetch(frontImageUrl);
+            const frontBlob = await frontResponse.blob();
+            const frontBase64 = await blobToBase64(frontBlob);
+
+            let backBase64: string | undefined;
+            if (backImageUrl) {
+                const backResponse = await fetch(backImageUrl);
+                const backBlob = await backResponse.blob();
+                backBase64 = await blobToBase64(backBlob);
+            }
+
+            const imageQuality = await checkImageQuality(frontBlob);
+            setAuthImageQuality(imageQuality);
+
+            if (imageQuality.recommendation === 'retake') {
+                setAuthError('quality_low');
+                setAuthChecking(false);
+                return;
+            }
+
+            const response = await fetch('/api/authenticity-check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    frontImage: frontBase64,
+                    backImage: backBase64,
+                    imageQuality,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('判定に失敗しました');
+            }
+
+            const result = await response.json();
+            setAuthResult({
+                ...result,
+                imageQuality,
+            });
+
+        } catch (err: unknown) {
+            console.error('Authenticity check error:', err);
+            if (err instanceof TypeError) {
+                setAuthError('ネットワークエラーが発生しました。接続を確認して再度お試しください。');
+            } else {
+                setAuthError(err instanceof Error ? err.message : 'チェック中にエラーが発生しました');
+            }
+        } finally {
+            setAuthChecking(false);
+        }
+    };
+
+    const handleRetakeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+
+        setAuthError(null);
+
+        await uploadFiles(e.target.files);
+
+        setTimeout(() => {
+            runAuthenticityCheck();
+        }, 500);
+    };
 
     const uploadFiles = async (files: FileList) => {
         setUploading(true);
@@ -613,12 +713,310 @@ function SellContent() {
                                         disabled={analyzing}
                                         className="bg-brand-gold text-brand-dark font-bold px-5 py-2 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2 whitespace-nowrap"
                                     >
-                                        {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AI解析を実行</span>}
+                                        {analyzing ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin" /> : <span>✨ AIでカード情報を自動入力</span>}
                                     </button>
                                 </div>
                             )}
                         </div>
                     </div>
+
+                    {/* AI真贋チェックセクション */}
+                    {images && images.length > 0 && (
+                        <div className="mt-6 border border-white/10 rounded-2xl overflow-hidden">
+                            {/* ヘッダー（トグル） */}
+                            <button
+                                type="button"
+                                onClick={() => setShowAuthCheck(!showAuthCheck)}
+                                className="w-full px-4 sm:px-6 py-4 bg-brand-dark-light/50 flex items-center justify-between hover:bg-brand-dark-light/70 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-brand-blue/20 flex items-center justify-center flex-shrink-0">
+                                        <Shield className="w-5 h-5 text-brand-blue" />
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-white font-medium">AI真贋チェック</h3>
+                                        <p className="text-brand-platinum/60 text-sm hidden sm:block">
+                                            出品前にカードをAIがチェックします（任意）
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {authResult && (
+                                        <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full ${
+                                            authResult.trustLevel === 'high'
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : authResult.trustLevel === 'medium'
+                                                ? 'bg-yellow-500/20 text-yellow-400'
+                                                : 'bg-red-500/20 text-red-400'
+                                        }`}>
+                                            {authResult.trustLevel === 'high' ? '高信頼' :
+                                             authResult.trustLevel === 'medium' ? '要確認' : '低信頼'}
+                                        </span>
+                                    )}
+                                    {showAuthCheck ? (
+                                        <ChevronUp className="w-5 h-5 text-brand-platinum/50" />
+                                    ) : (
+                                        <ChevronDown className="w-5 h-5 text-brand-platinum/50" />
+                                    )}
+                                </div>
+                            </button>
+
+                            {/* 展開コンテンツ */}
+                            <AnimatePresence>
+                                {showAuthCheck && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="p-4 sm:p-6 border-t border-white/10">
+
+                                            {/* 状態1: 未実行 */}
+                                            {!authResult && !authChecking && authError !== 'quality_low' && (
+                                                <div className="text-center">
+                                                    <p className="text-brand-platinum/70 text-sm mb-4">
+                                                        アップロードした画像をAIが分析し、<br />
+                                                        偽造の可能性を示すリスクスコアを表示します。
+                                                    </p>
+
+                                                    {authError && authError !== 'quality_low' && (
+                                                        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                                                            {authError}
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={runAuthenticityCheck}
+                                                        className="px-6 py-3 bg-brand-blue hover:bg-brand-blue-glow text-white rounded-xl font-medium transition-colors"
+                                                    >
+                                                        AIチェックを実行
+                                                    </button>
+
+                                                    <p className="text-brand-platinum/50 text-xs mt-4">
+                                                        ※ この機能は参考情報であり、確定的な真贋判定ではありません
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* 状態2: チェック中 */}
+                                            {authChecking && (
+                                                <div className="text-center py-8">
+                                                    <div className="w-12 h-12 border-4 border-brand-blue/30 border-t-brand-blue rounded-full animate-spin mx-auto mb-4" />
+                                                    <p className="text-white">AIが画像を分析中...</p>
+                                                    <p className="text-brand-platinum/50 text-sm mt-1">
+                                                        通常10〜20秒かかります
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* 状態3: 画像品質NG */}
+                                            {authError === 'quality_low' && !authChecking && (
+                                                <div className="text-center">
+                                                    <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+                                                        <AlertTriangle className="w-8 h-8 text-yellow-400" />
+                                                    </div>
+                                                    <h4 className="text-white font-medium mb-2">
+                                                        画像品質が低いため判定できません
+                                                    </h4>
+                                                    <p className="text-brand-platinum/60 text-sm mb-6">
+                                                        より鮮明な画像で再度お試しください
+                                                    </p>
+
+                                                    {/* 画像品質の詳細 */}
+                                                    {authImageQuality && (
+                                                        <div className="mb-6 p-3 bg-brand-dark rounded-lg text-left">
+                                                            <p className="text-brand-platinum/70 text-xs mb-2">検出された問題:</p>
+                                                            <ul className="text-sm space-y-1">
+                                                                {!authImageQuality.checks.resolution.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        解像度が低い（1200×1600px以上推奨）
+                                                                    </li>
+                                                                )}
+                                                                {!authImageQuality.checks.brightness.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        {authImageQuality.checks.brightness.message}
+                                                                    </li>
+                                                                )}
+                                                                {!authImageQuality.checks.focus.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        ピントが合っていない
+                                                                    </li>
+                                                                )}
+                                                                {!authImageQuality.checks.cardDetection.passed && (
+                                                                    <li className="text-red-400 flex items-center gap-2">
+                                                                        <X className="w-3 h-3" />
+                                                                        カードが検出できない
+                                                                    </li>
+                                                                )}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {/* アップロードボタン */}
+                                                    <label className="block w-full py-3 border border-brand-blue text-brand-blue rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer hover:bg-brand-blue/10 transition-colors">
+                                                        <Upload className="w-5 h-5" />
+                                                        別の画像をアップロード
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleRetakeUpload}
+                                                            className="hidden"
+                                                        />
+                                                    </label>
+
+                                                    {/* 撮影のコツ */}
+                                                    <div className="mt-6 p-4 bg-brand-dark-light/50 rounded-xl text-left">
+                                                        <h5 className="text-white text-sm font-medium mb-2">💡 撮影のコツ</h5>
+                                                        <ul className="text-brand-platinum/60 text-xs space-y-1">
+                                                            <li>• 明るい場所で撮影（窓際や照明下）</li>
+                                                            <li>• カードに対して真上から水平に</li>
+                                                            <li>• 無地の背景（白・黒・グレー）を使用</li>
+                                                            <li>• スリーブは外すと精度UP</li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAuthError(null);
+                                                            setAuthImageQuality(null);
+                                                        }}
+                                                        className="mt-4 text-brand-platinum/50 text-sm hover:text-white transition-colors"
+                                                    >
+                                                        キャンセル
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* 状態4: 結果表示 */}
+                                            {authResult && !authChecking && (
+                                                <div>
+                                                    {/* スコア表示 */}
+                                                    <div className={`p-4 rounded-xl mb-4 ${
+                                                        authResult.trustLevel === 'high'
+                                                            ? 'bg-green-500/10 border border-green-500/20'
+                                                            : authResult.trustLevel === 'medium'
+                                                            ? 'bg-yellow-500/10 border border-yellow-500/20'
+                                                            : 'bg-red-500/10 border border-red-500/20'
+                                                    }`}>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                                                authResult.trustLevel === 'high'
+                                                                    ? 'bg-green-500/20'
+                                                                    : authResult.trustLevel === 'medium'
+                                                                    ? 'bg-yellow-500/20'
+                                                                    : 'bg-red-500/20'
+                                                            }`}>
+                                                                {authResult.trustLevel === 'high' ? (
+                                                                    <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8 text-green-400" />
+                                                                ) : (
+                                                                    <AlertTriangle className={`w-7 h-7 sm:w-8 sm:h-8 ${
+                                                                        authResult.trustLevel === 'medium' ? 'text-yellow-400' : 'text-red-400'
+                                                                    }`} />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className={`text-2xl sm:text-3xl font-bold ${
+                                                                        authResult.trustLevel === 'high' ? 'text-green-400' :
+                                                                        authResult.trustLevel === 'medium' ? 'text-yellow-400' : 'text-red-400'
+                                                                    }`}>
+                                                                        {authResult.trustScore}
+                                                                    </span>
+                                                                    <span className="text-brand-platinum/50 text-sm">/ 100</span>
+                                                                </div>
+                                                                <p className={`text-sm ${
+                                                                    authResult.trustLevel === 'high' ? 'text-green-400' :
+                                                                    authResult.trustLevel === 'medium' ? 'text-yellow-400' : 'text-red-400'
+                                                                }`}>
+                                                                    {authResult.trustLevel === 'high' ? '明らかな異常は検出されませんでした' :
+                                                                     authResult.trustLevel === 'medium' ? '一部確認が必要な点があります' :
+                                                                     '慎重な確認を推奨します'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 総合コメント */}
+                                                    {authResult.overallComment && (
+                                                        <div className="mb-4 p-3 bg-brand-dark-light/30 rounded-lg">
+                                                            <p className="text-brand-platinum/80 text-sm">
+                                                                {authResult.overallComment}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 懸念点 */}
+                                                    {authResult.factors && authResult.factors.length > 0 && (
+                                                        <div className="mb-4">
+                                                            <h4 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
+                                                                <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                                                                検出された懸念点
+                                                            </h4>
+                                                            <ul className="space-y-2">
+                                                                {authResult.factors.map((factor, idx) => (
+                                                                    <li key={idx} className={`p-3 rounded-lg text-sm ${
+                                                                        factor.severity === 'critical' ? 'bg-red-500/10 text-red-300' :
+                                                                        factor.severity === 'warning' ? 'bg-yellow-500/10 text-yellow-300' :
+                                                                        'bg-blue-500/10 text-blue-300'
+                                                                    }`}>
+                                                                        <span className="font-medium">{factor.category}:</span> {factor.description}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 正規品の特徴 */}
+                                                    {authResult.positiveSignals && authResult.positiveSignals.length > 0 && (
+                                                        <div className="mb-4">
+                                                            <h4 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
+                                                                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                                                                正規品の特徴
+                                                            </h4>
+                                                            <ul className="space-y-1">
+                                                                {authResult.positiveSignals.slice(0, 3).map((signal, idx) => (
+                                                                    <li key={idx} className="text-brand-platinum/70 text-sm flex items-start gap-2">
+                                                                        <span className="text-green-400 mt-0.5">✓</span>
+                                                                        {signal}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 制限事項 */}
+                                                    <div className="p-3 bg-brand-dark rounded-lg mb-4">
+                                                        <p className="text-brand-platinum/50 text-xs">
+                                                            ⚠️ この判定はAIによる参考情報です。高額カードは公式鑑定機関（PSA, BGS等）の利用を推奨します。
+                                                        </p>
+                                                    </div>
+
+                                                    {/* 再実行ボタン */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAuthResult(null);
+                                                            setAuthError(null);
+                                                        }}
+                                                        className="w-full py-2 border border-white/20 text-brand-platinum/70 rounded-lg text-sm hover:bg-white/5 transition-colors"
+                                                    >
+                                                        別の画像でチェック
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
 
                     {/* --- Form Sections (Revealed after Analysis) --- */}
                     {hasAnalyzed && (
@@ -925,6 +1323,7 @@ function SellContent() {
 
                 </form >
             </div >
+
         </div >
     );
 }
