@@ -10,7 +10,9 @@ import CardImageUploader from '../../components/CardImageUploader';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Shield, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Upload, X } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Upload, X, Camera } from 'lucide-react';
+import CameraCapture from '@/components/AuthenticityCheck/CameraCapture';
+import ShootingTutorial from '@/components/AuthenticityCheck/ShootingTutorial';
 import { motion, AnimatePresence } from 'framer-motion';
 import { checkImageQuality } from '@/lib/imageQuality';
 import { AuthenticityResult, ImageQualityResult } from '@/types/authenticity';
@@ -107,6 +109,12 @@ function SellContent() {
     const [authError, setAuthError] = useState<string | null>(null);
     const [authImageQuality, setAuthImageQuality] = useState<ImageQualityResult | null>(null);
 
+    // Camera Integration State
+    const [isMobile, setIsMobile] = useState(false);
+    const [showCameraCapture, setShowCameraCapture] = useState(false);
+    const [showTutorial, setShowTutorial] = useState(false);
+    const [retakeMode, setRetakeMode] = useState(false);
+
     // Image Selection for AI
     const [selectedImageIndices, setSelectedImageIndices] = useState<number[]>([0]);
 
@@ -154,6 +162,16 @@ function SellContent() {
 
     const images = watch('images');
     const isGraded = watch('isGraded');
+
+    // デバイス判定
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         const init = async () => {
@@ -277,6 +295,73 @@ function SellContent() {
             }
         } finally {
             setAuthChecking(false);
+        }
+    };
+
+    // カメラ撮影開始
+    const handleStartCamera = () => {
+        const hasSeenTutorial = localStorage.getItem('authenticity-tutorial-seen');
+        if (!hasSeenTutorial) {
+            setShowTutorial(true);
+        } else {
+            setShowCameraCapture(true);
+        }
+    };
+
+    // チュートリアル完了
+    const handleTutorialComplete = () => {
+        localStorage.setItem('authenticity-tutorial-seen', 'true');
+        setShowTutorial(false);
+        setShowCameraCapture(true);
+    };
+
+    // チュートリアルスキップ
+    const handleTutorialSkip = () => {
+        localStorage.setItem('authenticity-tutorial-seen', 'true');
+        setShowTutorial(false);
+        setShowCameraCapture(true);
+    };
+
+    // カメラ撮影完了
+    const handleCameraCapture = async (imageData: string) => {
+        setShowCameraCapture(false);
+
+        try {
+            // Base64をBlobに変換
+            const response = await fetch(imageData);
+            const blob = await response.blob();
+            const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+            // Supabaseにアップロード
+            const supabase = createClient();
+            const fileName = `${Math.random()}.jpg`;
+            const { error: uploadError } = await supabase.storage
+                .from('card-images')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('card-images')
+                .getPublicUrl(fileName);
+
+            // 画像リストに追加
+            const currentImages = getValues('images') || [];
+            const newImages = [...currentImages, publicUrl];
+            setValue('images', newImages);
+
+            // 撮り直しモードの場合は自動でチェック実行
+            if (retakeMode) {
+                setRetakeMode(false);
+                setAuthError(null);
+                setTimeout(() => {
+                    runAuthenticityCheck();
+                }, 500);
+            }
+
+        } catch (err) {
+            console.error('Camera upload error:', err);
+            setAuthError('画像のアップロードに失敗しました');
         }
     };
 
@@ -858,17 +943,39 @@ function SellContent() {
                                                         </div>
                                                     )}
 
-                                                    {/* アップロードボタン */}
-                                                    <label className="block w-full py-3 border border-brand-blue text-brand-blue rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer hover:bg-brand-blue/10 transition-colors">
-                                                        <Upload className="w-5 h-5" />
-                                                        別の画像をアップロード
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={handleRetakeUpload}
-                                                            className="hidden"
-                                                        />
-                                                    </label>
+                                                    {/* アクションボタン */}
+                                                    <div className="space-y-3">
+                                                        {/* スマホ: カメラ撮影を推奨 */}
+                                                        {isMobile && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setRetakeMode(true);
+                                                                    handleStartCamera();
+                                                                }}
+                                                                className="w-full py-3 bg-brand-blue hover:bg-brand-blue-glow text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+                                                            >
+                                                                <Camera className="w-5 h-5" />
+                                                                カメラで撮り直す（推奨）
+                                                            </button>
+                                                        )}
+
+                                                        {/* 共通: 別の画像をアップロード */}
+                                                        <label className={`block w-full py-3 border rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors ${
+                                                            isMobile
+                                                                ? 'border-white/20 text-brand-platinum/70 hover:bg-white/5'
+                                                                : 'border-brand-blue text-brand-blue hover:bg-brand-blue/10'
+                                                        }`}>
+                                                            <Upload className="w-5 h-5" />
+                                                            別の画像をアップロード
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={handleRetakeUpload}
+                                                                className="hidden"
+                                                            />
+                                                        </label>
+                                                    </div>
 
                                                     {/* 撮影のコツ */}
                                                     <div className="mt-6 p-4 bg-brand-dark-light/50 rounded-xl text-left">
@@ -878,6 +985,7 @@ function SellContent() {
                                                             <li>• カードに対して真上から水平に</li>
                                                             <li>• 無地の背景（白・黒・グレー）を使用</li>
                                                             <li>• スリーブは外すと精度UP</li>
+                                                            <li>• 手ブレに注意（両手で固定）</li>
                                                         </ul>
                                                     </div>
 
@@ -886,6 +994,7 @@ function SellContent() {
                                                         onClick={() => {
                                                             setAuthError(null);
                                                             setAuthImageQuality(null);
+                                                            setRetakeMode(false);
                                                         }}
                                                         className="mt-4 text-brand-platinum/50 text-sm hover:text-white transition-colors"
                                                     >
@@ -1324,6 +1433,24 @@ function SellContent() {
                 </form >
             </div >
 
+            {/* カメラキャプチャモーダル */}
+            {showCameraCapture && (
+                <CameraCapture
+                    onCapture={handleCameraCapture}
+                    onCancel={() => {
+                        setShowCameraCapture(false);
+                        setRetakeMode(false);
+                    }}
+                />
+            )}
+
+            {/* 撮影チュートリアル */}
+            {showTutorial && (
+                <ShootingTutorial
+                    onComplete={handleTutorialComplete}
+                    onSkip={handleTutorialSkip}
+                />
+            )}
         </div >
     );
 }
