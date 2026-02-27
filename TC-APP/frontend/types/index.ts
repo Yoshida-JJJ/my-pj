@@ -90,6 +90,15 @@ export interface ListingItem {
     moment_history?: MomentHistoryItem[];
     orders?: any[] | any; // Joined via Supabase
     origin_order?: any; // Joined via Supabase
+
+    // AI Authenticity Check
+    trust_score?: number | null;
+    trust_level?: 'high' | 'medium' | 'low' | null;
+    metadata_check?: Record<string, unknown> | null;
+    score_note?: string | null;
+    factors?: Record<string, unknown>[] | null;
+    positive_signals?: string[] | null;
+    overall_comment?: string | null;
 }
 
 export interface MomentHistoryItem {
